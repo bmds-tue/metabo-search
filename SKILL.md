@@ -134,47 +134,66 @@ Based on your requirements, here are the top matches:
 
 ### Step 6b: Generate per-sample biological sentences (for BioBERT embedding)
 
+The library extracts pure biological data and provides a **prompt template**
+for the LLM to write a concise biological sentence. No sample names, study
+IDs, software, or techniques leak into the embedding text.
+
+**The Agent MUST provide a ``summarize_fn``** that calls the LLM with the
+prompt from ``build_bio_prompt()``:
+
 ```python
-from mtbls_agent import build_sample_sentences, build_sample_sentences_batch
+from mtbls_agent.sample_summarizer import build_sample_sentences, build_bio_prompt
+
+def my_llm_summarizer(prompt: str) -> str:
+    """Call the LLM with the prompt, return the biological sentence."""
+    # Example — the agent should use its own LLM call
+    response = call_llm(prompt)  # agent's own LLM
+    return response.strip()
 
 # Single study
-sentences = build_sample_sentences(
-    deep_study,
-    summarize_fn=None,  # or pass an LLM summarizer (see below)
-)
+sentences = build_sample_sentences(deep_study, summarize_fn=my_llm_summarizer)
 
 # Multiple studies in parallel
 all_sentences = build_sample_sentences_batch(
     deep_candidates,
-    summarize_fn=None,
+    summarize_fn=my_llm_summarizer,
     max_workers=10,
 )
 ```
 
-**The sentences are purely biological** — no instrument, technique, or protocol noise.
-Same deterministic field order across all studies for comparable embeddings.
+The prompt template that the library uses internally:
 
-**To get better embeddings, use an LLM to summarize the abstract:**
+```text
+From the biological sample data and study abstract below, write ONE concise
+sentence describing only the biological context of this sample.
 
-```python
-def summarize_with_llm(text: str) -> str:
-    '''Ask the agent's LLM to extract the biological core of the abstract.'''
-    # The agent should call its LLM here with a prompt like:
-    # "Summarize the biological context of this metabolomics study
-    #  in 1-2 sentences. Focus on: organism, tissue/disease model,
-    #  experimental conditions, and biological findings."
-    ...
+SAMPLE DATA:
+- Organism: Homo sapiens
+- Tissue: blood plasma
+- Variant/Strain: C57BL/6J
+- Sample type: biological specimen
+- Biological factors: Gender: Male; Age: 45; Treatment: drug X
+- Disease/Condition: Parkinson's disease, biomarker study
 
-sentences = build_sample_sentences(
-    deep_study,
-    summarize_fn=summarize_with_llm,
-)
+STUDY ABSTRACT:
+[...abstract text...]
+
+RULES:
+- Include: organism, tissue, disease/condition, relevant biological factors
+- Exclude: sample names, study accession numbers, software names, instrument
+  models, analytical techniques, file formats
+- Write exactly ONE sentence, concise but informative
+- Use standard biomedical terminology
 ```
 
-The Agent should always provide a ``summarize_fn`` that uses the LLM to
-distill the abstract to its biological essence. This makes the sample
-sentences much more information-dense and improves BioBERT embedding quality.
+Expected LLM output::
 
+    Homo sapiens brain tissue from a C57BL/6J mouse model of Parkinson's
+    disease, analyzed as part of a biomarker discovery study targeting
+    metabolites in the context of neurodegeneration.
+
+When no ``summarize_fn`` is provided (not recommended), a minimal facts-only
+fallback is used.
 
 ### Step 6c: Download data files (selective, by format)
 

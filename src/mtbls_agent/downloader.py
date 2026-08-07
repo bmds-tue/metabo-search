@@ -8,9 +8,10 @@ from __future__ import annotations
 import logging
 import re
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 from dataclasses import dataclass, field
 from pathlib import Path
+import threading
 
 import httpx
 
@@ -53,6 +54,30 @@ class DownloadResult:
     downloaded: list[DataFileRef] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
     total_bytes: int = 0
+
+
+class DownloadTask:
+    def __init__(self):
+        self._future = None
+
+    def result(self, timeout=None):
+        if self._future is None:
+            raise RuntimeError('Download not started')
+        return self._future.result(timeout=timeout)
+
+    @property
+    def done(self):
+        return self._future is not None and self._future.done()
+
+
+def start_download(candidate, config=None):
+    task = DownloadTask()
+    pool = ThreadPoolExecutor(max_workers=1)
+    def _run():
+        return download_data_files(candidate, config)
+    task._future = pool.submit(_run)
+    pool.shutdown(wait=False)
+    return task
 
 
 def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
