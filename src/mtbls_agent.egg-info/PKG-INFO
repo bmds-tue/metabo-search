@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: mtbls-agent
+Version: 0.1.0
+Summary: AI-native search engine for MetaboLights datasets — find, score, and compare studies by experimental requirements
+Requires-Python: >=3.11
+Requires-Dist: metabolights-utils>=1.4.35
+Requires-Dist: httpx>=0.28
+Requires-Dist: pydantic>=2.0
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-asyncio; extra == "dev"

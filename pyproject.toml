@@ -1,0 +1,24 @@
+[project]
+name = "mtbls-agent"
+version = "0.1.0"
+description = "AI-native search engine for MetaboLights datasets — find, score, and compare studies by experimental requirements"
+requires-python = ">=3.11"
+dependencies = [
+    "metabolights-utils>=1.4.35",
+    "httpx>=0.28",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
