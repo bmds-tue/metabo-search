@@ -181,6 +181,46 @@ When no ``study_summary`` is provided, a minimal facts-only fallback is used.
 
 ### Step 6c: Download data files (selective, by format)
 
+### Step 6d: Build a SampleManifest (traceability map)
+
+The manifest links every sample to its ISA metadata, generated sentence, and
+data files — in both hierarchical (study → samples) and flat (CSV) forms.
+
+```python
+from mtbls_agent.manifest import SampleManifest
+
+manifest = SampleManifest.build(
+    candidates=deep_candidates,
+    sentences_map={s.study_id: build_sample_sentences(s) for s in deep_candidates},
+    data_files_map={s.study_id: list_data_files(s) for s in deep_candidates},
+)
+
+# Explore hierarchically
+study = manifest.studies["MTBLS1375"]
+print(f"{study.study_id}: {study.sample_count} samples")
+for sample in study.samples[:3]:
+    print(f"  {sample.sample_name}: {sample.organism} {sample.tissue}")
+    print(f"    factors: {sample.factors}")
+    print(f"    sentence: {sample.sentence[:80]}...")
+
+# Export flat CSV for ML
+manifest.export_csv("samples.csv")
+
+# Filter by biology
+human_brain = manifest.filter_samples(organism="Homo sapiens", tissue="brain")
+print(f"{len(human_brain)} human brain samples")
+
+# Get all sentences for BioBERT
+sentences = manifest.all_sentences
+```
+
+CSV columns: ``sample``, ``study``, ``organism``, ``tissue``, ``variant``,
+``sample_type``, ``factor_*`` (dynamic), ``assay_techniques``,
+``assay_instruments``, ``sentence``, ``raw_data_files``,
+``derived_data_files``, ``has_raw_data``.
+
+### Step 7: Iterate
+
 For background (non-blocking) downloads, use ``start_download``:
 
 ```python

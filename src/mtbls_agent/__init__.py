@@ -40,6 +40,7 @@ from mtbls_agent.downloader import (
     DownloadResult,
     DownloadTask,
 )
+from mtbls_agent.manifest import SampleManifest
 from mtbls_agent.sample_summarizer import (
     SampleSentence,
     build_sample_sentences,
@@ -71,4 +72,5 @@ __all__ = [
     "DownloadResult",
     "start_download",
     "DownloadTask",
+    "SampleManifest",
 ]

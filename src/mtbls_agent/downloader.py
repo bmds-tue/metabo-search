@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 HTTP_STUDY_BASE = "https://ftp.ebi.ac.uk/pub/databases/metabolights/studies/public"
 
-# File type classification
 RAW_EXTS = {".raw", ".d", ".wiff", ".wiff2", ".baf", ".qgd", ".qgb", ".fid"}
 RAW_COMPRESSED = {".d.zip", ".raw.zip", ".wiff.zip"}
 DERIVED_EXTS = {".mzml", ".mzxml", ".mzdata", ".cdf", ".imzml", ".mz5",
@@ -54,6 +53,8 @@ class DownloadResult:
     downloaded: list[DataFileRef] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
     total_bytes: int = 0
+    dest_dir: str = ""
+    """Local directory where files were saved."""
 
 
 class DownloadTask:
@@ -62,7 +63,7 @@ class DownloadTask:
 
     def result(self, timeout=None):
         if self._future is None:
-            raise RuntimeError('Download not started')
+            raise RuntimeError("Download not started")
         return self._future.result(timeout=timeout)
 
     @property
@@ -80,27 +81,32 @@ def start_download(candidate, config=None):
     return task
 
 
-def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
-    """List data files in FILES/ via HTTP directory listing."""
-    url = f"{HTTP_STUDY_BASE}/{candidate.study_id}/FILES/"
+def _parse_size(size_str: str) -> int:
+    """Parse human-readable size like '2.1M' or '14M' into bytes."""
+    size_str = size_str.strip().upper()
+    if not size_str:
+        return 0
+    units = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4}
+    suffix = size_str[-1]
+    if suffix in units:
+        try:
+            num = size_str[:-1].rstrip("B")
+            return int(float(num) * units[suffix])
+        except ValueError:
+            return 0
     try:
-        resp = httpx.get(url, timeout=15)
-        resp.raise_for_status()
-        links = re.findall(r'href="([^\""]+)"', resp.text)
-        files = []
-        for link in links:
-            if link.startswith(".") or link.endswith("/"):
-                continue
-            ext = _detect_ext(link)
-            files.append(DataFileRef(
-                relative_path=f"FILES/{link}",
-                file_type=ext,
-                category=_categorize(ext),
-            ))
-        return files
-    except Exception as e:
-        logger.debug("HTTP listing failed for %s: %s", candidate.study_id, e)
-        return []
+        return int(float(size_str.rstrip("B")))
+    except ValueError:
+        return 0
+
+
+def _infer_sample_name(filename: str) -> str:
+    """Guess the sample name from a data filename (strip extensions)."""
+    p = Path(filename)
+    stem = p.stem
+    if p.suffix == ".zip" and stem.endswith(".d"):
+        stem = stem[:-2]
+    return stem
 
 
 def _detect_ext(filename: str) -> str:
@@ -119,6 +125,60 @@ def _categorize(ext: str) -> str:
     if ext in DERIVED_EXTS:
         return "derived"
     return "other"
+
+
+def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
+    """List data files in FILES/ via HTTP directory listing.
+
+    Parses filenames and human-readable sizes from the HTML table.
+    Filters out sort-parameter links (?C=N;O=D etc.)
+    """
+    url = f"{HTTP_STUDY_BASE}/{candidate.study_id}/FILES/"
+    try:
+        resp = httpx.get(url, timeout=15)
+        resp.raise_for_status()
+        html = resp.text
+
+        # Match: <a href="file.ext">...</a></td><td>DATE</td><td>SIZE</td>
+        pattern = re.compile(
+            r'href="([^"]+)"[^>]*>[^<]+</a>\s*</td>\s*'
+            r'<td[^>]*>[^<]*</td>\s*'
+            r'<td[^>]*>\s*([\d.]+\s*[KMGTPE]?[B]?)\s*</td>',
+            re.IGNORECASE,
+        )
+        files = []
+        for match in pattern.finditer(html):
+            link = match.group(1)
+            size_str = match.group(2).strip()
+            if link.startswith("?") or link.startswith(".") or link.endswith("/"):
+                continue
+            ext = _detect_ext(link)
+            files.append(DataFileRef(
+                relative_path=f"FILES/{link}",
+                size_bytes=_parse_size(size_str),
+                file_type=ext,
+                category=_categorize(ext),
+                sample_name=_infer_sample_name(link),
+            ))
+
+        # Fallback: extract just names (no sizes)
+        if not files:
+            links = re.findall(r'href="([^"]+)"', html)
+            for link in links:
+                if link.startswith("?") or link.startswith(".") or link.endswith("/"):
+                    continue
+                ext = _detect_ext(link)
+                files.append(DataFileRef(
+                    relative_path=f"FILES/{link}",
+                    file_type=ext,
+                    category=_categorize(ext),
+                    sample_name=_infer_sample_name(link),
+                ))
+
+        return files
+    except Exception as e:
+        logger.debug("HTTP listing failed for %s: %s", candidate.study_id, e)
+        return []
 
 
 def _apply_filters(
@@ -145,8 +205,8 @@ def download_data_files(
     """Download data files matching the given config filters."""
     if config is None:
         config = DownloadConfig(
-            categories=["raw"],
-            file_types=[".mzml", ".mzxml", ".raw", ".d", ".d.zip"],
+            categories=None,
+            file_types=[".d.zip", ".raw", ".d", ".wiff", ".wiff2"],
         )
     if config.dest_dir:
         base = Path(config.dest_dir) / candidate.study_id
@@ -158,20 +218,23 @@ def download_data_files(
     available = list_data_files(candidate)
     if not available:
         logger.warning("No data files found for %s", candidate.study_id)
-        return DownloadResult()
+        return DownloadResult(dest_dir=str(base))
 
     selected = _apply_filters(available, config)
     if not selected:
         logger.info("No files match the given filters")
-        return DownloadResult()
+        return DownloadResult(dest_dir=str(base))
 
-    return _download_files(selected, base, config.parallel_downloads)
+    result = _download_files(selected, base, config.parallel_downloads, candidate.study_id)
+    result.dest_dir = str(base)
+    return result
 
 
 def _download_files(
-    files: list[DataFileRef], base_path: Path, max_workers: int = 4
+    files: list[DataFileRef], base_path: Path, max_workers: int = 4,
+    study_id: str = "",
 ) -> DownloadResult:
-    base_url = f"{HTTP_STUDY_BASE}"
+    base_url = f"{HTTP_STUDY_BASE}/{study_id}"
     result = DownloadResult()
 
     def _dl_one(ref: DataFileRef) -> tuple[bool, str]:
