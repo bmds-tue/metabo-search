@@ -134,68 +134,69 @@ Based on your requirements, here are the top matches:
 
 ### Step 6b: Generate per-sample biological sentences (for BioBERT embedding)
 
-The library extracts pure biological data and provides a **prompt template**
-for the LLM to write a concise biological sentence. No sample names, study
-IDs, software, or techniques leak into the embedding text.
+Two-phase design — the agent calls its LLM **once per study**, the library
+assembles per-sample sentences from that summary.
 
-**The Agent MUST provide a ``summarize_fn``** that calls the LLM with the
-prompt from ``build_bio_prompt()``:
+**Phase 1** — Agent calls its LLM with the prompt from ``build_study_prompt()``:
 
 ```python
-from mtbls_agent.sample_summarizer import build_sample_sentences, build_bio_prompt
+from mtbls_agent.sample_summarizer import build_study_prompt, build_sample_sentences
 
-def my_llm_summarizer(prompt: str) -> str:
-    """Call the LLM with the prompt, return the biological sentence."""
-    # Example — the agent should use its own LLM call
-    response = call_llm(prompt)  # agent's own LLM
-    return response.strip()
-
-# Single study
-sentences = build_sample_sentences(deep_study, summarize_fn=my_llm_summarizer)
-
-# Multiple studies in parallel
-all_sentences = build_sample_sentences_batch(
-    deep_candidates,
-    summarize_fn=my_llm_summarizer,
-    max_workers=10,
-)
+prompt = build_study_prompt(deep_study)
+# prompt contains: study title + abstract + rules what to include/exclude
+# The agent calls its own LLM with this prompt:
+study_summary = call_llm(prompt)  # one LLM call per study
+# Example response: "Homo sapiens blood plasma from 21 healthy subjects
+# in a targeted lipidomics study quantifying 433 lipid species."
 ```
 
-The prompt template that the library uses internally:
+**Phase 2** — Library assembles per-sample sentences using the summary:
 
-```text
-From the biological sample data and study abstract below, write ONE concise
-sentence describing only the biological context of this sample.
-
-SAMPLE DATA:
-- Organism: Homo sapiens
-- Tissue: blood plasma
-- Variant/Strain: C57BL/6J
-- Sample type: biological specimen
-- Biological factors: Gender: Male; Age: 45; Treatment: drug X
-- Disease/Condition: Parkinson's disease, biomarker study
-
-STUDY ABSTRACT:
-[...abstract text...]
-
-RULES:
-- Include: organism, tissue, disease/condition, relevant biological factors
-- Exclude: sample names, study accession numbers, software names, instrument
-  models, analytical techniques, file formats
-- Write exactly ONE sentence, concise but informative
-- Use standard biomedical terminology
+```python
+sentences = build_sample_sentences(deep_study, study_summary=study_summary)
+for s in sentences:
+    print(s.sentence)
+# Example output:
+# "Homo sapiens blood plasma, quality control pooled (Long term reference).
+#  Human blood plasma from 21 healthy subjects in a targeted lipidomics
+#  study quantifying 433 lipid species."
 ```
 
-Expected LLM output::
+The study summary is the **biological essence** from the abstract (no sample
+names, study IDs, software, instruments, or techniques).  The library appends
+per-sample details (tissue, sample type, factors) as a prefix.
 
-    Homo sapiens brain tissue from a C57BL/6J mouse model of Parkinson's
-    disease, analyzed as part of a biomarker discovery study targeting
-    metabolites in the context of neurodegeneration.
+For multiple studies:
 
-When no ``summarize_fn`` is provided (not recommended), a minimal facts-only
-fallback is used.
+```python
+all_sentences = []
+for d in deep_candidates:
+    prompt = build_study_prompt(d)
+    summary = call_llm(prompt)  # one LLM call per study
+    sentences = build_sample_sentences(d, study_summary=summary)
+    all_sentences.append(sentences)
+```
+
+When no ``study_summary`` is provided, a minimal facts-only fallback is used.
 
 ### Step 6c: Download data files (selective, by format)
+
+For background (non-blocking) downloads, use ``start_download``:
+
+```python
+from mtbls_agent.downloader import start_download
+
+task = start_download(deep_study, DownloadConfig(categories=["raw"], max_files=5))
+# Returns immediately — download runs in background thread
+# ... do other work (score, summarize, write narrative) ...
+result = task.result()  # blocks only when you need the result
+print(f"Downloaded {len(result.downloaded)} files, {result.total_bytes / 1e6:.0f} MB")
+```
+
+For synchronous download (blocks until finished):
+
+```python
+from mtbls_agent.downloader import list_data_files, download_data_files, DownloadConfig
 
 ```python
 from mtbls_agent.downloader import list_data_files, download_data_files, DownloadConfig

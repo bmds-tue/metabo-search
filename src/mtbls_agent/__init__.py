@@ -34,14 +34,15 @@ from mtbls_agent.workflow import find_datasets
 from mtbls_agent.downloader import (
     list_data_files,
     download_data_files,
+    start_download,
     DownloadConfig,
     DataFileRef,
     DownloadResult,
+    DownloadTask,
 )
 from mtbls_agent.sample_summarizer import (
     SampleSentence,
     build_sample_sentences,
-    build_sample_sentences_batch,
 )
 
 __all__ = [
@@ -63,10 +64,11 @@ __all__ = [
     "find_datasets",
     "SampleSentence",
     "build_sample_sentences",
-    "build_sample_sentences_batch",
     "list_data_files",
     "download_data_files",
     "DownloadConfig",
     "DataFileRef",
     "DownloadResult",
+    "start_download",
+    "DownloadTask",
 ]
