@@ -31,6 +31,11 @@ from mtbls_agent.inspector import inspect_studies
 from mtbls_agent.scorer import score_studies
 from mtbls_agent.summarizer import build_comparison_table
 from mtbls_agent.workflow import find_datasets
+from mtbls_agent.sample_summarizer import (
+    SampleSentence,
+    build_sample_sentences,
+    build_sample_sentences_batch,
+)
 
 __all__ = [
     "RequirementProfile",
@@ -49,4 +54,7 @@ __all__ = [
     "score_studies",
     "build_comparison_table",
     "find_datasets",
+    "SampleSentence",
+    "build_sample_sentences",
+    "build_sample_sentences_batch",
 ]

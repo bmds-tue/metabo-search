@@ -132,6 +132,49 @@ Based on your requirements, here are the top matches:
    - Consider if whole blood works or you need plasma specifically
 ```
 
+### Step 6b: Generate per-sample biological sentences (for BioBERT embedding)
+
+```python
+from mtbls_agent import build_sample_sentences, build_sample_sentences_batch
+
+# Single study
+sentences = build_sample_sentences(
+    deep_study,
+    summarize_fn=None,  # or pass an LLM summarizer (see below)
+)
+
+# Multiple studies in parallel
+all_sentences = build_sample_sentences_batch(
+    deep_candidates,
+    summarize_fn=None,
+    max_workers=10,
+)
+```
+
+**The sentences are purely biological** — no instrument, technique, or protocol noise.
+Same deterministic field order across all studies for comparable embeddings.
+
+**To get better embeddings, use an LLM to summarize the abstract:**
+
+```python
+def summarize_with_llm(text: str) -> str:
+    '''Ask the agent's LLM to extract the biological core of the abstract.'''
+    # The agent should call its LLM here with a prompt like:
+    # "Summarize the biological context of this metabolomics study
+    #  in 1-2 sentences. Focus on: organism, tissue/disease model,
+    #  experimental conditions, and biological findings."
+    ...
+
+sentences = build_sample_sentences(
+    deep_study,
+    summarize_fn=summarize_with_llm,
+)
+```
+
+The Agent should always provide a ``summarize_fn`` that uses the LLM to
+distill the abstract to its biological essence. This makes the sample
+sentences much more information-dense and improves BioBERT embedding quality.
+
 ### Step 7: Iterate
 
 If the user isn't satisfied, refine the search:

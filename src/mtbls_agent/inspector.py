@@ -310,11 +310,19 @@ def _parse_assay_files(enrichment: dict, study_id: str, study_path: Path) -> Non
                             if v and v.strip():
                                 column_type = v.strip()
                                 break
-                    if "ion" in col_lower or "polarity" in col_lower:
+                    # Priority: scan polarity > ion mode > ion source
+                    if any(kw in col_lower for kw in ["parameter value[scan polarity", "scan polarity", "parameter value[ion mode", "ion mode"]):
                         vals = table.data.get(col, []) or []
                         for v in vals:
                             if v and v.strip():
                                 ionization_mode = v.strip()
+                                break
+                    elif "parameter value[ion source" in col_lower or "ion source" in col_lower:
+                        vals = table.data.get(col, []) or []
+                        for v in vals:
+                            if v and v.strip():
+                                if not ionization_mode:  # only if not already set
+                                    ionization_mode = v.strip()
                                 break
 
                 # Determine technique from file name
