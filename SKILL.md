@@ -175,7 +175,42 @@ The Agent should always provide a ``summarize_fn`` that uses the LLM to
 distill the abstract to its biological essence. This makes the sample
 sentences much more information-dense and improves BioBERT embedding quality.
 
+
+### Step 6c: Download data files (selective, by format)
+
+```python
+from mtbls_agent.downloader import list_data_files, download_data_files, DownloadConfig
+
+# List what's available before downloading
+files = list_data_files(deep_study)
+raw = [f for f in files if f.category == 'raw']
+derived = [f for f in files if f.category == 'derived']
+print(f"{len(raw)} raw files, {len(derived)} derived files")
+
+# Download only mzML files (derived/processed)
+config = DownloadConfig(
+    file_types=[".mzml", ".mzxml"],    # filter by extension
+    categories=["derived"],             # or "raw", "maf"
+    max_files=10,                        # limit count
+    parallel_downloads=4,               # concurrent downloads
+)
+result = download_data_files(deep_study, config)
+print(f"Downloaded {len(result.downloaded)} files ({result.total_bytes / 1e6:.0f} MB)")
+
+# Or download only raw instrument data
+config2 = DownloadConfig(
+    categories=["raw"],
+    file_types=[".d.zip", ".raw", ".d"],
+    max_files=5,
+)
+result2 = download_data_files(deep_study, config2)
+```
+
+Filters available: ``file_types``, ``categories`` (raw/derived/maf/other),
+``sample_names``, ``max_files``, ``max_size_gb``.
+
 ### Step 7: Iterate
+
 
 If the user isn't satisfied, refine the search:
 - Adjust hard requirements based on what's available

@@ -31,6 +31,13 @@ from mtbls_agent.inspector import inspect_studies
 from mtbls_agent.scorer import score_studies
 from mtbls_agent.summarizer import build_comparison_table
 from mtbls_agent.workflow import find_datasets
+from mtbls_agent.downloader import (
+    list_data_files,
+    download_data_files,
+    DownloadConfig,
+    DataFileRef,
+    DownloadResult,
+)
 from mtbls_agent.sample_summarizer import (
     SampleSentence,
     build_sample_sentences,
@@ -57,4 +64,9 @@ __all__ = [
     "SampleSentence",
     "build_sample_sentences",
     "build_sample_sentences_batch",
+    "list_data_files",
+    "download_data_files",
+    "DownloadConfig",
+    "DataFileRef",
+    "DownloadResult",
 ]
