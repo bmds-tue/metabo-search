@@ -7,6 +7,7 @@ downstream ML workflows.
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -137,14 +138,16 @@ class SampleManifest:
                 sample_name = row.get("Source Name") or row.get("Sample Name") or "unknown"
                 sent = sentence_by_name.get(sample_name)
 
-                # Match data files to this sample (by name in path)
+                # Match data files to this sample (by name in path).
+                # Filenames often encode extra info (ionization mode, batch):
+                #   sample "HU_011"  <->  file "HU_neg_011_b2.RAW"
                 sample_raw = [
                     f.relative_path for f in study_data_files
-                    if f.category == "raw" and sample_name in f.relative_path
+                    if f.category == "raw" and _sample_matches(sample_name, f.relative_path)
                 ]
                 sample_derived = [
                     f.relative_path for f in study_data_files
-                    if f.category == "derived" and sample_name in f.relative_path
+                    if f.category == "derived" and _sample_matches(sample_name, f.relative_path)
                 ]
 
                 entry = SampleEntry(
@@ -234,6 +237,51 @@ class SampleManifest:
 
 
 # ── Helpers ────────────────────────────────────────────────────────
+
+
+def _sample_matches(sample_name: str, relative_path: str) -> bool:
+    """Match sample name to data filename using token-set matching.
+
+    Data files encode extra tokens beyond the sample name:
+
+        sample "HU_014"  <->  file "FILES/HU_neg_014_b2.RAW"   -- _neg_, _b2
+        sample "Blanc04" <->  file "FILES/Blanc04.RAW"         -- direct
+
+    We tokenize both by ``[_-]`` and check that all non-trivial sample
+    tokens appear in the file token set.  This handles arbitrary extra
+    tokens in either direction.
+    """
+    if not sample_name:
+        return False
+
+    fname = relative_path.split("/")[-1]
+    base = fname.rsplit(".", 1)[0].lower()
+    s_lower = sample_name.lower()
+
+    # Fast path: exact match at token boundary
+    if s_lower == base:
+        return True
+    # Also check if the full sample name appears as a complete token in the filename
+    file_tokens = set(re.split(r"[_\-\s]+", base))
+    if s_lower in file_tokens:
+        return True
+
+    # Token-set matching
+    sample_tokens = set(re.split(r"[_\-\s]+", s_lower))
+    # file_tokens already set above in the fast path
+
+    # All sample tokens must be present in file token set
+    if not sample_tokens.issubset(file_tokens):
+        return False
+
+    # Numeric tokens must match exactly (not substring/prefix)
+    # Prevents "QC_1" from matching "QC_12"
+    sample_nums = {t for t in sample_tokens if t.isdigit()}
+    file_nums = {t for t in file_tokens if t.isdigit()}
+    if sample_nums and not sample_nums.issubset(file_nums):
+        return False
+
+    return True
 
 
 def _get_field(
