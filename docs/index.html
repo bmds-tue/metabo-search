@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>metabolights-search — find &amp; describe metabolomics datasets</title>
+<style>
+  :root{--bg:#0f172a;--panel:#1e293b;--panel2:#253452;--ink:#e2e8f0;--muted:#94a3b8;
+        --accent:#38bdf8;--accent2:#818cf8;--good:#34d399;--warn:#fbbf24;--border:#334155;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  a{color:var(--accent)}
+  h2{font-size:22px;margin:38px 0 6px}
+  .muted{color:var(--muted)}
+  code{font-family:ui-monospace,Menlo,monospace}
+  p code,li code,td code{background:var(--panel2);padding:1px 6px;border-radius:5px;font-size:.87em}
+
+  header{position:sticky;top:0;z-index:9;background:rgba(15,23,42,.92);
+         border-bottom:1px solid var(--border)}
+  .nav{display:flex;align-items:center;gap:16px;height:54px}
+  .nav .logo{font-weight:700}
+  .nav .logo b{color:var(--accent)}
+  .nav .links{margin-left:auto;display:flex;gap:14px;font-size:13.5px}
+  .nav .links a{color:var(--muted)}
+  .nav .links a:hover{color:var(--ink)}
+
+  .hero{padding:42px 0 6px}
+  .hero h1{font-size:30px;margin:0 0 10px}
+  .hero h1 span{background:linear-gradient(90deg,var(--accent),var(--accent2));
+                -webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.problem{font-size:16.5px;color:var(--muted);max-width:780px;margin:0}
+
+  .flow{background:#0b1220;border:1px solid var(--border);border-radius:12px;
+        padding:12px 8px;margin:14px auto;max-width:680px}
+  .mermaid{display:flex;justify-content:center;overflow:auto}
+  .mermaid svg{max-width:100%;height:auto}
+
+  pre{background:#0b1220;border:1px solid var(--border);border-radius:9px;
+      padding:12px 14px;overflow-x:auto;font:12.5px/1.6 ui-monospace,Menlo,monospace}
+  .codehead{display:flex;justify-content:space-between;margin-bottom:5px}
+  .codehead .lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .copybtn{background:var(--panel2);border:1px solid var(--border);color:var(--muted);
+           border-radius:6px;font-size:11.5px;padding:2px 10px;cursor:pointer}
+  .copybtn:hover{color:var(--ink)}
+
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border)}
+  th{color:var(--muted)}
+  tr:hover td{background:var(--panel)}
+
+  .note{border:1px solid var(--border);border-left:4px solid var(--warn);
+        border-radius:9px;padding:10px 14px;margin:12px 0;font-size:14px}
+  .note b{color:var(--warn)}
+  footer{padding:34px 0 56px;color:var(--muted);font-size:13px}
+  @media(max-width:700px){.nav .links{display:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#top">metabolights<b>-search</b></a>
+    <div class="links">
+      <a href="#problem">Problem</a><a href="#flow">Workflow</a>
+      <a href="#install">Install</a><a href="#examples">Examples</a>
+      <a href="#api">API</a><a href="#trouble">Troubleshoot</a>
+    </div>
+  </div>
+</header>
+
+<div id="top"></div>
+<div class="wrap hero">
+  <h1>Find the right metabolomics dataset,<br><span>and describe every sample for ML.</span></h1>
+  <p class="problem">
+    The hunt for the right dataset ends here. Stop spending hours manually screening
+    MetaboLights to find a dataset that matches your experiment — this skill pairs
+    deterministic search against the MetaboLights API with natural-language understanding,
+    finishing the job in minutes. As a bonus, it also turns every sample's metadata into one
+    embedding-ready sentence.
+  </p>
+</div>
+
+<section class="wrap" id="flow">
+  <h2>Workflow</h2>
+  <div class="flow">
+  <div class="mermaid">
+flowchart TD
+    U["User need"]
+    R["RequirementProfile"]
+    S["search API + shallow screen"]:::det
+    DI["deep-inspect top-K"]:::det
+    Q{"datasets good?"}
+    X["per-sample sentences"]
+    A["apply recipe · QC-safe"]:::det
+    E["embeddings + manifest"]:::det
+
+    U -->|"prose → parse (LLM)"| R
+    U -->|structured| R
+    R --> S
+    S -->|"too few survivors → next page"| S
+    S --> DI
+    DI --> Q
+    Q -->|"no → adjust profile"| U
+    Q -->|yes| X
+    X -->|"recipe · 1 LLM call"| A
+    A -->|"wording wrong → revise"| A
+    A --> E
+
+    classDef det fill:#0f2b24,stroke:#34d399,color:#a7f3d0;
+  </div>
+  </div>
+  <p class="muted">Green = deterministic, no model. The only LLM touches: parsing prose
+  into a profile (skip if structured) and one recipe prompt per study. Loops:
+  fetch-more pages, dataset feedback, wording revision.</p>
+</section>
+
+<section class="wrap" id="install">
+  <h2>Install</h2>
+  <div class="codehead"><span class="lbl">bash</span><button class="copybtn" data-copy="install">copy</button></div>
+  <pre id="install">git clone &lt;this-repo&gt; &amp;&amp; cd metabolites-metadata-skill
+./scripts/install.sh        # venv + pip install -e . + link into pi/claude/opencode skill dirs</pre>
+  <p class="muted">API docs are auto-generated — refresh anytime with
+  <code>scripts/python scripts/gen_api_docs.py</code>.</p>
+</section>
+
+<section class="wrap" id="examples">
+  <h2>Examples</h2>
+
+  <div class="codehead"><span class="lbl">1 · discovery — deterministic</span><button class="copybtn" data-copy="e1">copy</button></div>
+  <pre id="e1">from mtbls_agent import find_datasets, RequirementProfile, StudyRequirements
+
+profile = RequirementProfile(
+    hard=StudyRequirements(organisms=["Homo sapiens"], min_samples=50, has_raw_data=True),
+    nice_to_have=StudyRequirements(techniques=["LC-MS"]),
+    free_text="untargeted lipidomics of human plasma",
+)
+report = find_datasets("", profile=profile, max_candidates=30, deep_inspect_top=6)
+# report.top_candidate, report.table_rows — ranked by score
+# report.screening.dropped — why each study failed (deterministic)</pre>
+
+  <div class="codehead"><span class="lbl">2 · per-sample sentences — one LLM call per study</span><button class="copybtn" data-copy="e2">copy</button></div>
+  <pre id="e2">from mtbls_agent import prepare_samples, submit_samples, load_samples, \
+    revise_samples, SampleSentencesStore
+
+store = SampleSentencesStore("samples_cache.json")
+for sc in report.candidates[:6]:
+    d, task = sc.candidate, prepare_samples(sc.candidate, store)
+    descs = load_samples(task)
+    if descs is None:
+        descs = submit_samples(task, call_llm(task.profile_prompt))   # you = the model
+    print(task.study_id, descs[0].sentence)
+    # feedback loop:  task2 = revise_samples(task, new_recipe_text)</pre>
+
+  <div class="codehead"><span class="lbl">3 · download + formats</span><button class="copybtn" data-copy="e3">copy</button></div>
+  <pre id="e3">from mtbls_agent import format_summary, list_data_files, download_data_files, \
+    DownloadConfig
+
+format_summary(d)                     # {".mzml": 157, ".d.zip": 157, ...}
+files = list_data_files(d)            # recursive FILES/ walk, real sizes
+result = download_data_files(d, DownloadConfig(categories=["derived"],
+                                               file_types=[".mzml"], max_files=10))
+result.dest_dir                       # where files landed</pre>
+
+  <div class="codehead"><span class="lbl">4 · offline + manifest</span><button class="copybtn" data-copy="e4">copy</button></div>
+  <pre id="e4">from mtbls_agent import load_study_from_isa, SampleManifest
+
+d = load_study_from_isa("MTBLS1375", "/path/to/isa_files")   # no network
+manifest = SampleManifest.build([d], sentences_map={d.study_id: descs})
+manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → files)</pre>
+
+  <div class="note"><b>call_llm = you.</b> The library never calls a model; it hands you
+  <code>task.profile_prompt</code> and stores what you return.</div>
+</section>
+
+<section class="wrap" id="api">
+  <h2>API <span class="muted" style="font-weight:400">— auto-generated, <a href="api.md">full reference</a></span></h2>
+  <table>
+    <thead><tr><th>Name</th><th>Purpose</th></tr></thead>
+    <tbody id="api-rows">
+      <tr><td><code>apply_recipe</code></td><td>Deterministically fill the recipe template for one sample.</td></tr>
+      <tr><td><code>build_comparison_table</code></td><td>Build a structured comparison table from scored candidates. The table has one row per candidate…</td></tr>
+      <tr><td><code>build_study_profile_prompt</code></td><td>Build the ONE prompt the agent&#x27;s LLM uses to author the study recipe.</td></tr>
+      <tr><td><code>collect_sample_contexts</code></td><td>Collect the full raw context for every sample in a study. Includes factors, characteristics,…</td></tr>
+      <tr><td><code>download_data_files</code></td><td>Download data files matching the given config filters.</td></tr>
+      <tr><td><code>find_datasets</code></td><td>End-to-end discovery, deterministic when `profile` is structured. Pipeline (no LLM involved):…</td></tr>
+      <tr><td><code>format_summary</code></td><td>Count data files by format, from a recursive FILES/ listing. A quick probe for &quot;does this study…</td></tr>
+      <tr><td><code>inspect_studies</code></td><td>Deep-inspect candidates in parallel. For each candidate: 1. Download ISA-Tab metadata files…</td></tr>
+      <tr><td><code>list_data_files</code></td><td>List data files recursively through FILES/ and its subdirectories. Some studies organize data…</td></tr>
+      <tr><td><code>load_samples</code></td><td>Return cached descriptions for this task, or None if not cached.</td></tr>
+      <tr><td><code>load_study_from_isa</code></td><td>Reconstruct a deep-inspected StudyCandidate from LOCAL ISA files. Offline / reuse path: if…</td></tr>
+      <tr><td><code>parse_study_profile</code></td><td>Parse the LLM&#x27;s JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks.</td></tr>
+      <tr><td><code>prepare_samples</code></td><td>Bundle everything for one study: contexts + the single LLM prompt. `revision` feeds the cache…</td></tr>
+      <tr><td><code>profile_to_search_args</code></td><td>Deterministically map a profile&#x27;s HARD requirements to search kwargs, so the search API…</td></tr>
+      <tr><td><code>revise_samples</code></td><td>Author a revised wording under the next revision and cache it. Returns the *new* task (already…</td></tr>
+      <tr><td><code>score_studies</code></td><td>Score each candidate against the requirement profile. Returns scored candidates sorted…</td></tr>
+      <tr><td><code>screen_candidates</code></td><td>Deterministic pre-screen on search-index data (no LLM, no download). Drops candidates that fail…</td></tr>
+      <tr><td><code>search_studies</code></td><td>Broad search returning shallow `StudyCandidate` objects. This is **Phase 1** — get many…</td></tr>
+      <tr><td><code>submit_samples</code></td><td>Apply the LLM-authored profile to every sample; cache and return. `profile_json` is the raw…</td></tr>
+      <tr><td><code>DownloadConfig</code></td><td>DownloadConfig(file_types: &#x27;list[str] | None&#x27; = None, sample_names: &#x27;list[str] | None&#x27; = None,…</td></tr>
+      <tr><td><code>RequirementProfile</code></td><td>What a researcher is looking for. - `hard`: non-negotiable filters (pass/fail) -…</td></tr>
+      <tr><td><code>SampleManifest</code></td><td>SampleManifest(studies: &#x27;dict[str, StudyEntry]&#x27; = , samples: &#x27;dict[str, list[SampleEntry]]&#x27; = ,…</td></tr>
+      <tr><td><code>SampleSentencesStore</code></td><td>File-backed cache of generated sample descriptions, keyed by study.</td></tr>
+      <tr><td><code>SampleTask</code></td><td>Everything the agent needs for ONE study-level LLM round trip. Flow:: task =…</td></tr>
+      <tr><td><code>StudyCandidate</code></td><td>All known information about a MetaboLights study. Phase 1 (shallow) fields come from the search…</td></tr>
+      <tr><td><code>StudyRequirements</code></td><td>A set of requirements (used for both hard and nice-to-have).</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="wrap" id="trouble">
+  <h2>Troubleshooting</h2>
+  <ul>
+    <li>import resolves elsewhere → re-run <code>./scripts/install.sh</code></li>
+    <li>transient download failure → library retries; study stays shallow, don't loop</li>
+    <li>stale wording → <code>revise_samples</code> (new cache revision), not cache deletion</li>
+    <li>MS1/MS2 check → not in the index; confirm from a file or the paper</li>
+    <li>venv broken → <code>rm -rf .venv-local &amp;&amp; ./scripts/install.sh</code></li>
+  </ul>
+</section>
+
+<footer><div class="wrap">metabolights-search · <code>mtbls_agent</code> ·
+tests: <code>scripts/python -m pytest tests/ -q</code> · chart: Mermaid (CDN, needs internet)</div></footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', flowchart: { curve: 'basis' } });
+</script>
+<script>
+  document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{
+    navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent);
+    b.textContent='copied!'; setTimeout(()=>b.textContent='copy',1200);
+  }));
+</script>
+</body>
+</html>

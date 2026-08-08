@@ -226,3 +226,30 @@ single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
   deep API detail moved to `references/api.md`; never references a home dir.
 - Verified: install+uninstall in a sandbox HOME; SKILL.md reachable through all
   harness symlinks (157 lines < 500).
+
+## Docs (browser-viewable guide)
+- `docs/index.html` — self-contained styled guide (no build/CDN, opens directly):
+  problem → how it works → install → quick start → deterministic-vs-AI → API table
+  → troubleshooting. Copy buttons on code blocks; pipeline diagrams.
+- `docs/README.md` — points to index.html + sibling docs.
+
+## Auto-generated API docs
+- `scripts/gen_api_docs.py` — dependency-free (stdlib `inspect`) scraper over
+  `mtbls_agent.__all__`: writes `docs/api.md` (full reference) and refreshes the
+  compact API table in `docs/index.html`. Runs on `install.sh`; manually with
+  `scripts/python scripts/gen_api_docs.py`.
+- `docs/index.html` is now compact + includes an SVG workflow flowchart with the
+  three loops (deterministic fetch-more, dataset feedback, wording revision).
+
+## Flowchart
+- `docs/index.html` workflow chart now uses **Mermaid v11** (ESM from jsdelivr CDN,
+  dark theme matching the page) instead of hand-rolled SVG. Loops are explicit
+  back-edges: fetch-more pages (SC→S), dataset feedback (Q→U), wording revision
+  (A→L). Requires internet to render; rest of page is still self-contained.
+
+## Docs refresh (guide)
+- Problem statement: "The hunt for the right dataset ends here…" (high-level, 2 sentences).
+- Chart: compact Mermaid TD, self-loop arcs for the 3 loops (fetch-more, wording revise;
+  Q→U back-edge for dataset feedback). Fits on screen.
+- Quick start section removed; replaced by 4 rough API examples (discovery / sentences /
+  download / offline+manifest).

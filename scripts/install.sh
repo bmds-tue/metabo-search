@@ -52,6 +52,12 @@ for d in "${DEST_DIRS[@]}"; do
     echo "    linked $target  ->  $REPO"
 done
 
+# ── 2.5) Refresh auto-generated docs ────────────────────────────────────────
+if [ -x "$REPO/.venv-local/bin/python" ]; then
+    echo "==> regenerate docs (api.md + index.html table)"
+    (cd "$REPO" && "$REPO/scripts/python" "$REPO/scripts/gen_api_docs.py" >/dev/null 2>&1 || true)
+fi
+
 # ── 3) Validate (optional) ────────────────────────────────────────────────────
 if command -v skills-ref >/dev/null 2>&1; then
     echo "==> skills-ref validate"
