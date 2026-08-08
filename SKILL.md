@@ -134,50 +134,78 @@ Based on your requirements, here are the top matches:
 
 ### Step 6b: Generate per-sample biological sentences (for BioBERT embedding)
 
-Two-phase design — the agent calls its LLM **once per study**, the library
-assembles per-sample sentences from that summary.
+**ONE LLM call per study, then zero per-sample calls.** The LLM first
+THOROUGHLY studies the study's metadata structure, decodes every code
+(especially disease/group), and authors a **sentence recipe**. The library
+then applies it deterministically to every sample.
 
-**Phase 1** — Agent calls its LLM with the prompt from ``build_study_prompt()``:
+**STEP 1 — The Agent must study the metadata structure before writing.**
 
-```python
-from mtbls_agent.sample_summarizer import build_study_prompt, build_sample_sentences
-
-prompt = build_study_prompt(deep_study)
-# prompt contains: study title + abstract + rules what to include/exclude
-# The agent calls its own LLM with this prompt:
-study_summary = call_llm(prompt)  # one LLM call per study
-# Example response: "Homo sapiens blood plasma from 21 healthy subjects
-# in a targeted lipidomics study quantifying 433 lipid species."
-```
-
-**Phase 2** — Library assembles per-sample sentences using the summary:
+Build the study-profile prompt, which lays out the ISA columns, example
+sample rows, data-file name stems (where disease codes hide), factor values,
+and the abstract:
 
 ```python
-sentences = build_sample_sentences(deep_study, study_summary=study_summary)
-for s in sentences:
-    print(s.sentence)
-# Example output:
-# "Homo sapiens blood plasma, quality control pooled (Long term reference).
-#  Human blood plasma from 21 healthy subjects in a targeted lipidomics
-#  study quantifying 433 lipid species."
+from mtbls_agent.sample_gen import (
+    build_study_profile_prompt, collect_sample_contexts,
+    parse_study_profile, apply_recipe,
+    SampleDescription, SampleSentencesStore,
+)
+
+profile_prompt = build_study_profile_prompt(deep_study)
+# The AGENT calls its LLM with this prompt.
+# The LLM output is ONE JSON object:
+#   {
+#     "codes": {"ALZ": "Alzheimer's disease", "CTL": "cognitively normal control", ...},
+#     "sentence_template": "Homo sapiens {tissue} from an {disease} patient, {Sex}, age {Age}, ...",
+#     "slot_sources": {"disease": {"type": "code", "field": "data_files"}, ...},
+#     "qc_string": "quality control sample",
+#     "study_context": "..."
+#   }
+profile = parse_study_profile(llm_json)
 ```
 
-The study summary is the **biological essence** from the abstract (no sample
-names, study IDs, software, instruments, or techniques).  The library appends
-per-sample details (tissue, sample type, factors) as a prefix.
+**The prompt's instructions are explicit — the LLM must:**
+1. Study the ISA sample-file **columns** and example **rows** (see where each
+   value lives)
+2. Study the **data-file name stems** (decode disease/group codes like ALZ)
+3. Study the **factor** names and unique values
+4. Read the **abstract**
+5. Author a `sentence_template` with named `{slots}` + a `slot_sources` map
+   saying, for every slot, which source it comes from (factor / characteristic
+   / decoded code / tissue / sample_type).
 
-For multiple studies:
+**STEP 2 — Apply the recipe deterministically (no per-sample LLM):**
 
 ```python
-all_sentences = []
-for d in deep_candidates:
-    prompt = build_study_prompt(d)
-    summary = call_llm(prompt)  # one LLM call per study
-    sentences = build_sample_sentences(d, study_summary=summary)
-    all_sentences.append(sentences)
+contexts = collect_sample_contexts(deep_study)     # full per-sample context
+descriptions = [
+    apply_recipe(ctx, profile) for ctx in contexts  # 0 LLM calls here
+]
+# e.g. "Homo sapiens urine from an Alzheimer's disease patient, Female, age 69,
+#       (Sample Dilution: 100)."
 ```
 
-When no ``study_summary`` is provided, a minimal facts-only fallback is used.
+QC/reference/dilution/blank samples get the `qc_string` (e.g. "quality
+control sample") instead of an invented disease.
+
+**STEP 3 — Cache results so re-runs are free:**
+
+```python
+store = SampleSentencesStore("samples_cache.json")
+key = store.key_for(deep_study)          # id + data hash
+if key in store:
+    descriptions = store.load(key)        # skip the LLM entirely
+else:
+    # ... run STEP 1 (1 LLM call) + STEP 2 (deterministic) ...
+    store.save(key, descriptions)
+```
+
+**Why this works and scales:** 1–2 LLM calls per study regardless of sample
+count (a 1753-sample cohort = ~1 call + deterministic fill). Disease state is
+captured because the LLM studies the file-name codes during profile creation
+and the recipe's `{disease}` slot decodes each sample's own code. This is the
+recommended path for BioBERT-ready per-sample sentences.
 
 ### Step 6c: Download data files (selective, by format)
 
@@ -268,6 +296,14 @@ result2 = download_data_files(deep_study, config2)
 
 Filters available: ``file_types``, ``categories`` (raw/derived/maf/other),
 ``sample_names``, ``max_files``, ``max_size_gb``.
+
+Notes:
+- ``list_data_files`` **recurses** into ``FILES/`` subdirectories (some studies
+  use ``FILES/RAW_FILES/``, ``FILES/DERIVED_FILES/``, …)
+- Downloads retry automatically on transient SSL/timeout errors
+- The manifest links samples to data files via the **assay files**'
+  ``Raw/Derived Spectral Data File`` columns (exact), falling back to
+  token matching when a sample isn't in an assay file
 
 ### Step 7: Iterate
 

@@ -57,9 +57,15 @@ metabolites-metadata-skill/
 ### 📝 Future
 - [ ] Advanced MS/compound filters
 - [ ] Unit tests
-- [ ] Retry/fix MTBLS10722 HTTP directory listing
 - [ ] BioBERT sample embeddings (Phase 3)
 - [ ] Paper connector (Phase 3)
+
+### ✅ Recent Fixes (important!)
+- [x] SSL retry on HTTP ISA downloads (3 attempts, backoff)
+- [x] Recursive FILES/ directory listing (handles FILES/RAW_FILES/, FILES/DERIVED_FILES/)
+- [x] Assay-based sample→file mapping (parses Raw/Derived Spectral Data File columns)
+- [x] Download retry with exponential backoff
+- [x] Compound extension detection (.d.zip), size parsing from HTML, sample name inference
 
 ## Performance
 
@@ -106,3 +112,14 @@ End-to-end: search → inspect → score → summarize.
 - **FTP timeout**: Some studies aren't on public FTP. Inspector falls back to shallow mode gracefully.
 - **REST fallback**: If FTP fails, inspector tries REST API. May fail for very old studies.
 - **Missing deps**: Run `uv pip install -e .` to reinstall.
+### Sample Description Generation (Option D — recipe-based)
+- ONE LLM call per study: `build_study_profile_prompt()` → the LLM studies the
+  metadata layout (columns, rows, file-name codes, factors, abstract) and
+  returns a JSON profile with: `codes` (disease/group decode), `sentence_template`
+  (named slots), `slot_sources` (slot→source map), `qc_string`, `study_context`.
+- `parse_study_profile()` parses it; `apply_recipe(ctx, profile)` fills each
+  sample deterministically — ZERO per-sample LLM calls.
+- Disease is decoded from data-file name codes (e.g. ALZ → Alzheimer's) via the
+  `{disease}` slot with `{"type": "code", "field": "data_files"}`.
+- `SampleSentencesStore` caches per-study results (key = study_id + data hash).
+- New file: `src/mtbls_agent/sample_gen.py` (replaced per-sample LLM approach).

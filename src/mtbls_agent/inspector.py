@@ -154,7 +154,7 @@ def _download_isa_files(study_id: str, dest: str) -> None:
 
     try:
         # Step 1: Get directory listing via HTTP to find ISA file names
-        resp = httpx.get(study_url, timeout=15)
+        resp = _http_get_with_retry(study_url, timeout=30)
         resp.raise_for_status()
 
         isa_files = re.findall(
@@ -169,7 +169,7 @@ def _download_isa_files(study_id: str, dest: str) -> None:
 
         # Step 2: Download all ISA files in parallel
         def _dl(name: str) -> tuple[str, int]:
-            r = httpx.get(study_url + name, timeout=30)
+            r = _http_get_with_retry(study_url + name, timeout=60)
             r.raise_for_status()
             (target_dir / name).write_bytes(r.content)
             return name, len(r.content)
@@ -182,6 +182,23 @@ def _download_isa_files(study_id: str, dest: str) -> None:
     except Exception as e:
         logger.debug("HTTP download for %s failed (%s), trying REST fallback ...", study_id, e)
         _download_via_rest(study_id, dest)
+
+
+def _http_get_with_retry(url: str, timeout: int = 30, retries: int = 3) -> httpx.Response:
+    """GET with retry on transient SSL/timeout errors."""
+    import time as _time
+
+    last_err: Exception | None = None
+    for attempt in range(retries):
+        try:
+            return httpx.get(url, timeout=timeout)
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+            last_err = e
+            wait = 2 * (attempt + 1)
+            logger.debug("Retry %d/%d for %s after %.0fs",
+                         attempt + 1, retries, url, wait)
+            _time.sleep(wait)
+    raise last_err or RuntimeError(f"Failed after {retries} retries: {url}")
 
 
 def _download_via_rest(study_id: str, dest: str) -> None:
@@ -216,6 +233,7 @@ def _parse_investigation(study_id: str, study_path: Path) -> dict[str, Any]:
         "sample_metadata_fields": [],
         "sample_metadata": [],
         "data_files": [],
+        "sample_file_map": {},
     }
 
     # Find investigation file
@@ -279,6 +297,7 @@ def _parse_assay_files(enrichment: dict, study_id: str, study_path: Path) -> Non
         return
 
     assays = []
+    sample_file_map: dict[str, dict[str, list[str]]] = {}
     for af in assay_files:
         try:
             isa_file, messages = parse_isa_table_sheet_from_fs(str(af))
@@ -293,6 +312,24 @@ def _parse_assay_files(enrichment: dict, study_id: str, study_path: Path) -> Non
             column_type = ""
             ionization_mode = ""
             raw_count = 0
+
+            # Map sample_name -> raw/derived data files from assay columns
+            sample_col = _find_column(table, "sample name")
+            raw_col = _find_column(table, "raw spectral data file")
+            derived_col = _find_column(table, "derived spectral data file")
+            if sample_col and (raw_col or derived_col):
+                sample_vals = table.data.get(sample_col, []) or []
+                raw_vals = table.data.get(raw_col, []) or [] if raw_col else []
+                derived_vals = table.data.get(derived_col, []) or [] if derived_col else []
+                for i, sname in enumerate(sample_vals):
+                    sname = (sname or "").strip()
+                    if not sname:
+                        continue
+                    entry = sample_file_map.setdefault(sname, {"raw": [], "derived": []})
+                    if i < len(raw_vals) and raw_vals[i] and raw_vals[i].strip():
+                        entry["raw"].append(raw_vals[i].strip())
+                    if i < len(derived_vals) and derived_vals[i] and derived_vals[i].strip():
+                        entry["derived"].append(derived_vals[i].strip())
 
             # Extract info from columns
             if table.columns:
@@ -364,8 +401,16 @@ def _parse_assay_files(enrichment: dict, study_id: str, study_path: Path) -> Non
 
     enrichment["assays"] = assays
     enrichment["assay_files_parsed"] = True
+    if sample_file_map:
+        enrichment["sample_file_map"] = sample_file_map
 
 
+def _find_column(table, keyword: str) -> str:
+    """Find a column name in the table matching the keyword (case-insensitive)."""
+    for col in table.columns or []:
+        if keyword in col.lower():
+            return col
+    return ""
 
 def _parse_sample_file(enrichment: dict, study_id: str, study_path: Path) -> None:
     """Parse the sample file to extract sample metadata fields."""
@@ -457,6 +502,8 @@ def _merge_enriched(base: StudyCandidate, enrichment: dict[str, Any]) -> None:
         base.assay_files_parsed = True
         if enrichment.get("assays"):
             base.assays = enrichment["assays"]
+        if enrichment.get("sample_file_map"):
+            base.sample_file_map = enrichment["sample_file_map"]
 
     if enrichment.get("sample_file_parsed"):
         base.sample_file_parsed = True

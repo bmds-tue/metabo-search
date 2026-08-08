@@ -128,57 +128,75 @@ def _categorize(ext: str) -> str:
 
 
 def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
-    """List data files in FILES/ via HTTP directory listing.
+    """List data files recursively through FILES/ and its subdirectories.
 
-    Parses filenames and human-readable sizes from the HTML table.
-    Filters out sort-parameter links (?C=N;O=D etc.)
+    Some studies organize data in FILES/RAW_FILES/, FILES/DERIVED_FILES/, etc.
+    Walks the HTTP directory tree, parsing filenames + sizes from HTML tables.
     """
-    url = f"{HTTP_STUDY_BASE}/{candidate.study_id}/FILES/"
+    files: list[DataFileRef] = []
     try:
-        resp = httpx.get(url, timeout=15)
-        resp.raise_for_status()
-        html = resp.text
-
-        # Match: <a href="file.ext">...</a></td><td>DATE</td><td>SIZE</td>
-        pattern = re.compile(
-            r'href="([^"]+)"[^>]*>[^<]+</a>\s*</td>\s*'
-            r'<td[^>]*>[^<]*</td>\s*'
-            r'<td[^>]*>\s*([\d.]+\s*[KMGTPE]?[B]?)\s*</td>',
-            re.IGNORECASE,
+        _walk_dir(
+            url=f"{HTTP_STUDY_BASE}/{candidate.study_id}/FILES/",
+            rel_prefix="FILES",
+            files=files,
+            depth=0,
         )
-        files = []
-        for match in pattern.finditer(html):
-            link = match.group(1)
-            size_str = match.group(2).strip()
-            if link.startswith("?") or link.startswith(".") or link.endswith("/"):
-                continue
-            ext = _detect_ext(link)
-            files.append(DataFileRef(
-                relative_path=f"FILES/{link}",
-                size_bytes=_parse_size(size_str),
-                file_type=ext,
-                category=_categorize(ext),
-                sample_name=_infer_sample_name(link),
-            ))
-
-        # Fallback: extract just names (no sizes)
-        if not files:
-            links = re.findall(r'href="([^"]+)"', html)
-            for link in links:
-                if link.startswith("?") or link.startswith(".") or link.endswith("/"):
-                    continue
-                ext = _detect_ext(link)
-                files.append(DataFileRef(
-                    relative_path=f"FILES/{link}",
-                    file_type=ext,
-                    category=_categorize(ext),
-                    sample_name=_infer_sample_name(link),
-                ))
-
-        return files
     except Exception as e:
         logger.debug("HTTP listing failed for %s: %s", candidate.study_id, e)
         return []
+    return files
+
+
+def _walk_dir(url: str, rel_prefix: str, files: list[DataFileRef], depth: int) -> None:
+    """Recursively walk an HTTP directory listing, appending to ``files``."""
+    if depth > 6:  # safety bound
+        return
+
+    resp = httpx.get(url, timeout=30)
+    resp.raise_for_status()
+    html = resp.text
+
+    # Extract all hrefs (files and subdirectories)
+    links = re.findall(r'href="([^"]+)"[^>]*>([^<]*)</a>', html)
+    for link, _label in links:
+        if link.startswith("?") or link.startswith("."):
+            continue
+        # Skip absolute URLs (e.g. Parent Directory pointing upward)
+        if link.startswith("/") or link.startswith("http"):
+            continue
+        if "Parent Directory" in _label or ".." in link:
+            continue
+
+        if link.endswith("/"):
+            # Subdirectory — recurse
+            sub_prefix = f"{rel_prefix}/{link.rstrip('/')}"
+            _walk_dir(url + link, sub_prefix, files, depth + 1)
+            continue
+
+        # File — extract size from the following table cells
+        size_bytes = _extract_size_after(html, link)
+        ext = _detect_ext(link)
+        files.append(DataFileRef(
+            relative_path=f"{rel_prefix}/{link}",
+            size_bytes=size_bytes,
+            file_type=ext,
+            category=_categorize(ext),
+            sample_name=_infer_sample_name(link),
+        ))
+
+
+def _extract_size_after(html: str, link: str) -> int:
+    """Find the file size in the HTML row for a given filename."""
+    # Find the position of the link, then look at the next <td> cells
+    idx = html.find(f'href="{link}"')
+    if idx < 0:
+        return 0
+    row = html[idx:idx + 500]
+    # Pattern: </a></td><td>DATE</td><td>SIZE</td>
+    m = re.search(r"</a></td><td[^>]*>[^<]*</td><td[^>]*>\s*([\d.]+\s*[KMGTPE]?[B]?)\s*</td>", row, re.IGNORECASE)
+    if m:
+        return _parse_size(m.group(1).strip())
+    return 0
 
 
 def _apply_filters(
@@ -241,14 +259,21 @@ def _download_files(
         url = f"{base_url}/{ref.relative_path}"
         dest = base_path / ref.relative_path
         dest.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            resp = httpx.get(url, timeout=3600)
-            resp.raise_for_status()
-            dest.write_bytes(resp.content)
-            ref.size_bytes = len(resp.content)
-            return True, ref.relative_path
-        except Exception as e:
-            return False, str(e)
+        import time as _time
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                resp = httpx.get(url, timeout=3600)
+                resp.raise_for_status()
+                dest.write_bytes(resp.content)
+                ref.size_bytes = len(resp.content)
+                return True, ref.relative_path
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
+                last_err = e
+                _time.sleep(2 * (attempt + 1))
+            except Exception as e:
+                return False, str(e)
+        return False, str(last_err or "unknown error")
 
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         futs = {ex.submit(_dl_one, f): f for f in files}

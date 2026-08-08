@@ -45,6 +45,16 @@ from mtbls_agent.sample_summarizer import (
     SampleSentence,
     build_sample_sentences,
 )
+from mtbls_agent.sample_gen import (
+    SampleContext,
+    SampleDescription,
+    StudyProfile,
+    collect_sample_contexts,
+    build_study_profile_prompt,
+    parse_study_profile,
+    apply_recipe,
+    SampleSentencesStore,
+)
 
 __all__ = [
     "RequirementProfile",
@@ -65,6 +75,14 @@ __all__ = [
     "find_datasets",
     "SampleSentence",
     "build_sample_sentences",
+    "SampleContext",
+    "SampleDescription",
+    "collect_sample_contexts",
+    "StudyProfile",
+    "build_study_profile_prompt",
+    "parse_study_profile",
+    "apply_recipe",
+    "SampleSentencesStore",
     "list_data_files",
     "download_data_files",
     "DownloadConfig",

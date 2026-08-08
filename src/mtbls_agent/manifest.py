@@ -138,17 +138,22 @@ class SampleManifest:
                 sample_name = row.get("Source Name") or row.get("Sample Name") or "unknown"
                 sent = sentence_by_name.get(sample_name)
 
-                # Match data files to this sample (by name in path).
-                # Filenames often encode extra info (ionization mode, batch):
-                #   sample "HU_011"  <->  file "HU_neg_011_b2.RAW"
-                sample_raw = [
-                    f.relative_path for f in study_data_files
-                    if f.category == "raw" and _sample_matches(sample_name, f.relative_path)
-                ]
-                sample_derived = [
-                    f.relative_path for f in study_data_files
-                    if f.category == "derived" and _sample_matches(sample_name, f.relative_path)
-                ]
+                # Prefer the assay-derived sample→file mapping (exact, from ISA
+                # "Raw/Derived Spectral Data File" columns).  Fall back to
+                # token matching for samples not present in the assay files.
+                file_map = c.sample_file_map or {}
+                if sample_name in file_map:
+                    sample_raw = list(file_map[sample_name].get("raw", []))
+                    sample_derived = list(file_map[sample_name].get("derived", []))
+                else:
+                    sample_raw = [
+                        f.relative_path for f in study_data_files
+                        if f.category == "raw" and _sample_matches(sample_name, f.relative_path)
+                    ]
+                    sample_derived = [
+                        f.relative_path for f in study_data_files
+                        if f.category == "derived" and _sample_matches(sample_name, f.relative_path)
+                    ]
 
                 entry = SampleEntry(
                     sample_name=sample_name,

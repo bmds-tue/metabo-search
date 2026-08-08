@@ -152,6 +152,10 @@ class StudyCandidate:
     sample_file_parsed: bool = False
     maf_files_parsed: bool = False
 
+    # Maps sample_name -> {"raw": [...], "derived": [...]} data file paths
+    # Populated from assay files' Raw/Derived Spectral Data File columns.
+    sample_file_map: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+
     # ── Cached API raw data ──
     _raw_api_result: dict[str, Any] = field(default_factory=dict)
 

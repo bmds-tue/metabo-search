@@ -1,26 +1,28 @@
 """Per-sample biological descriptions for BioBERT embedding.
 
-Two-phase design (no LLM callbacks needed):
+Each sentence contains **only sample-specific information** — no study-level
+summary text that would be identical for every sample (that's noise for
+embeddings).
 
-Phase 1 — Agent calls its LLM once per study using ``build_study_prompt()``::
+Sample-specific fields included:
+- Organism, tissue, variant/strain
+- Sample type
+- Per-sample factor values (disease state, group, treatment, dilution, …)
 
-    prompt = build_study_prompt(candidate)
-    study_summary = agent_llm(prompt)  # one LLM call per study
+Study-level context (abstract, design descriptors) is kept in
+``SampleSentence.fields`` for downstream use, but is NOT repeated in the
+sentence itself.
 
-Phase 2 — Library assembles per-sample sentences using the summary::
+Example output::
 
-    sentences = build_sample_sentences(candidate, study_summary)
-    for s in sentences:
-        print(s.sentence)  # e.g. "Human blood plasma, quality control pooled.
-                           # Targeted lipidomics of 433 lipids in human plasma
-                           # from 21 healthy subjects."
+    "Homo sapiens urine, Alzheimer's disease patient, Study reference,
+     (Sample Dilution: 100)"
 """
 
 from __future__ import annotations
 
 import re
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from mtbls_agent.models import StudyCandidate
@@ -31,65 +33,33 @@ from mtbls_agent.models import StudyCandidate
 
 @dataclass
 class SampleSentence:
-    """A concise biological description of one sample."""
+    """A sample-specific biological description."""
 
     study_id: str
     sample_name: str
     sentence: str
-    """Pure biological description — no names, IDs, software, or techniques."""
+    """Sample-specific biology — organism, tissue, type, and factors only."""
 
     fields: dict[str, str]
-    """Raw structured fields for downstream use."""
+    """Raw structured fields (incl. study-level context for traceability)."""
 
 
-# ── Phase 1: prompt for the agent's LLM ───────────────────────────
-
-
-STUDY_SUMMARY_PROMPT = """\
-From the study abstract below, write ONE concise sentence describing the
-biological context of this study. Focus on: organism, tissue, disease model,
-experimental conditions, and biological findings.
-
-STUDY TITLE: {title}
-
-ABSTRACT:
-{abstract}
-
-RULES:
-- Exclude: sample names, study accession numbers, software names, \
-instrument models, analytical techniques, file formats
-- Write exactly ONE sentence, concise but informative
-- Use standard biomedical terminology"""
-
-
-def build_study_prompt(candidate: StudyCandidate) -> str:
-    """Build the prompt for the agent's LLM to summarise the study biology.
-
-    The agent calls its LLM with this prompt once per study.  The response
-    is passed to :func:`build_sample_sentences` as ``study_summary``.
-    """
-    title = (candidate.title or "")[:200]
-    abstract = _clean_html(candidate.description or "")
-    return STUDY_SUMMARY_PROMPT.format(title=title, abstract=abstract or "not available")
-
-
-# ── Phase 2: per-sample assembly ───────────────────────────────────
+# ── Public API ─────────────────────────────────────────────────────
 
 
 def build_sample_sentences(
     candidate: StudyCandidate,
-    study_summary: str | None = None,
 ) -> list[SampleSentence]:
-    """Assemble per-sample biological sentences from the study summary.
+    """Generate a sample-specific sentence for every sample in a study.
+
+    The sentence contains only per-sample biology (organism, tissue, sample
+    type, and factor values).  Study-level text is NOT included — it is
+    identical for all samples and would pollute the embeddings.
 
     Parameters
     ----------
     candidate : StudyCandidate
         Deep-inspected study with parsed sample metadata.
-    study_summary : str | None
-        LLM-generated biological summary of the study (from
-        :func:`build_study_prompt`).  When ``None``, a minimal
-        facts-only fallback is used instead.
 
     Returns
     -------
@@ -99,13 +69,9 @@ def build_sample_sentences(
     if not candidate.sample_file_parsed or not candidate.sample_metadata:
         return []
 
-    # Pre-compute study-level defaults
+    # Study-level defaults (fallbacks only — not added to the sentence)
     organism_default = _first_term(candidate.organisms)
     tissue_default = _first_term(candidate.organism_parts)
-    condition = ", ".join(d.term for d in candidate.design_descriptors)
-
-    # Phase 2 may also need a cleaned abstract (fallback)
-    raw_abstract = _clean_html(candidate.description or "")
 
     f = candidate.sample_metadata_fields or []
     char_cols = _find_characteristic_columns(f)
@@ -116,11 +82,13 @@ def build_sample_sentences(
     for row in candidate.sample_metadata:
         sample_name = row.get("Source Name") or row.get("Sample Name") or "unknown"
 
+        # ── Sample-specific biological values ──
         organism = _get_char(row, char_cols, "Organism") or organism_default
         tissue = _get_char(row, char_cols, "Organism part") or tissue_default
         variant = _get_char(row, char_cols, "Variant")
         sample_type = _get_char(row, char_cols, "Sample type")
 
+        # ── Per-sample factor values (disease, group, treatment, …) ──
         factor_parts: list[str] = []
         factor_map: dict[str, str] = {}
         for col_name, full_col in factor_cols:
@@ -130,33 +98,20 @@ def build_sample_sentences(
                 factor_parts.append(f"{label}: {val}")
                 factor_map[label] = val
 
-        # Build the sentence
-        if study_summary:
-            # LLM summary + per-sample biological details
-            details = [organism, tissue] if organism != tissue else [organism]
-            if variant:
-                details.append(variant)
-            if sample_type:
-                details.append(sample_type)
-            if factor_parts:
-                details.append("(" + "; ".join(factor_parts) + ")")
-            detail_str = ", ".join(d for d in details if d)
-            sentence = f"{detail_str}. {study_summary}"
-        else:
-            # Minimal fallback
-            parts = [organism]
-            if tissue and tissue.lower() != organism.lower():
-                parts.append(tissue)
-            if variant:
-                parts.append(variant)
-            if sample_type:
-                parts.append(sample_type)
-            if factor_parts:
-                parts.append("(" + "; ".join(factor_parts) + ")")
-            if condition:
-                parts.append("[" + condition + "]")
-            sentence = ", ".join(parts) + "."
+        # ── Build the sentence (sample-specific only) ──
+        parts = [organism]
+        if tissue and tissue.lower() != organism.lower():
+            parts.append(tissue)
+        if variant:
+            parts.append(variant)
+        if sample_type:
+            parts.append(sample_type)
+        if factor_parts:
+            parts.append("(" + "; ".join(factor_parts) + ")")
 
+        sentence = ", ".join(parts) + "."
+
+        # Structured fields for downstream use
         all_fields = {
             "sample": sample_name,
             "study": candidate.study_id,
@@ -164,8 +119,6 @@ def build_sample_sentences(
             "tissue": tissue,
             "variant": variant or "",
             "sample_type": sample_type or "",
-            "condition": condition or "",
-            "abstract": raw_abstract[:200] if raw_abstract else "",
             **factor_map,
         }
 
@@ -182,12 +135,6 @@ def build_sample_sentences(
 
 
 # ── Helpers ────────────────────────────────────────────────────────
-
-
-def _clean_html(text: str) -> str:
-    text = re.sub(r"<[^>]+>", " ", text)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text
 
 
 def _first_term(terms: list[Any]) -> str:
