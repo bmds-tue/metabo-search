@@ -1,6 +1,10 @@
 ---
 name: metabolights-search
 description: Find and enrich MetaboLights metabolomics datasets. Search by experimental needs, score them, and generate per-sample biological sentences for embedding — disease state is the top signal. Use when a researcher needs datasets matching organism/tissue/technique/disease/sample-count/format.
+compatibility: Python 3.11+; uv optional (falls back to python3 -m venv)
+metadata:
+  install: scripts/install.sh
+  package: mtbls_agent
 ---
 
 # MetaboLights Dataset Search
@@ -8,18 +12,24 @@ description: Find and enrich MetaboLights metabolomics datasets. Search by exper
 Find datasets, pick the fit, then generate per-sample biological sentences.
 **One import surface**: everything lives at `from mtbls_agent import ...`.
 
-## Setup
+## Setup (run once, from the skill root)
 
 ```bash
-cd /Users/frederikkaempchen/projects/metabolites-metadata-skill
-source .venv/bin/activate      # uv-managed python 3.14
-uv pip install -e .            # re-points the editable install to THIS dir
+./scripts/install.sh       # creates .venv-local, pip-installs the package,
+                           # links the skill into pi/claude/opencode skill dirs
 ```
 
-> The repo `.venv` is uv-managed. Rebuild if broken:
-> `rm -rf .venv && uv venv && uv pip install -e .`
-> Never use the homebrew system python (broken pyexpat).
-> If `import mtbls_agent` resolves somewhere unexpected, run `uv pip install -e .` here.
+Use the venv python wrapper (portable, no hardcoded paths):
+
+```bash
+scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
+```
+
+> Never use the system/homebrew python (broken pyexpat on macOS). If
+> `import mtbls_agent` resolves elsewhere, re-run `./scripts/install.sh`
+> which re-points `.venv-local` at this repo. Uninstall: `scripts/uninstall.sh`.
+
+Full API reference: see [references/api.md](references/api.md).
 
 ---
 

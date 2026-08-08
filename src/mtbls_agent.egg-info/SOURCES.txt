@@ -15,3 +15,6 @@ src/mtbls_agent.egg-info/SOURCES.txt
 src/mtbls_agent.egg-info/dependency_links.txt
 src/mtbls_agent.egg-info/requires.txt
 src/mtbls_agent.egg-info/top_level.txt
+tests/test_deterministic.py
+tests/test_linking_realworld.py
+tests/test_sample_linking.py

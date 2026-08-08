@@ -208,3 +208,21 @@ Coverage:
 `.venv-local/bin/python -m pytest tests/ -q`  (18 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
+
+## Installable skill (portable packaging)
+- Standard: Agent Skills spec (agentskills.io) — `SKILL.md` + `frontmatter`
+  (name, description, compatibility, metadata), optional `scripts/`,
+  `references/`, relative-path references, SKILL.md < 500 lines.
+- Harnesses honored by the installer: pi (`~/.pi/agent/skills`),
+  Claude Code (`~/.claude/skills`), opencode (`~/.config/opencode/skills`,
+  `~/.opencode/skills`), shared `~/.agents/skills`. Override via
+  PI_SKILLS/CLAUDE_SKILLS/OPENCODE_SKILLS env.
+- `scripts/install.sh`: creates `.venv-local` (uv preferred, falls back to
+  python3 -m venv), pip-installs `-e .`, symlinks repo root into each harness
+  skills dir, validates with `skills-ref` if present. Idempotent.
+- `scripts/python`: venv-python wrapper (portable — no hardcoded paths).
+- `scripts/uninstall.sh`: removes the skill symlinks (keeps the venv).
+- SKILL.md now portable: setup points at `./scripts/install.sh` + `scripts/python`;
+  deep API detail moved to `references/api.md`; never references a home dir.
+- Verified: install+uninstall in a sandbox HOME; SKILL.md reachable through all
+  harness symlinks (157 lines < 500).

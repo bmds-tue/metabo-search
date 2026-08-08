@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Run the venv python for THIS skill repo (portable; no hardcoded paths).
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+exec "$DIR/.venv-local/bin/python" "$@"
