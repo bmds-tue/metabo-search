@@ -184,3 +184,27 @@ End-to-end: search → inspect → score → summarize.
   the LLM is only needed for prose->profile and the per-study sentence recipe.
 - Tests: tests/test_deterministic.py (4: server args, screen-drop, shallow-ignore
   ionization/formats, shallow rank). Run: .venv-local/bin/python -m pytest tests/ -q
+
+## Real-world linking regression tests (tests/test_linking_realworld.py)
+Fixtures from 5 real studies (no network): MTBLS719 (dementia urine ALZ_*),
+MTBLS1375 (LipidCreator flat FILES/), MTBLS78 (nested LCMS_Co-culture .raw),
+MTBLS640 (NMR bare 1.zip), MTBLS1333 (punctuation-laden *_fip.tsv).
+Coverage:
+- Token fallback: A-1 != A-2 (multiset/Counter), Pos != Neg, replicate bounds,
+  punctuation names; cryptic ALZ names must NOT false-link (assay map is primary).
+- Assay-map linking: manifest + collect_sample_contexts attach real ALZ files by
+  Sample Name (DCR00004_U) with Source Name differing.
+- detect_ext / infer_sample_name / categorize on real names and dirs
+  (RAW_FILES beats .mzml; DERIVED_FILES; flat co-culture by ext; .tsv -> other).
+- Recipe decodes real ALZ code -> "Alzheimer's disease".
+
+## Bugs these tests found while being written
+- _sample_matches false-positive: 1_LTR_1_A-1 matched 1_LTR_1_A-2 (set-based
+  tokens lost multiplicity) -> switched to multiset (Counter) subset.
+- _sample_matches missed 1_LTR_1_A-1.d.zip (only last suffix stripped,
+  "1.d" glued) -> strip ALL Path suffixes before tokenizing.
+
+## Run tests
+`.venv-local/bin/python -m pytest tests/ -q`  (18 passed currently)
+NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
+single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
