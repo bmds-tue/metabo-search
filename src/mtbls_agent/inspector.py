@@ -218,7 +218,7 @@ def _download_isa_files(study_id: str, dest: str) -> None:
 
         # Step 2: Download all ISA files in parallel
         def _dl(name: str) -> tuple[str, int]:
-            r = _http_get_with_retry(study_url + name, timeout=60)
+            r = _http_get_with_retry(study_url + name, timeout=60, retries=4)
             r.raise_for_status()
             (target_dir / name).write_bytes(r.content)
             return name, len(r.content)
@@ -233,8 +233,11 @@ def _download_isa_files(study_id: str, dest: str) -> None:
         _download_via_rest(study_id, dest)
 
 
-def _http_get_with_retry(url: str, timeout: int = 30, retries: int = 3) -> httpx.Response:
-    """GET with retry on transient SSL/timeout errors."""
+def _http_get_with_retry(
+    url: str, timeout: int = 30, retries: int = 4
+) -> httpx.Response:
+    """GET with retry on transient SSL/timeout errors, with backoff + jitter."""
+    import random as _random
     import time as _time
 
     last_err: Exception | None = None
@@ -243,8 +246,8 @@ def _http_get_with_retry(url: str, timeout: int = 30, retries: int = 3) -> httpx
             return httpx.get(url, timeout=timeout)
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
             last_err = e
-            wait = 2 * (attempt + 1)
-            logger.debug("Retry %d/%d for %s after %.0fs",
+            wait = 2 ** attempt + _random.uniform(0, 1)
+            logger.debug("Retry %d/%d for %s after %.1fs",
                          attempt + 1, retries, url, wait)
             _time.sleep(wait)
     raise last_err or RuntimeError(f"Failed after {retries} retries: {url}")

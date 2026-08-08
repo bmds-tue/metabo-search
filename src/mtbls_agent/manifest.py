@@ -135,16 +135,23 @@ class SampleManifest:
 
             entries = []
             for row in c.sample_metadata or []:
-                sample_name = row.get("Source Name") or row.get("Sample Name") or "unknown"
+                src_name = row.get("Source Name") or ""
+                samp_name = row.get("Sample Name") or ""
+                # Sentences, the file map, and collect_sample_contexts all key
+                # on Sample Name first (e.g. WCQA-*) with Source Name fallback
+                # (e.g. numeric 2533491). Match that so everything links.
+                sample_name = samp_name or src_name or "unknown"
                 sent = sentence_by_name.get(sample_name)
 
                 # Prefer the assay-derived sample→file mapping (exact, from ISA
                 # "Raw/Derived Spectral Data File" columns).  Fall back to
                 # token matching for samples not present in the assay files.
+                # Like collect_sample_contexts, try Sample Name then Source Name.
                 file_map = c.sample_file_map or {}
-                if sample_name in file_map:
-                    sample_raw = list(file_map[sample_name].get("raw", []))
-                    sample_derived = list(file_map[sample_name].get("derived", []))
+                mapped = file_map.get(sample_name) or file_map.get(src_name, {})
+                if mapped:
+                    sample_raw = list(mapped.get("raw", []))
+                    sample_derived = list(mapped.get("derived", []))
                 else:
                     sample_raw = [
                         f.relative_path for f in study_data_files

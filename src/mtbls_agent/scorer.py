@@ -7,6 +7,7 @@ Nice-to-haves → scored 0-1 per criterion → combined overall score (0-1).
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import Any
 
 from mtbls_agent.models import (
@@ -15,6 +16,114 @@ from mtbls_agent.models import (
     ScoredCandidate,
     StudyCandidate,
 )
+
+
+# Criteria checkable on shallow (search-index) data only.  Ionization and
+# data formats need deep inspection, so the screen stage never hard-fails on
+# them — they are enforced after inspection by _score_one.
+SHALLOW_HARD_CRITERIA = (
+    "organisms", "sample_types", "techniques",
+    "min_samples", "has_raw_data", "analysis_types",
+)
+
+
+@dataclass
+class ScreeningResult:
+    """Outcome of the deterministic shallow pre-screen (no network)."""
+
+    survivors: list[StudyCandidate]
+    """Candidates that pass all shallow-checkable hard constraints, sorted by
+    shallow soft score (desc)."""
+    dropped: list[tuple[StudyCandidate, str]]
+    """(candidate, reason) for candidates that failed a hard constraint."""
+    shallow_scores: dict[str, float]
+    """study_id -> deterministic shallow relevance score (0-1)."""
+
+
+def screen_candidates(
+    candidates: list[StudyCandidate],
+    profile: RequirementProfile,
+    min_survivors: int = 10,
+) -> ScreeningResult:
+    """Deterministic pre-screen on search-index data (no LLM, no download).
+
+    Drops candidates that fail shallow-checkable hard constraints, ranks the
+    rest by a shallow soft score, and keeps at least ``min_survivors`` (or the
+    total that pass) for deep inspection.
+
+    Deterministic and cheap: only fields already present in the search hit.
+    """
+    hard = profile.hard
+    survivors: list[StudyCandidate] = []
+    dropped: list[tuple[StudyCandidate, str]] = []
+    scores: dict[str, float] = {}
+
+    for cand in candidates:
+        reason = _shallow_hard_fail(cand, hard)
+        if reason:
+            dropped.append((cand, reason))
+            continue
+        s = _shallow_score(cand, profile)
+        scores[cand.study_id] = s
+        survivors.append(cand)
+
+    survivors.sort(key=lambda c: scores.get(c.study_id, 0.0), reverse=True)
+    if len(survivors) > min_survivors:
+        survivors = survivors[:min_survivors]
+    return ScreeningResult(survivors=survivors, dropped=dropped,
+                           shallow_scores=scores)
+
+
+def _shallow_hard_fail(cand: StudyCandidate, hard) -> str | None:
+    """Return a failure reason string if a shallow-checkable hard constraint
+    fails, else None.  Ionization + data formats are deliberately skipped
+    (need deep data)."""
+    if hard.organisms:
+        ok, _ = _check_terms(cand.organisms, hard.organisms, mode="any")
+        if not ok:
+            return f"organism (need {hard.organisms})"
+    if hard.sample_types:
+        ok, _ = _check_terms(cand.organism_parts, hard.sample_types, mode="any")
+        if not ok:
+            return f"sample_type (need {hard.sample_types})"
+    if hard.techniques:
+        ok, _ = _check_techniques(cand, hard.techniques)
+        if not ok:
+            return f"technique (need {hard.techniques})"
+    if hard.min_samples is not None and (cand.sample_count or 0) < hard.min_samples:
+        return f"min_samples (got {cand.sample_count})"
+    if hard.has_raw_data is True and not (cand.raw_file_count or 0):
+        return "raw_data (none)"
+    if hard.analysis_types:
+        ok, _ = _check_design_descriptors(cand, hard.analysis_types)
+        if not ok:
+            return f"analysis_type (need {hard.analysis_types})"
+    return None
+
+
+def _shallow_score(cand: StudyCandidate, profile: RequirementProfile) -> float:
+    """Deterministic shallow relevance: nice-to-have terms + free-text overlap.
+
+    Uses only search-index fields so it costs nothing and is reproducible."""
+    nice = profile.nice_to_have
+    parts: list[float] = []
+    if nice.organisms:
+        s, _ = _score_terms(cand.organisms, nice.organisms)
+        parts.append(s)
+    if nice.sample_types:
+        s, _ = _score_terms(cand.organism_parts, nice.sample_types)
+        parts.append(s)
+    if nice.techniques:
+        s, _ = _score_techniques(cand, nice.techniques)
+        parts.append(s)
+    if profile.free_text:
+        s, _ = _score_text_relevance(cand, profile.free_text)
+        parts.append(s)
+    # min_samples soft coverage
+    if nice.min_samples is not None:
+        actual = cand.sample_count or 0
+        parts.append(min(1.0, actual / max(1, nice.min_samples)))
+    return sum(parts) / len(parts) if parts else 0.5
 
 
 def score_studies(

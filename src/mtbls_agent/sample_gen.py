@@ -146,7 +146,8 @@ Distinct data-file name stems:
 __FILE_STEMS__
 
 STEP 3 — STUDY THE FACTORS
-Factor names and their unique values:
+Factor names and their unique values (challenge/group/condition codes such as \
+OGTT, OLTT, PAT, SLD often live here as factor values, not just filenames):
 __FACTOR_SUMMARY__
 
 STEP 4 — STUDY THE STUDY
@@ -171,8 +172,11 @@ Factor Value labels (e.g. {{Sex}}, {{Age}}, {{Sample Dilution}}).
 dilution / blank sample, the runtime uses the \"qc_string\" instead)
    - "factor"    (field = the Factor Value label, e.g. \"Gender\", \"Age\")
    - "characteristic" (field = the Characteristics label)
-   - "code"      (field = \"name\" or \"data_files\"; resolves the decoded \
-disease/group for THIS sample from its sample name and/or its data file names)
+   - "code"      (field = \"name\" | \"data_files\" | <factor label> | \
+<characteristic label>; resolves the decoded disease/group for THIS sample. \
+Codes may hide in the sample name, data file names, OR factor values (e.g. \
+challenge codes OGTT/OLTT/PAT/SLD) — pick the field that carries the code, or \
+use \"data_files\" to scan sample name + files + all factor values)
 4. "qc_string": the phrase to use for QC / reference / dilution / blank \
 samples (e.g. \"quality control sample\").
 5. "study_context": one short phrase describing the study's biological \
@@ -182,9 +186,15 @@ RULES:
 - Every slot in the template must have an entry in slot_sources.
 - Sentence must be sample-specific and include the disease/condition when it \
 can be determined for that sample.
-- Do NOT include: sample IDs, study accession, instrument models, analytical \
-techniques, file formats.
-- Prefer natural, concise biomedical phrasing."""
+- Do NOT include: sample IDs, subject/participant IDs, barcode/accession \
+tokens, assay/plate/well positions, study accession, instrument models, \
+analytical techniques, file formats.
+- Do NOT include bare enumerated indices (time point 1, day 1, replicate 3, \
+visit 2, batch 5) as-is. Either describe their biological meaning from the \
+abstract (e.g. day 1 of fasting -> "after one day of fasting"; time point 0 \
+-> "at baseline") or omit them entirely. Never emit a number without meaning.
+- Prefer natural, concise biomedical phrasing over labels. Sex/age of a \
+healthy subject may stay (biologically relevant); the subject number must not."""
 
 
 def build_study_profile_prompt(candidate: StudyCandidate) -> str:
@@ -323,12 +333,26 @@ def _resolve_slot(
 def _decode_code(
     ctx: SampleContext, profile: StudyProfile, field: str, is_qc: bool = False
 ) -> str:
-    """Decode the disease/group code for a sample from its name/data files."""
+    """Decode a code for THIS sample.
+
+    ``field`` selects where to look:
+      - a factor label  -> decode that factor's value (e.g. OGTT/OLTT/PAT/SLD)
+      - a characteristic label -> decode that characteristic's value
+      - "name"          -> the sample name
+      - "data_files" / "" / "any" -> sample name + data files + ALL factor
+        values (disease/group codes often hide in any of these)
+    """
     if is_qc:
         return ""
-    haystacks: list[str] = [ctx.sample_name]
-    if field in ("data_files", ""):
-        haystacks += list(ctx.raw_data_files) + list(ctx.derived_data_files)
+    if field and field in ctx.factors:
+        haystacks = [ctx.factors[field]]
+    elif field and field in ctx.characteristics:
+        haystacks = [ctx.characteristics[field]]
+    elif field in ("name", "sample_name"):
+        haystacks = [ctx.sample_name]
+    else:
+        haystacks = ([ctx.sample_name] + list(ctx.raw_data_files)
+                     + list(ctx.derived_data_files) + list(ctx.factors.values()))
     found: list[str] = []
     for code, meaning in (profile.codes or {}).items():
         cl = code.lower()
@@ -398,12 +422,28 @@ class SampleSentencesStore:
                 self._data = {}
 
     @staticmethod
-    def key_for(candidate: StudyCandidate) -> str:
+    def metadata_hash(candidate: StudyCandidate) -> str:
         m = hashlib.sha256()
         m.update(candidate.study_id.encode())
         for row in candidate.sample_metadata or []:
             m.update(repr(sorted(row.items())).encode())
-        return f"{candidate.study_id}:{m.hexdigest()[:16]}"
+        return m.hexdigest()[:16]
+
+    @staticmethod
+    def key_for_hash(
+        study_id: str, data_hash: str, revision: int = 0
+    ) -> str:
+        return f"{study_id}:r{revision}:{data_hash}"
+
+    @staticmethod
+    def key_for(candidate: StudyCandidate, revision: int = 0) -> str:
+        """Stable key per study; bump ``revision`` to author a new wording
+        without overwriting a previous one (feedback-loop friendly)."""
+        return SampleSentencesStore.key_for_hash(
+            candidate.study_id,
+            SampleSentencesStore.metadata_hash(candidate),
+            revision,
+        )
 
     def load(self, study_key: str) -> list[SampleDescription] | None:
         raw = self._data.get(study_key)
@@ -453,22 +493,29 @@ class SampleTask:
     contexts: list[SampleContext]
     profile_prompt: str
     store: "SampleSentencesStore | None" = None
+    revision: int = 0
+    data_hash: str = ""
 
 
 def prepare_samples(
     candidate: StudyCandidate,
     store: SampleSentencesStore | None = None,
+    revision: int = 0,
 ) -> SampleTask:
     """Bundle everything for one study: contexts + the single LLM prompt.
 
-    No network, no LLM — just prepare.  Cache is consulted on submit.
+    ``revision`` feeds the cache key: author a revised profile under a new
+    revision so the feedback loop can compare wordings without clobbering.
     """
     return SampleTask(
         study_id=candidate.study_id,
-        cache_key=store.key_for(candidate) if store else candidate.study_id,
+        cache_key=store.key_for(candidate, revision=revision) if store
+            else f"{candidate.study_id}:r{revision}",
         contexts=collect_sample_contexts(candidate),
         profile_prompt=build_study_profile_prompt(candidate),
         store=store,
+        revision=revision,
+        data_hash=store.metadata_hash(candidate) if store else "",
     )
 
 
@@ -493,6 +540,33 @@ def submit_samples(
     if task.store is not None:
         task.store.save(task.cache_key, descriptions)
     return descriptions
+
+
+def revise_samples(
+    task: SampleTask,
+    profile_json: str,
+) -> SampleTask:
+    """Author a revised wording under the next revision and cache it.
+
+    Returns the *new* task (already submitted).  Read results with
+    ``load_samples(new_task)``.  Old wording remains under the previous
+    revision, so the user can compare without clobbering.
+    """
+    rev = task.revision + 1
+    store = task.store
+    key = store.key_for_hash(task.study_id, task.data_hash, rev) if store \
+        else f"{task.study_id}:r{rev}"
+    new_task = SampleTask(
+        study_id=task.study_id,
+        cache_key=key,
+        contexts=task.contexts,
+        profile_prompt=task.profile_prompt,
+        store=store,
+        revision=rev,
+        data_hash=task.data_hash,
+    )
+    submit_samples(new_task, profile_json)
+    return new_task
 
 
 

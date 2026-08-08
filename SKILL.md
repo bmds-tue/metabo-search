@@ -57,11 +57,14 @@ for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
 
 | Call | Returns | What it does |
 |------|---------|--------------|
-| `find_datasets(query, profile, ...)` | `ComparisonReport` | search → deep-inspect → score → rank (the whole discovery job) |
+| `find_datasets(query, profile, ...)` | `ComparisonReport` | **deterministic** discovery: API-filter by hard reqs → shallow screen → deep-inspect survivors → score → rank. No LLM needed. |
+| `screen_candidates(shallow, profile)` | `ScreeningResult` | deterministic hard-pass on search-index data + shallow rank (drop failures before the slow deep-inspect) |
+| `profile_to_search_args(profile)` | `dict` | maps hard reqs to search API filters (server-side) |
 | `prepare_samples(deep_study, store)` | `SampleTask` | bundles contexts + the ONE profile prompt |
 | `load_samples(task)` | `[SampleDescription] \| None` | cached sentences, else None |
 | `submit_samples(task, llm_profile_text)` | `[SampleDescription]` | applies your LLM recipe to all samples, caches |
 | `list_data_files(deep_study)` | `[DataFileRef]` | recursive `FILES/` listing w/ sizes |
+| `format_summary(deep_study)` | `dict[fmt→count]` | quick probe for mzML/RAW/.d presence (+ dir-aware raw/derived split) |
 | `download_data_files(deep_study, DownloadConfig)` | `DownloadResult` | selective download (bg: `start_download`) |
 | `SampleManifest.build(deep, ...)` | `SampleManifest` | flat CSV + traceability (optional) |
 | `search_studies / inspect_studies / score_studies / build_comparison_table` | — | the pieces, if you want control |
@@ -70,6 +73,53 @@ for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
 You construct: `RequirementProfile`, `StudyRequirements`, `DownloadConfig`.
 
 ---
+
+## Deterministic vs AI — what needs the model
+
+**Discovery is fully deterministic** once a `RequirementProfile` is structured:
+server-side filter (hard reqs) → cheap shallow screen (drop hard-fails on the
+search index, rank by soft score) → deep-inspect only survivors → score → rank.
+No LLM in the loop (`report.screening` carries survivors + dropped-reasons so
+you can explain *why* studies failed).
+
+The model is only needed for two linguistic tasks:
+1. Turning the user's **prose** into a `RequirementProfile` — skip if they fill
+   the fields directly.
+2. The per-study **sentence recipe** (1 cached call).
+
+So if the researcher can state structured requirements, the whole collect→
+analyze→summarize run is deterministic, reproducible, and fast.
+
+## Sentence wording: what's in, what's out
+
+The profile prompt enforces it, but OWN it when reviewing:
+- **Include**: organism, tissue, disease/condition, biological state (fasted,
+  baseline, post-challenge…), and biologically relevant factors (sex, age, group).
+- **Exclude**: subject/participant IDs, barcodes, plate/well positions, and bare
+  indices like "time point 1", "day 1", "replicate 3".
+- **Rewrite** indices to meaning where the abstract supports it: "day 1 of
+  fasting" → "after one day of fasting"; "time point 0" → "at baseline".
+  Otherwise drop them.
+
+## Wording feedback loop (until the user is happy)
+
+Show the user 2–3 example sentences from the study. If the wording misses their
+intent, revise and regenerate under a new revision — old wording is preserved
+so they can compare:
+
+```python
+task   = prepare_samples(deep_study, store, revision=1)   # bump on each re-roll
+descs  = load_samples(task)
+if descs is None:
+    descs = submit_samples(task, call_llm(task.profile_prompt))
+```
+Each `revision` gets its own cache slot, so feedback rounds never clobber each
+other. Shortcut: `new_task = revise_samples(task, llm_text)` auto-bumps the
+revision and caches; read results with `load_samples(new_task)`.
+
+Codes that live in **factor values** (e.g. OGTT/OLTT/PAT/SLD) are decoded too:
+the recipe's `code` slot accepts `field = <factor label>` (or `"data_files"`
+to scan everything).
 
 ## What to decide (be fast, don't explore)
 
@@ -81,6 +131,17 @@ You construct: `RequirementProfile`, `StudyRequirements`, `DownloadConfig`.
 - **User error / API edge case** → note it and move on; don't loop.
 
 ## Errors & recovery
-- `import mtbls_agent` resolves to a weird path → `uv pip install -e .` in this repo.
-- Downloads timeout → library retries 3×; failing study stays shallow.
+- `import mtbls_agent` resolves to a weird path → this repo shares a workspace
+  with a parallel-test copy. Use the **private venv** so you always import THIS
+  src: `uv venv .venv-local && uv pip install --python .venv-local/bin/python -e .`
+  then run with `.venv-local/bin/python`. Never rely on the shared `.venv`'s
+  editable pointer here.
+- Downloads timeout → library retries with backoff+jitter; failing study stays
+  shallow (don't loop).
 - `.venv` broken → `rm -rf .venv && uv venv && uv pip install -e .`.
+
+## Limits to be honest about
+- The search index does NOT expose file formats or MS level. `format_summary()`
+  can confirm mzML/RAW presence from filenames cheaply, but **MS1 vs MS2 can
+  only be confirmed by opening a downloaded file or from the paper** — say so
+  rather than guessing from the search result.

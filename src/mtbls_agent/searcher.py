@@ -136,4 +136,27 @@ def search_studies(
     return candidates
 
 
-__all__ = ["search_studies"]
+
+
+def profile_to_search_args(profile) -> dict:
+    """Deterministically map a profile's HARD requirements to search kwargs,
+    so the search API pre-filters (server-side) instead of fetching everything.
+
+    Only criteria the API/filter can express are mapped: organism, technique,
+    sample_type, min_samples.  Everything else is enforced later (shallow or
+    deep screening).
+    """
+    hard = profile.hard
+    args: dict = {}
+    if hard.organisms:
+        args["organism"] = hard.organisms
+    if hard.techniques:
+        args["technique"] = hard.techniques
+    if hard.sample_types:
+        args["sample_type"] = hard.sample_types
+    if hard.min_samples is not None:
+        args["min_samples"] = hard.min_samples
+    return args
+
+
+__all__ = ["search_studies", "profile_to_search_args"]

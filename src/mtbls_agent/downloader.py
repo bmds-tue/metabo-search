@@ -119,7 +119,17 @@ def _detect_ext(filename: str) -> str:
     return suffixes[-1].lower() if suffixes else ""
 
 
-def _categorize(ext: str) -> str:
+def _categorize(ext: str, rel_path: str = "") -> str:
+    """Raw/derived/other by extension, overridden by the directory name.
+
+    An mzML under FILES/RAW_FILES/ is instrument output -> raw, even though
+    .mzml normally means derived.  Strong directory hints beat extension.
+    """
+    up = rel_path.upper()
+    if "DERIVED" in up or "PROCESSED" in up:
+        return "derived"
+    if "RAW" in up:
+        return "raw"
     if ext in RAW_EXTS or ext in RAW_COMPRESSED:
         return "raw"
     if ext in DERIVED_EXTS:
@@ -180,7 +190,7 @@ def _walk_dir(url: str, rel_prefix: str, files: list[DataFileRef], depth: int) -
             relative_path=f"{rel_prefix}/{link}",
             size_bytes=size_bytes,
             file_type=ext,
-            category=_categorize(ext),
+            category=_categorize(ext, f"{rel_prefix}/{link}"),
             sample_name=_infer_sample_name(link),
         ))
 
@@ -197,6 +207,19 @@ def _extract_size_after(html: str, link: str) -> int:
     if m:
         return _parse_size(m.group(1).strip())
     return 0
+
+
+def format_summary(candidate: StudyCandidate) -> dict[str, int]:
+    """Count data files by format, from a recursive FILES/ listing.
+
+    A quick probe for "does this study have mzML / RAW / .d?" without
+    downloading anything.  Categories reflect the directory (RAW_FILES vs
+    DERIVED_FILES) when available.
+    """
+    counts: dict[str, int] = {}
+    for f in list_data_files(candidate):
+        counts[f.file_type] = counts.get(f.file_type, 0) + 1
+    return counts
 
 
 def _apply_filters(

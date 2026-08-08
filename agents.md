@@ -157,3 +157,30 @@ End-to-end: search → inspect → score → summarize.
   Do NOT edit it. This directory `~/projects/metabolites-metadata-skill/` is ours;
   `.venv` here resolves to this `src/`. If `import mtbls_agent` resolves elsewhere,
   run `uv pip install -e .` in THIS directory.
+
+## Recent fixes (from parallel-agent bug report)
+- [#1 linking] manifest prefers Sample Name over Source Name (HuMet WCQA-* vs
+  numeric); regression test added (tests/test_sample_linking.py).
+- [#2 factor codes] `code` slot now decodes factor values too (OGTT/OLTT/PAT/SLD),
+  not just filenames; prompt updated so recipes can point `code` slots at factors.
+- [#5 retries] inspector HTTP retries hardened (backoff + jitter, 4 attempts).
+- [#6 categories] `_categorize` is directory-aware: mzML under RAW_FILES = raw.
+- [#7 cache] `revise_samples(task, text)` auto-bumps revision -> separate cache
+  slot; old wording preserved. Cache key includes revision (rN).
+- [#4 formats] `format_summary(candidate)` -> {fmt: count} quick probe. MS1/MS2
+  still requires opening a file/paper (search index doesn't expose it).
+- [#3 env] private venv `.venv-local` isolates this project from the shared
+  editable-install jousting with the parallel-test copy. Tests: run
+  `.venv-local/bin/python -m pytest tests/ -q`.
+
+## Deterministic discovery (added)
+- `profile_to_search_args(profile)` - hard reqs -> search-API filters (server-side).
+- `screen_candidates(candidates, profile)` - deterministic shallow hard-pass +
+  rank on search-index data only (no network/LLM). Ionization + data formats are
+  deliberately NOT screened (need deep data) -> enforced post-inspection.
+- `find_datasets` rewired: API-filter -> shallow screen -> deep-inspect ONLY
+  survivors -> full score -> report. `report.screening` exposes survivors/dropped.
+- Discovery is 100% deterministic once a structured RequirementProfile exists;
+  the LLM is only needed for prose->profile and the per-study sentence recipe.
+- Tests: tests/test_deterministic.py (4: server args, screen-drop, shallow-ignore
+  ionization/formats, shallow rank). Run: .venv-local/bin/python -m pytest tests/ -q
