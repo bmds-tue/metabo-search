@@ -14,7 +14,6 @@ from mtbls_agent.models import (
     RequirementProfile,
     ScoredCandidate,
     StudyCandidate,
-    StudyRequirements,
 )
 
 

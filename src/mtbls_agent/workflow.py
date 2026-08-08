@@ -5,9 +5,9 @@ from __future__ import annotations
 from mtbls_agent.inspector import inspect_studies
 from mtbls_agent.models import (
     ComparisonReport,
+    FitnessScore,
     RequirementProfile,
     ScoredCandidate,
-    StudyCandidate,
 )
 from mtbls_agent.scorer import score_studies
 from mtbls_agent.searcher import search_studies
@@ -71,11 +71,10 @@ def find_datasets(
     if deep_candidates:
         deep_candidates = inspect_studies(deep_candidates, max_workers=max_workers)
 
-    # Score
-    if profile:
-        scored = score_studies(deep_candidates, profile)
-    else:
-        scored = [ScoredCandidate(candidate=c, score=__import__('mtbls_agent.models', fromlist=['FitnessScore']).FitnessScore()) for c in deep_candidates]
+    # Score (empty FitnessScore => unscored, overall=0)
+    scored = score_studies(deep_candidates, profile) if profile else [
+        ScoredCandidate(candidate=c, score=FitnessScore()) for c in deep_candidates
+    ]
 
     # Build report
     return build_comparison_table(scored, profile=profile)

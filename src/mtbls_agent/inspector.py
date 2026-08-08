@@ -25,7 +25,6 @@ import httpx
 from mtbls_agent.models import (
     AssayInfo,
     DataFileInfo,
-    OntologyTerm,
     ProtocolInfo,
     StudyCandidate,
 )
@@ -114,6 +113,56 @@ def inspect_studies(
 
 
 # ── Internal ───────────────────────────────────────────────────────
+
+
+def load_study_from_isa(
+    study_id: str,
+    isa_dir: str | Path,
+) -> StudyCandidate:
+    """Reconstruct a deep-inspected StudyCandidate from LOCAL ISA files.
+
+    Offline / reuse path: if ISA-Tab files (i_*.txt, s_*.txt, a_*.txt,
+    m_*.tsv) are already on disk, parse them without any network access —
+    the same parsers used by :func:`inspect_studies`.
+
+    Parameters
+    ----------
+    study_id : str
+        MetaboLights accession (e.g. ``"MTBLS1375"``).
+    isa_dir : str | Path
+        Directory containing the ISA metadata files.
+
+    Returns
+    -------
+    StudyCandidate
+        Populated as if deep-inspected.
+    """
+    base = StudyCandidate(study_id=study_id)
+    study_path = Path(isa_dir)
+    if not study_path.is_dir():
+        raise NotADirectoryError(f"{study_path} is not a directory")
+
+    enrichment = {
+        "investigation_file_parsed": False,
+        "assays": [],
+        "assay_files_parsed": False,
+        "sample_file_parsed": False,
+        "maf_files_parsed": False,
+        "protocols": [],
+        "publications": [],
+        "metabolite_count": None,
+        "sample_metadata_fields": [],
+        "sample_metadata": [],
+        "data_files": [],
+        "sample_file_map": {},
+    }
+
+    enrichment.update(_parse_investigation(study_id, study_path))
+    _parse_assay_files(enrichment, study_id, study_path)
+    _parse_sample_file(enrichment, study_id, study_path)
+    _parse_maf_files(enrichment, study_id, study_path)
+    _merge_enriched(base, enrichment)
+    return base
 
 
 def _inspect_one(

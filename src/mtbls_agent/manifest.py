@@ -14,7 +14,7 @@ from typing import Any
 
 from mtbls_agent.downloader import DataFileRef
 from mtbls_agent.models import StudyCandidate
-from mtbls_agent.sample_summarizer import SampleSentence
+from mtbls_agent.sample_gen import SampleDescription
 
 
 # ── Entry models ──────────────────────────────────────────────────
@@ -109,7 +109,7 @@ class SampleManifest:
     def build(
         cls,
         candidates: list[StudyCandidate],
-        sentences_map: dict[str, list[SampleSentence]] | None = None,
+        sentences_map: dict[str, list[SampleDescription]] | None = None,
         data_files_map: dict[str, list[DataFileRef]] | None = None,
     ) -> SampleManifest:
         """Build a manifest from inspected studies + optional generated content.
@@ -118,9 +118,9 @@ class SampleManifest:
         ----------
         candidates : list[StudyCandidate]
             Deep-inspected studies.
-        sentences_map : dict[str, list[SampleSentence]] | None
-            Map of ``study_id → [SampleSentence, ...]`` from
-            :func:`~mtbls_agent.sample_summarizer.build_sample_sentences`.
+        sentences_map : dict[str, list[SampleDescription]] | None
+            Map of ``study_id → [SampleDescription, ...]`` from
+            :func:`~mtbls_agent.sample_gen.apply_recipe`.
         data_files_map : dict[str, list[DataFileRef]] | None
             Map of ``study_id → [DataFileRef, ...]`` from
             :func:`~mtbls_agent.downloader.list_data_files`.
@@ -167,7 +167,7 @@ class SampleManifest:
                     assay_techniques=sorted({a.technique_name for a in c.assays if a.technique_name}),
                     assay_instruments=sorted({a.instrument for a in c.assays if a.instrument}),
                     sentence=sent.sentence if sent else "",
-                    sentence_fields=sent.fields if sent else {},
+                    sentence_fields=_used_sources_to_dict(sent.used_sources) if sent else {},
                     raw_data_files=sample_raw,
                     derived_data_files=sample_derived,
                 )
@@ -242,6 +242,16 @@ class SampleManifest:
 
 
 # ── Helpers ────────────────────────────────────────────────────────
+
+
+def _used_sources_to_dict(used: list[str]) -> dict[str, str]:
+    """Convert ['k=v', 'disease=unresolved'] into {k: v}."""
+    out = {}
+    for item in used:
+        if "=" in item:
+            k, v = item.split("=", 1)
+            out[k] = v
+    return out
 
 
 def _sample_matches(sample_name: str, relative_path: str) -> bool:

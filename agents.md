@@ -123,3 +123,37 @@ End-to-end: search → inspect → score → summarize.
   `{disease}` slot with `{"type": "code", "field": "data_files"}`.
 - `SampleSentencesStore` caches per-study results (key = study_id + data hash).
 - New file: `src/mtbls_agent/sample_gen.py` (replaced per-sample LLM approach).
+
+### Robustness / real-world gaps fixed (from agent feedback)
+- **Offline loader**: `load_study_from_isa(study_id, isa_dir)` reconstructs a
+  deep StudyCandidate from LOCAL ISA files (no network). Same result as
+  `inspect_studies()`. Exposed via package top-level import.
+- **QC enforced in library**: QC/reference/dilution/blank/instrument-
+  conditioning/data-dependent-acquisition/emergency/solvent samples ALWAYS get
+  `qc_string` — `apply_recipe` never decodes a disease for them (even if they
+  link to ALZ_ files). `_is_qc()` markers are listable.
+- **Unresolved disease is visible**: non-QC samples with no linked files (or a
+  code the glossary missed) surface `disease=unresolved` in
+  `SampleDescription.used_sources` instead of failing silently.
+- **One sentence generator**: `sample_summarizer.py` was deleted; `sample_gen.py`
+  is the only path. `SampleManifest` is typed to `SampleDescription`.
+- **Docs**: removed duplicate Step 7, fixed Step 6c dup import, added venv
+  rebuild steps.
+- **venv**: uv-managed `.venv`; never use homebrew python (broken pyexpat).
+  Rebuild: `rm -rf .venv && uv venv && uv pip install -e .`
+
+## Streamlining (latest)
+- **One import surface**: `from mtbls_agent import ...` only. Slimmed `__all__` from
+  32 → 23; dataclasses are returned by functions, not constructed.
+- **Per-sample sentences = one LLM round-trip**: `prepare_samples(deep, store)`
+  → `SampleTask` (builds the single profile prompt + contexts).
+  `submit_samples(task, llm_text)` applies + caches. `load_samples(task)` reads cache.
+  No more collect→prompt→parse→apply→store juggling.
+- **`find_datasets` cleaned** (removed `__import__` hack; clean no-profile path).
+- **SKILL.md** rewritten to: The One Flow (copy-paste) + an API table + short
+  "what to decide" list. Gates A–I prose removed.
+- **Parallel-test note**: `~/projects/test-mtbls-meta-skill/metabolites-metadata-skill/`
+  is a SEPARATE codebase the user is testing in parallel with its own `.venv`.
+  Do NOT edit it. This directory `~/projects/metabolites-metadata-skill/` is ours;
+  `.venv` here resolves to this `src/`. If `import mtbls_agent` resolves elsewhere,
+  run `uv pip install -e .` in THIS directory.

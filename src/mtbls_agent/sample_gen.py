@@ -256,8 +256,18 @@ def apply_recipe(
     profile: StudyProfile,
 ) -> SampleDescription:
     """Deterministically fill the recipe template for one sample."""
-    # QC/reference/dilution/blank sample type -> use qc_string
+    # QC / reference / dilution / blank / instrument-conditioning samples are
+    # NOT biological patients. The library enforces this itself: they always
+    # get the QC sentence, never a decoded disease.
     is_qc = _is_qc(context.sample_type)
+    if is_qc:
+        where = [p for p in (context.organism, context.tissue) if p]
+        return SampleDescription(
+            study_id=context.study_id,
+            sample_name=context.sample_name,
+            sentence=f"{', '.join(where)}, {profile.qc_string}.",
+            used_sources=["qc"],
+        )
 
     values: dict[str, str] = {}
     used: list[str] = []
@@ -265,12 +275,17 @@ def apply_recipe(
     for slot, spec in (profile.slot_sources or {}).items():
         typ = (spec or {}).get("type", "")
         field = (spec or {}).get("field", "")
-        val = _resolve_slot(context, profile, typ, field, is_qc)
+        val = _resolve_slot(context, profile, typ, field, is_qc=False)
         if val:
             values[slot] = val
             used.append(f"{slot}={val}")
 
-    sentence = _fill_template(profile.sentence_template, values, profile, is_qc)
+    # Surface an unresolved disease/group code (e.g. a patient row with no
+    # linked data files) instead of failing silently.
+    if not values.get("disease") and "disease" in (profile.slot_sources or {}):
+        used.append("disease=unresolved")
+
+    sentence = _fill_template(profile.sentence_template, values, profile, is_qc=False)
     return SampleDescription(
         study_id=context.study_id,
         sample_name=context.sample_name,
@@ -301,12 +316,16 @@ def _resolve_slot(
     if typ == "characteristic":
         return ctx.characteristics.get(field, "")
     if typ == "code":
-        return _decode_code(ctx, profile, field)
+        return _decode_code(ctx, profile, field, is_qc)
     return ""
 
 
-def _decode_code(ctx: SampleContext, profile: StudyProfile, field: str) -> str:
+def _decode_code(
+    ctx: SampleContext, profile: StudyProfile, field: str, is_qc: bool = False
+) -> str:
     """Decode the disease/group code for a sample from its name/data files."""
+    if is_qc:
+        return ""
     haystacks: list[str] = [ctx.sample_name]
     if field in ("data_files", ""):
         haystacks += list(ctx.raw_data_files) + list(ctx.derived_data_files)
@@ -333,19 +352,33 @@ def _fill_template(
     s = template or ""
     for k, v in values.items():
         s = s.replace("{" + k + "}", v)
-    # Drop any unfilled slots and clean whitespace
+    # Drop any unfilled slots
     s = re.sub(r"\{[^}]*\}", "", s)
-    s = re.sub(r"\s{2,}", " ", s).replace(" ,", ",").strip()
+    # Collapse stray commas/whitespace left by empty slots
+    s = s.replace(", ,", ",").replace(" ,", ",")
+    s = re.sub(r",{2,}", ",", s)
+    s = re.sub(r"\s{2,}", " ", s)
+    s = re.sub(r"\s+([.,;!?])", r"\1", s)   # "age ." -> "age."
+    s = s.strip(" ,")
+    # Repair phrases like "from an  patient" where the slot was empty
+    s = re.sub(r"\b(an|a)\s+([,.)]|$)", lambda m: m.group(2) or ".", s)
     if not s.endswith("."):
         s += "."
     return s
 
 
+# Sample types that are NOT biological patient runs - always treated as QC.
+_QC_TYPE_MARKERS = [
+    "quality control", "qc", "reference", "dilution", "blank",
+    "instrument conditioning", "instrument", "data-dependent acquisition",
+    "acquisition", "emergency", "system suitability", "solvent",
+    "mobile phase", "wash", "pooled qc", "peak shape", "testing",
+]
+
+
 def _is_qc(sample_type: str) -> bool:
     t = (sample_type or "").lower()
-    return any(k in t for k in [
-        "qc", "quality control", "reference", "dilution", "blank", "pooled qc",
-    ])
+    return any(k in t for k in _QC_TYPE_MARKERS)
 
 
 # ── Disk cache (so large studies are generated once) ───────────────
@@ -400,6 +433,68 @@ class SampleSentencesStore:
 
     def __contains__(self, study_key: str) -> bool:
         return study_key in self._data
+# ── One-round-trip orchestration (the LLM-friendly path) ───────────
+
+
+@dataclass
+class SampleTask:
+    """Everything the agent needs for ONE study-level LLM round trip.
+
+    Flow::
+
+        task   = prepare_samples(deep_study, store)
+        descs  = load_samples(task)                 # None if not cached
+        if descs is None:
+            descs = submit_samples(task, call_llm(task.profile_prompt))
+    """
+
+    study_id: str
+    cache_key: str
+    contexts: list[SampleContext]
+    profile_prompt: str
+    store: "SampleSentencesStore | None" = None
+
+
+def prepare_samples(
+    candidate: StudyCandidate,
+    store: SampleSentencesStore | None = None,
+) -> SampleTask:
+    """Bundle everything for one study: contexts + the single LLM prompt.
+
+    No network, no LLM — just prepare.  Cache is consulted on submit.
+    """
+    return SampleTask(
+        study_id=candidate.study_id,
+        cache_key=store.key_for(candidate) if store else candidate.study_id,
+        contexts=collect_sample_contexts(candidate),
+        profile_prompt=build_study_profile_prompt(candidate),
+        store=store,
+    )
+
+
+def load_samples(task: SampleTask) -> list[SampleDescription] | None:
+    """Return cached descriptions for this task, or None if not cached."""
+    if task.store is not None and task.cache_key in task.store:
+        return task.store.load(task.cache_key)
+    return None
+
+
+def submit_samples(
+    task: SampleTask,
+    profile_json: str,
+) -> list[SampleDescription]:
+    """Apply the LLM-authored profile to every sample; cache and return.
+
+    ``profile_json`` is the raw text the agent's LLM produced in answer to
+    ``task.profile_prompt``.
+    """
+    profile = parse_study_profile(profile_json)
+    descriptions = [apply_recipe(ctx, profile) for ctx in task.contexts]
+    if task.store is not None:
+        task.store.save(task.cache_key, descriptions)
+    return descriptions
+
+
 
 
 # ── Helpers ────────────────────────────────────────────────────────
