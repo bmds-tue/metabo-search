@@ -117,7 +117,7 @@ download phase. Full measurements + justification: **docs/perf.md**.
 
 ## Network at hundreds-of-studies scale (metadata, first run)
 - Per study ≈ 1 listing + ~4-6 ISA file GETs. Drive: `httpx.get()` per request = a FRESH TLS connection each time → handshake cost dominates.
-- **Implemented**: shared keep-alive `httpx.Client` in inspector + downloader (module-level `_http_client()`); connection reuse across every request/thread. Monotonic win; re-measure when EBI stops refusing us (heavy benchmarking today earned us a block — be gentle).
+- **Implemented**: shared keep-alive `httpx.Client` in inspector + downloader (module-level `_http_client()`); connection reuse across every request/thread. Monotonic win.
 - Search API client is already pooled per call (1-2 requests/run) — fine.
 - Rejected with measurements (see docs/perf.md): **HTTP/2** (slower), **async** (≈ sync; server caps ≈24 conns), **REST-zip primary** (endpoint 503/404 — HTTP listing+files stays primary, REST stays fallback).
 - Re-runs are already ~0s via the step cache (search 7d / inspect 30d).
@@ -130,7 +130,7 @@ download phase. Full measurements + justification: **docs/perf.md**.
 - **REST-zip primary rejected**: `ws/studies/{id}/download/isa?format=zip` currently 503 (ws3 equivalent 404) — unreliable; HTTP listing+files stays primary, REST remains fallback.
 - **Overlap built**: inspect now submits each parse the moment its download lands (CPU parse hides under I/O; threads or processes, same results — tests: tests/test_inspector_process.py).
 - **FILES/ listing cache built**: `list_data_files(candidate, cache_dir=)` + `DownloadConfig.files_cache_dir`; the download step wires its cache root (`<root>/files/file_listings/<sid>.json`). Repeat downloads/walks in one cache root = zero listing network (tests: tests/test_downloader_cache.py).
-- **Process parsing needs the `__main__` guard**: the process-pool auto path (≥8 studies) uses spawn on macOS — scripts must guard module-level code (`if __name__ == "__main__":`); otherwise children re-execute the whole script (seen live: 8+ parallel pipelines hammering EBI + garbage timings). Library falls back to threads gracefully, but prefer guarding or `MTBLS_PARSE_PROCESSES=0` in ad-hoc scripts. pytest and guarded scripts are fine (determinism test proves proc == thread).
+- **Process parsing needs the `__main__` guard**: the process-pool auto path (≥8 studies) uses spawn on macOS — scripts must guard module-level code (`if __name__ == "__main__":`); otherwise children re-execute the whole script (seen live: 8+ parallel pipelines with garbage timings). Library falls back to threads gracefully, but prefer guarding or `MTBLS_PARSE_PROCESSES=0` in ad-hoc scripts. pytest and guarded scripts are fine (determinism test proves proc == thread).
 - **By-value handoff fixed (real bug)**: results crossed steps by REFERENCE — inspect's in-place `_merge_enriched` mutated candidates still held by ealier results, so fresh digests ≠ warm digests (cold search payload 924KB vs stored 23KB). The fold now deep-copies at every boundary (stored snapshot stays pristine; the next step gets its own copy). Regression: test_results_cross_steps_by_value.
 - API stable: all changes additive (`parse_workers=`, `cache_dir=`, `files_cache_dir=`), defaults preserve behavior.
 

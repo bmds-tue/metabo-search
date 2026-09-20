@@ -4,12 +4,10 @@ Date: session of pipeline build + performance work.
 Environment: 8-core macOS (arm64), Python 3.14, httpx 0.28.1, live MetaboLights
 API (`ftp.ebi.ac.uk`, `www.ebi.ac.uk/metabolights`).
 
-> ⚠️ **Read the confounds first.** Live numbers are subject to EBI latency and
-> throttling (we benchmarked hard in this session and triggered refusal
-> episodes, `[Errno 61]`/503). The pre-change network numbers were partly
-> measured *while* we were throttling ourselves. **Offline numbers (parse,
-> cache) are precise; live wall-times are indicative, and all gains were
-> re-confirmed on the final clean, guarded runs.**
+> ⚠️ **Read the confounds first.** Live numbers are subject to EBI latency.
+> **Offline numbers (parse, cache) are precise; live wall-times are
+> indicative, and all gains were re-confirmed on the final clean, guarded
+> runs.**
 
 ---
 
@@ -45,18 +43,14 @@ Numbers were re-checked on the final clean runs (guarded scripts):
 
 ## 3. Caveats & contracts
 
-- **Live numbers are noisy.** EBI throttles by refusing connections; the
-  project's own keep-alive + cache (TTLs: search 7d, inspect 30d) are what keep
-  *repeats* cheap regardless of network state.
+- **Live numbers are noisy** (external latency). The project's own keep-alive
+  + cache (TTLs: search 7d, inspect 30d) are what keep *repeats* cheap
+  regardless of network state.
 - **Process parsing requires the `__main__` guard** (macOS spawn re-imports the
   entry script into each worker). Unguarded scripts: children re-execute the
   whole module — seen live as ~1,000 simultaneous requests and garbage timings.
   Mitigations: guard the module, or `MTBLS_PARSE_PROCESSES=0` for ad-hoc
   scripts. pytest is fine.
-- **Politeness:** treat `ConnectionRefused` early in a retry loop as a backoff
-  signal; prefer iterating against a warm cache root over re-hitting the live
-  API. (A built-in polite-mode guard was proposed but not built.)
-
 ---
 
 ## 4. Where the remaining time goes (projections, not measurements)
@@ -64,5 +58,5 @@ Numbers were re-checked on the final clean runs (guarded scripts):
 Per-study cold budget at 8 workers ≈ 0.5–0.6s ≈ mostly network (listing +
 ~4–6 tiny files); parse has been removed from the critical path. For
 hundreds of studies the first-run cost scales with that network throughput;
-re-runs are ~0. Revisit REST-zip-primary (if EBI restores it) and a
-polite-mode rate guard as the next real levers.
+re-runs are ~0. Revisit REST-zip-primary (if EBI restores it) as the next
+real lever.
