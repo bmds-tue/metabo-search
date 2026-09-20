@@ -72,6 +72,7 @@ def test_quick_discovery_matches_find_datasets(monkeypatch):
 def test_staged_flow_reuses_probe(monkeypatch, tmp_path):
     """probe (cheap) → judge → extend to deep; prefix replays warm."""
     monkeypatch.setattr(mtbls_agent.searcher, "search_studies", fake_search)
+    monkeypatch.setattr(mtbls_agent.inspector, "inspect_studies", fake_inspect)
     root = tmp_path / "c"
 
     probe = quick_probe("urine", PROFILE).cache(root)

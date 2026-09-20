@@ -310,7 +310,9 @@ def test_cache_store_lookup_ttl(tmp_path):
     assert cs.lookup("search", key, "0s") is None
 
 
-def test_plan_records_kind_and_config(tmp_path):
+def test_plan_records_kind_and_config(monkeypatch, tmp_path):
+    monkeypatch.setattr("mtbls_agent.searcher.search_studies",
+                        lambda *a, **k: [candidate("M1")])
     root = tmp_path / "c"
     pipeline(search("urine")).cache(root).run()
     plan = json.loads((root / "plan.json").read_text())
@@ -351,6 +353,42 @@ def test_force_refresh(monkeypatch, tmp_path):
     assert n["n"] == 1
     p.run(force=True)                    # bypass cache
     assert n["n"] == 2
+
+
+def test_results_cross_steps_by_value(monkeypatch, tmp_path):
+    """inspect mutates its input candidates in place — upstream results must
+    stay pristine (fresh digests == warm-cache digests; no shared objects)."""
+    import mtbls_agent.inspector
+
+    def mutating_inspect(cands, **k):
+        for c in cands:                       # mimics _merge_enriched
+            c.sample_count = 999
+            c.investigation_file_parsed = True
+        return cands
+
+    def fake_search(*a, **k):
+        return [candidate("M1"), candidate("M2")]
+
+    monkeypatch.setattr("mtbls_agent.searcher.search_studies", fake_search)
+    monkeypatch.setattr(mtbls_agent.inspector, "inspect_studies",
+                        mutating_inspect)
+    root = tmp_path / "c"
+    p = pipeline(
+        search("urine"),
+        filter(screen(profile=PROFILE)),
+        inspect(),
+        score(PROFILE),
+    ).cache(root)
+    r1 = p.run()
+    assert r1["search"].candidates[0].sample_count == 8   # stayed shallow
+    assert not r1["search"].candidates[0].investigation_file_parsed
+    assert r1["inspect"].candidates[0].sample_count == 999  # deep on inspect
+    # no object sharing between stored results
+    assert r1["search"].candidates[0] is not r1["inspect"].candidates[0]
+    # warm replay → identical digests
+    r2 = p.run()
+    assert r1["search"].digest() == r2["search"].digest()
+    assert r1["filter"].digest() == r2["filter"].digest()
 
 
 def test_pipeline_result_mapping():

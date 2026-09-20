@@ -9,8 +9,10 @@ from __future__ import annotations
 import logging
 import os
 import re
+import shutil
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 from pathlib import Path
 from typing import Any
 
@@ -31,9 +33,24 @@ from mtbls_agent.models import (
 
 logger = logging.getLogger(__name__)
 
+# ── Shared HTTP client (keep-alive) ────────────────────────────────
+# ``httpx.get()`` opens a FRESH connection per request (no TLS handshake
+# reuse).  Hundreds of studies × (listing + ISA files) requests means the
+# handshake cost dominates.  A single shared client pools connections across
+# every request and thread — strictly faster, never slower.
+
+_SHARED_CLIENT: httpx.Client | None = None
+
+
+def _http_client() -> httpx.Client:
+    global _SHARED_CLIENT
+    if _SHARED_CLIENT is None:
+        _SHARED_CLIENT = httpx.Client(timeout=30.0, follow_redirects=True)
+    return _SHARED_CLIENT
+
+
 # ── Constants ──────────────────────────────────────────────────────
 
-HTTP_STUDY_BASE = "https://ftp.ebi.ac.uk/pub/databases/metabolights/studies/public"
 HTTP_STUDY_BASE = "https://ftp.ebi.ac.uk/pub/databases/metabolights/studies/public"
 
 # Regex patterns for ISA file names
@@ -51,27 +68,35 @@ def inspect_studies(
     max_workers: int = 10,
     tmp_dir: str | None = None,
     download_data_files: bool = False,
+    parse_workers: int | None = None,
 ) -> list[StudyCandidate]:
     """Deep-inspect candidates in parallel.
 
-    For each candidate:
-    1. Download ISA-Tab metadata files from the MetaboLights FTP server
-    2. Parse the investigation file → assays, protocols, publications
-    3. Parse assay & sample files → sample count, characteristics, data files
-    4. Enrich the candidate with all discovered information
+    Two phases:
+
+    1. **Download** (threads, I/O-bound): fetch the ISA-Tab files to disk.
+    2. **Parse** (threads, or *processes* when it pays): CPU-bound ISA
+       parsing runs on real cores — threads are GIL-serialized (~2x+ faster
+       for full-scan batches).
 
     Parameters
     ----------
     candidates : list[StudyCandidate]
         Shallow candidates from phase 1.
     max_workers : int
-        Number of parallel download+parse workers.
+        Parallel workers for the download phase (and parsing, when
+        ``parse_workers`` falls back or is 0).
     tmp_dir : str | None
-        Temporary directory for downloaded files.  A system temp dir is used
-        by default and cleaned up after inspection.
+        Directory for downloaded files.  A system temp dir is used by default
+        and cleaned up after inspection.  (Pass a persistent dir — e.g. the
+        pipeline cache root's ``isa/`` — to reuse files offline.)
     download_data_files : bool
-        If True, also list/download actual data files (expensive).
-        If False, only metadata files are downloaded.
+        If True, also list the study's data files (expensive; network).
+    parse_workers : int | None
+        Process-pool size for the CPU parsing phase.  ``None`` = auto: use
+        processes when there are enough studies to amortize the startup
+        (>= ``_AUTO_PROC_THRESHOLD``) and more than one CPU; ``0`` = always
+        threads.
 
     Returns
     -------
@@ -84,32 +109,107 @@ def inspect_studies(
     study_ids = [c.study_id for c in candidates]
     id_map = {c.study_id: c for c in candidates}
 
-    results: list[StudyCandidate] = []
+    # Phase 1 — download ISA files (threads; I/O-bound).  Also collects the
+    # optional data-file listing, so it never crosses the process boundary.
+    root = Path(tmp_dir) if tmp_dir else Path(tempfile.mkdtemp(prefix="mtbls_isa_"))
+    root.mkdir(parents=True, exist_ok=True)
 
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        fut_to_sid = {
-            executor.submit(
-                _inspect_one, sid, tmp_dir, download_data_files
-            ): sid
-            for sid in study_ids
-        }
+    downloaded: dict[str, dict[str, Any] | None] = {}
+    enrichments: dict[str, dict[str, Any] | None] = {}
 
-        for fut in as_completed(fut_to_sid):
-            sid = fut_to_sid[fut]
+    def _parse_done(f, sid: str) -> None:
+        try:
+            enrichments[sid] = f.result()
+        except Exception as e:
+            logger.warning("Parse failed for %s: %s", sid, e)
+            enrichments[sid] = None
+
+    def _download_and_parse_serial(sid: str) -> None:
+        downloaded[sid] = _download_one(sid, root, download_data_files)
+        if downloaded[sid]:
             try:
-                enriched = fut.result()
-                # Merge enriched data back into the original candidate
-                base = id_map[sid]
-                _merge_enriched(base, enriched)
-                results.append(base)
+                enrichments[sid] = _parse_one(sid, downloaded[sid]["path"])
+            except Exception as e:
+                logger.warning("Parse failed for %s: %s", sid, e)
+                enrichments[sid] = None
+
+    if max_workers > 1 and len(study_ids) > 1:
+        # Overlapped: thread-pool downloads (I/O); each download submits its
+        # parse to a second pool (threads by default, processes for big runs)
+        # the moment it lands — the CPU parse hides under the I/O.
+        parse_n = _resolve_parse_workers(parse_workers, len(study_ids))
+        parse_cls = ProcessPoolExecutor if parse_n else ThreadPoolExecutor
+        parse_w = parse_n or max_workers
+        try:
+            with ThreadPoolExecutor(max_workers=max_workers) as dpex, \
+                    parse_cls(max_workers=parse_w) as ppex:
+                dl_futs = {dpex.submit(_download_one, sid, root,
+                                       download_data_files): sid
+                           for sid in study_ids}
+                parse_futs: dict[Any, str] = {}
+                for f in as_completed(dl_futs):
+                    sid = dl_futs[f]
+                    downloaded[sid] = f.result()
+                    if downloaded[sid]:
+                        parse_futs[
+                            ppex.submit(_parse_one, sid,
+                                        downloaded[sid]["path"])] = sid
+                for f in as_completed(parse_futs):
+                    _parse_done(f, parse_futs[f])
+        except (RuntimeError, BrokenProcessPool) as e:
+            # process spawn unavailable (e.g. no __main__ guard) → threads
+            logger.warning("process parsing unavailable (%s) — using threads",
+                           e)
+            for sid in study_ids:
+                if sid in enrichments:
+                    continue
+                if downloaded.get(sid):
+                    try:
+                        enrichments[sid] = _parse_one(
+                            sid, downloaded[sid]["path"])
+                    except Exception as e2:
+                        logger.warning("Parse failed for %s: %s", sid, e2)
+                        enrichments[sid] = None
+                else:
+                    _download_and_parse_serial(sid)
+    else:
+        for sid in study_ids:
+            _download_and_parse_serial(sid)
+
+    # Phase 3 — merge back into the (order-preserved) candidates
+    results: list[StudyCandidate] = []
+    for sid in study_ids:
+        base = id_map[sid]
+        dl, en = downloaded.get(sid), enrichments.get(sid)
+        if dl and en:
+            try:
+                en["data_files"] = en.get("data_files") or list(dl["data_files"])
+                _merge_enriched(base, en)
             except Exception as e:
                 logger.warning("Failed to deep-inspect %s: %s", sid, e)
-                results.append(id_map[sid])  # keep shallow version
+        results.append(base)  # shallow fallback by default
 
-    # Re-sort to match input order
-    order = {sid: i for i, sid in enumerate(study_ids)}
-    results.sort(key=lambda c: order.get(c.study_id, 999))
+    if not tmp_dir:
+        shutil.rmtree(root, ignore_errors=True)
     return results
+
+
+# Auto-process parsing: only when it amortizes process startup.  Exposed env
+# override: MTBLS_PARSE_PROCESSES=0 forces threads, N forces N processes.
+_AUTO_PROC_THRESHOLD = 8
+
+
+def _resolve_parse_workers(parse_workers: int | None, n_studies: int) -> int:
+    if parse_workers == 0:
+        return 0
+    if parse_workers is not None:
+        return parse_workers
+    env = os.environ.get("MTBLS_PARSE_PROCESSES", "")
+    if env:
+        return int(env) if env not in ("0", "none", "off") else 0
+    if n_studies < _AUTO_PROC_THRESHOLD or (os.cpu_count() or 1) <= 1:
+        return 0
+    return min(os.cpu_count() or 1, 8)
 
 
 # ── Internal ───────────────────────────────────────────────────────
@@ -165,31 +265,56 @@ def load_study_from_isa(
     return base
 
 
-def _inspect_one(
-    study_id: str, tmp_dir: str | None, download_data_files: bool
-) -> dict[str, Any]:
-    """Inspect a single study and return enrichment data as a dict."""
-    if tmp_dir:
-        study_tmp = Path(tmp_dir) / study_id
-    else:
-        study_tmp = Path(tempfile.mkdtemp(prefix=f"{study_id}_"))
+def _download_one(study_id: str, root: Path,
+                  download_data_files: bool) -> dict[str, Any] | None:
+    """Thread-phase: fetch ISA files for one study into ``root/{sid}/{sid}``.
 
+    Returns ``{"path": str, "data_files": [...]}`` or None on failure
+    (caller keeps the shallow candidate).  ``data_files`` is only populated
+    when requested; it stays in the parent process (never pickled).
+    """
+    study_tmp = root / study_id
     study_tmp.mkdir(parents=True, exist_ok=True)
     study_path = study_tmp / study_id  # HTTP downloads go here
-
     try:
         _download_isa_files(study_id, str(study_tmp))
-        enrichment = _parse_investigation(study_id, study_path)
-        _parse_assay_files(enrichment, study_id, study_path)
-        _parse_sample_file(enrichment, study_id, study_path)
-        _parse_maf_files(enrichment, study_id, study_path)
+        listing: list[Any] = []
         if download_data_files:
+            enrichment = {"data_files": []}
             _list_data_files(enrichment, study_id, study_path)
-        return enrichment
-    finally:
-        if not tmp_dir:
-            import shutil
-            shutil.rmtree(study_tmp, ignore_errors=True)
+            listing = enrichment["data_files"]
+        return {"path": str(study_path), "data_files": listing}
+    except Exception as e:
+        logger.warning("Download failed for %s: %s", study_id, e)
+        return None
+
+
+def _parse_one(study_id: str, study_path: str) -> dict[str, Any]:
+    """CPU phase: parse on-disk ISA files into an enrichment dict.
+
+    Module-level (picklable) so it can run in a process pool.  Assignment
+    (``data_files``) is attached later in the parent process.
+    """
+    enrichment = {
+        "investigation_file_parsed": False,
+        "assays": [],
+        "assay_files_parsed": False,
+        "sample_file_parsed": False,
+        "maf_files_parsed": False,
+        "protocols": [],
+        "publications": [],
+        "metabolite_count": None,
+        "sample_metadata_fields": [],
+        "sample_metadata": [],
+        "data_files": [],
+        "sample_file_map": {},
+    }
+    path = Path(study_path)
+    enrichment.update(_parse_investigation(study_id, path))
+    _parse_assay_files(enrichment, study_id, path)
+    _parse_sample_file(enrichment, study_id, path)
+    _parse_maf_files(enrichment, study_id, path)
+    return enrichment
 
 
 def _download_isa_files(study_id: str, dest: str) -> None:
@@ -291,7 +416,7 @@ def _http_get_with_retry(
     last_err: Exception | None = None
     for attempt in range(retries):
         try:
-            return httpx.get(url, timeout=timeout)
+            return _http_client().get(url, timeout=timeout)
         except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout) as e:
             last_err = e
             wait = 2 ** attempt + _random.uniform(0, 1)
@@ -308,7 +433,7 @@ def _download_via_rest(study_id: str, dest: str) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        resp = httpx.get(url, params={"format": "zip"}, timeout=60)
+        resp = _http_client().get(url, params={"format": "zip"}, timeout=60)
         resp.raise_for_status()
         import zipfile, io
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:

@@ -228,6 +228,10 @@ to scan everything).
 - **User error / API edge case** → note it and move on; don't loop.
 
 ## Errors & recovery
+- **Datasets ≥8 with process parsing** → wrap your script's main code in
+  `if __name__ == "__main__":` (spawn on macOS re-imports the entry script
+  into each parse worker). In a throwaway script, set
+  `MTBLS_PARSE_PROCESSES=0` to force thread parsing instead.
 - `import mtbls_agent` resolves to a weird path → this repo shares a workspace
   with a parallel-test copy. Use the **private venv** so you always import THIS
   src: `uv venv .venv-local && uv pip install --python .venv-local/bin/python -e .`

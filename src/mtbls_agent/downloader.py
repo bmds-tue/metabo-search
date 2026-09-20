@@ -5,6 +5,8 @@ Supports fine-grained filtering by file type, sample name, raw vs derived.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import logging
 import re
 import tempfile
@@ -18,6 +20,20 @@ import httpx
 from mtbls_agent.models import StudyCandidate
 
 logger = logging.getLogger(__name__)
+
+# Shared keep-alive client — httpx.get() would open a fresh TLS connection per
+# request; the recursive FILES/ walk + per-file downloads would pay a handshake
+# each time.  One pooled client for the whole run.
+
+_SHARED_CLIENT: httpx.Client | None = None
+
+
+def _http_client() -> httpx.Client:
+    global _SHARED_CLIENT
+    if _SHARED_CLIENT is None:
+        _SHARED_CLIENT = httpx.Client(timeout=30.0, follow_redirects=True)
+    return _SHARED_CLIENT
+
 
 HTTP_STUDY_BASE = "https://ftp.ebi.ac.uk/pub/databases/metabolights/studies/public"
 
@@ -46,6 +62,9 @@ class DownloadConfig:
     max_files: int | None = None
     max_size_gb: float | None = None
     parallel_downloads: int = 4
+    files_cache_dir: str | None = None
+    """Optional dir for per-study FILES/ listing caches (repeated calls in
+    one cache root skip the recursive HTTP walk entirely)."""
 
 
 @dataclass
@@ -137,12 +156,36 @@ def _categorize(ext: str, rel_path: str = "") -> str:
     return "other"
 
 
-def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
+def list_data_files(
+    candidate: StudyCandidate,
+    cache_dir: str | Path | None = None,
+) -> list[DataFileRef]:
     """List data files recursively through FILES/ and its subdirectories.
 
     Some studies organize data in FILES/RAW_FILES/, FILES/DERIVED_FILES/, etc.
     Walks the HTTP directory tree, parsing filenames + sizes from HTML tables.
+
+    Parameters
+    ----------
+    candidate : StudyCandidate
+        Deep (or shallow) candidate to list.
+    cache_dir : str | Path | None
+        Optional directory for a per-study listing cache
+        (``<dir>/file_listings/<study_id>.json``).  Repeated calls in the same
+        cache root skip the network walk entirely.  ``None`` (default) = walk
+        every call — behaviour unchanged.
     """
+    cache_path: Path | None = None
+    if cache_dir is not None:
+        cache_path = Path(cache_dir) / "file_listings" \
+            / f"{candidate.study_id}.json"
+        if cache_path.exists():
+            try:
+                rows = json.loads(cache_path.read_text())
+                return [DataFileRef(**r) for r in rows]
+            except (json.JSONDecodeError, OSError, TypeError):
+                pass  # corrupt/partial → walk again
+
     files: list[DataFileRef] = []
     try:
         _walk_dir(
@@ -154,6 +197,11 @@ def list_data_files(candidate: StudyCandidate) -> list[DataFileRef]:
     except Exception as e:
         logger.debug("HTTP listing failed for %s: %s", candidate.study_id, e)
         return []
+
+    if cache_path is not None and files:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(
+            [dataclasses.asdict(f) for f in files]))
     return files
 
 
@@ -162,7 +210,7 @@ def _walk_dir(url: str, rel_prefix: str, files: list[DataFileRef], depth: int) -
     if depth > 6:  # safety bound
         return
 
-    resp = httpx.get(url, timeout=30)
+    resp = _http_client().get(url, timeout=30)
     resp.raise_for_status()
     html = resp.text
 
@@ -256,7 +304,7 @@ def download_data_files(
         base = base / candidate.study_id
     base.mkdir(parents=True, exist_ok=True)
 
-    available = list_data_files(candidate)
+    available = list_data_files(candidate, cache_dir=config.files_cache_dir)
     if not available:
         logger.warning("No data files found for %s", candidate.study_id)
         return DownloadResult(dest_dir=str(base))
@@ -286,7 +334,7 @@ def _download_files(
         last_err: Exception | None = None
         for attempt in range(3):
             try:
-                resp = httpx.get(url, timeout=3600)
+                resp = _http_client().get(url, timeout=3600)
                 resp.raise_for_status()
                 dest.write_bytes(resp.content)
                 ref.size_bytes = len(resp.content)

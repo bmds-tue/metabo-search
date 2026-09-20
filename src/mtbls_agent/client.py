@@ -123,7 +123,8 @@ def parse_hit(hit: dict[str, Any]) -> dict[str, Any]:
         "assay_techniques": assay_techniques_raw,
         "design_descriptors": _to_ontology(design_descriptors),
         "technology_types": _to_ontology(technology_types),
-        "factors": factors_list,
+        "factors": _to_ontology(factors_list),  # canonical (was raw dicts →
+        #   unstable JSON round-trip broke cache keys)
         "sample_count": hit.get("sampleCount"),
         "raw_file_count": hit.get("rawFileCount"),
         "derived_file_count": hit.get("derivedFileCount"),

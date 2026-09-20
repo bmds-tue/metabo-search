@@ -72,17 +72,17 @@ Discovery + per-sample sentences (ONE LLM call per study, cached).
 
 Full report + selective download + manifest export. `download_kwargs` must constrain what is downloaded (categories / file_types / sample_names / max_files / max_size_gb) — harvest never silently downloads everything.
 
-### `inspect(workers: 'int' = 10, tmp_dir: 'str | None' = None, name: 'str | None' = None, cache: 'CacheOpts | None' = None, print_opts: 'PrintOpts | None' = None) -> 'Step'`
+### `inspect(workers: 'int' = 10, tmp_dir: 'str | None' = None, parse_workers: 'int | None' = None, name: 'str | None' = None, cache: 'CacheOpts | None' = None, print_opts: 'PrintOpts | None' = None) -> 'Step'`
 
 
 
-### `inspect_studies(candidates: 'list[StudyCandidate]', max_workers: 'int' = 10, tmp_dir: 'str | None' = None, download_data_files: 'bool' = False) -> 'list[StudyCandidate]'`
+### `inspect_studies(candidates: 'list[StudyCandidate]', max_workers: 'int' = 10, tmp_dir: 'str | None' = None, download_data_files: 'bool' = False, parse_workers: 'int | None' = None) -> 'list[StudyCandidate]'`
 
-Deep-inspect candidates in parallel. For each candidate: 1. Download ISA-Tab metadata files from the MetaboLights FTP server 2. Parse the investigation file → assays, protocols, publications 3. Parse assay & sample files → sample count, characteristics, data files 4. Enrich the candidate with all discovered information Parameters ---------- candidates : list[StudyCandidate] Shallow candidates…
+Deep-inspect candidates in parallel. Two phases: 1. **Download** (threads, I/O-bound): fetch the ISA-Tab files to disk. 2. **Parse** (threads, or *processes* when it pays): CPU-bound ISA parsing runs on real cores — threads are GIL-serialized (~2x+ faster for full-scan batches). Parameters ---------- candidates : list[StudyCandidate] Shallow candidates from phase 1. max_workers : int Parallel…
 
-### `list_data_files(candidate: 'StudyCandidate') -> 'list[DataFileRef]'`
+### `list_data_files(candidate: 'StudyCandidate', cache_dir: 'str | Path | None' = None) -> 'list[DataFileRef]'`
 
-List data files recursively through FILES/ and its subdirectories. Some studies organize data in FILES/RAW_FILES/, FILES/DERIVED_FILES/, etc. Walks the HTTP directory tree, parsing filenames + sizes from HTML tables.
+List data files recursively through FILES/ and its subdirectories. Some studies organize data in FILES/RAW_FILES/, FILES/DERIVED_FILES/, etc. Walks the HTTP directory tree, parsing filenames + sizes from HTML tables. Parameters ---------- candidate : StudyCandidate Deep (or shallow) candidate to list. cache_dir : str | Path | None Optional directory for a per-study listing cache (`…
 
 ### `load_samples(task: 'SampleTask') -> 'list[SampleDescription] | None'`
 
@@ -192,9 +192,9 @@ DescribeResult(by_study: 'dict[str, list[SampleDescription]]' = , revision: 'int
 - `revision`: `int`
 - `reused`: `dict[str, bool]`
 
-### `DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] | None' = None, categories: 'list[str] | None' = None, dest_dir: 'str | None' = None, max_files: 'int | None' = None, max_size_gb: 'float | None' = None, parallel_downloads: 'int' = 4) -> None`
+### `DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] | None' = None, categories: 'list[str] | None' = None, dest_dir: 'str | None' = None, max_files: 'int | None' = None, max_size_gb: 'float | None' = None, parallel_downloads: 'int' = 4, files_cache_dir: 'str | None' = None) -> None`
 
-DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] | None' = None, categories: 'list[str] | None' = None, dest_dir: 'str | None' = None, max_files: 'int | None' = None, max_size_gb: 'float | None' = None, parallel_downloads: 'int' = 4)
+DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] | None' = None, categories: 'list[str] | None' = None, dest_dir: 'str | None' = None, max_files: 'int | None' = None, max_size_gb: 'float | None' = None, parallel_downloads: 'int' = 4, files_cache_dir: 'str | None' = None)
 
 - `file_types`: `list[str] | None`
 - `sample_names`: `list[str] | None`
@@ -203,6 +203,7 @@ DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] |
 - `max_files`: `int | None`
 - `max_size_gb`: `float | None`
 - `parallel_downloads`: `int`
+- `files_cache_dir`: `str | None`
 
 ### `DownloadResult(dest_dir: 'str' = '', downloaded: 'list[str]' = <factory>, total_bytes: 'int' = 0, failed: 'list[str]' = <factory>) -> None`
 

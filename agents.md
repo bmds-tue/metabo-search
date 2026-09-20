@@ -103,6 +103,31 @@ The key insight: ISA-Tab files are tiny text files (~15-200KB). HTTP downloads t
 
 The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
 
+## Parallelism (measured, 8 cores / macOS)
+- **Workers**: inspect download phase ~2s/study serial → ~0.74s at workers=8; 8→12 is diminishing. Default `workers=10`, sweet spot ≈ cores (8).
+- **Parse is GIL-bound**: ~180ms/study CPU; threads give ZERO parse speedup (measured).
+- **Process parsing** (`inspect(parse_workers=...)`, auto ON for ≥8 studies): 16 studies parse 2.95s (threads) → 1.39s (4 procs) ≈ 2.1×. `inspect_studies` = phase 1 threaded download → phase 2 process/thread parse of on-disk ISA → merge. Env `MTBLS_PARSE_PROCESSES=0|N` forces off/N; falls back to threads if spawn unavailable. Core: `inspect(parse_workers=...)`.
+- **HTTP/2 measured SLOWER** on ftp.ebi.ac.uk (0.83s vs 0.37s) — not used.
+- **Real bug bench found**: search-hit `factors` were raw camelCase dicts vs declared `list[OntologyTerm]` → fresh-vs-cached serialization diverged → warm cache keys shifted → inspect re-ran. Fixed in `client.parse_hit` (canonical terms); regression tests in tests/test_client_parse.py.
+- Biggest lever remains the screen cap before inspect (deep work is linear in survivors).
+
+## Network at hundreds-of-studies scale (metadata, first run)
+- Per study ≈ 1 listing + ~4-6 ISA file GETs. Drive: `httpx.get()` per request = a FRESH TLS connection each time → handshake cost dominates.
+- **Implemented**: shared keep-alive `httpx.Client` in inspector + downloader (module-level `_http_client()`); connection reuse across every request/thread. Monotonic win; re-measure when EBI stops refusing us (heavy benchmarking today earned us a block — be gentle).
+- Search API client is already pooled per call (1-2 requests/run) — fine.
+- Not yet built (in order of value at 300 studies): overlap parse with download; REST-zip as PRIMARY; async inspector.
+- Re-runs are already ~0s via the step cache (search 7d / inspect 30d).
+
+## Network / parallelism — measured round (36 studies, live)
+- Keep-alive: sync 12 threads 36 studies = 19.23s (0.53s/study) — big win over fresh-connection path.
+- **Async rejected**: async 16 = 20.1s, async 24 = 18.8s (≈ sync); >32 concurrent connections get refused → server per-host cap ≈ 24, threads+keep-alive already hit the ceiling. No asyncio code in the library.
+- **REST-zip primary rejected**: `ws/studies/{id}/download/isa?format=zip` currently 503 (ws3 equivalent 404) — unreliable; HTTP listing+files stays primary, REST remains fallback.
+- **Overlap built**: inspect now submits each parse the moment its download lands (CPU parse hides under I/O; threads or processes, same results — tests: tests/test_inspector_process.py).
+- **FILES/ listing cache built**: `list_data_files(candidate, cache_dir=)` + `DownloadConfig.files_cache_dir`; the download step wires its cache root (`<root>/files/file_listings/<sid>.json`). Repeat downloads/walks in one cache root = zero listing network (tests: tests/test_downloader_cache.py).
+- **Process parsing needs the `__main__` guard**: the process-pool auto path (≥8 studies) uses spawn on macOS — scripts must guard module-level code (`if __name__ == "__main__":`); otherwise children re-execute the whole script (seen live: 8+ parallel pipelines hammering EBI + garbage timings). Library falls back to threads gracefully, but prefer guarding or `MTBLS_PARSE_PROCESSES=0` in ad-hoc scripts. pytest and guarded scripts are fine (determinism test proves proc == thread).
+- **By-value handoff fixed (real bug)**: results crossed steps by REFERENCE — inspect's in-place `_merge_enriched` mutated candidates still held by ealier results, so fresh digests ≠ warm digests (cold search payload 924KB vs stored 23KB). The fold now deep-copies at every boundary (stored snapshot stays pristine; the next step gets its own copy). Regression: test_results_cross_steps_by_value.
+- API stable: all changes additive (`parse_workers=`, `cache_dir=`, `files_cache_dir=`), defaults preserve behavior.
+
 ## Typed pipeline (core/ — the preferred entry point today)
 
 ```python
@@ -264,7 +289,7 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (76 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (86 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 

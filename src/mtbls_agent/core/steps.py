@@ -10,6 +10,7 @@ Design: docs/design-pipeline.md
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import json
 from dataclasses import dataclass, field
@@ -77,6 +78,7 @@ class FilterConfig:
 class InspectConfig:
     workers: int = 10
     tmp_dir: str | None = None
+    parse_workers: int | None = None   # None = auto (processes for ≥8 studies)
 
 
 @dataclass
@@ -250,9 +252,11 @@ def custom(name: str, **params: Any) -> Custom:
 
 
 def inspect(workers: int = 10, tmp_dir: str | None = None,
+            parse_workers: int | None = None,
             name: str | None = None, cache: CacheOpts | None = None,
             print_opts: PrintOpts | None = None) -> Step:
-    return Step("inspect", InspectConfig(workers=workers, tmp_dir=tmp_dir),
+    return Step("inspect", InspectConfig(workers=workers, tmp_dir=tmp_dir,
+                                          parse_workers=parse_workers),
                 name=name, cache=cache or CacheOpts(),
                 print=print_opts or PrintOpts())
 
@@ -597,9 +601,14 @@ class Pipeline:
                     f"got {type(init).__name__}")
         self.validate()
 
+        # Results cross step boundaries BY VALUE: downstream steps (notably
+        # inspect) merge enrichment into their input candidates in place, so
+        # each handoff is a deep copy — upstream results stay pristine and
+        # their digests stay stable (fresh vs warm-cache).
+        chain: Result | None = copy.deepcopy(init) if init is not None else None
+
         results: list[tuple[str, Result]] = []
         seen_names: dict[str, int] = {}
-        chain: Result | None = init
 
         def key_for(step: Step) -> str:
             base = step.name or step.kind
@@ -640,9 +649,12 @@ class Pipeline:
                         kind, step.name, step.config, key,
                         self._ttl_for(step)))
 
-            results.append((key_for(step), result))
+            snapshot = copy.deepcopy(result)   # pristine copy → results map
+            results.append((key_for(step), snapshot))
             if kind in ("search", "filter", "inspect", "score"):
-                chain = result
+                # a SEPARATE copy feeds the next step (which may mutate its
+                # input in place, e.g. inspect merging into candidates)
+                chain = copy.deepcopy(result)
 
         if self._cache:
             self._cache.save_plan(used_plan)
@@ -690,7 +702,9 @@ class Pipeline:
                 previous(InspectResult)
             if insp is None:
                 raise ValueError("download() has no InspectResult to read")
-            return _do_download(cfg, insp)
+            files_cache = str(self.cache_root / "files") \
+                if self.cache_root else None
+            return _do_download(cfg, insp, files_cache_dir=files_cache)
         if kind == "export":
             insp = chain if isinstance(chain, InspectResult) else \
                 previous(InspectResult)
@@ -801,7 +815,8 @@ def _do_inspect(cfg: InspectConfig, inp: Result,
     cands, _ = _carrier(inp)
     tmp = tmp_dir or cfg.tmp_dir
     deep = inspect_studies(cands, max_workers=cfg.workers,
-                           tmp_dir=tmp)
+                           tmp_dir=tmp,
+                           parse_workers=cfg.parse_workers)
     isa_dirs = {}
     if tmp:
         from pathlib import Path
@@ -851,7 +866,8 @@ def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
                           reused=reused)
 
 
-def _do_download(cfg: DownloadConfig, insp: InspectResult) -> DownloadResult:
+def _do_download(cfg: DownloadConfig, insp: InspectResult,
+                 files_cache_dir: str | None = None) -> DownloadResult:
     from mtbls_agent.downloader import (
         DownloadConfig as BodyConfig, download_data_files)
     all_downloaded: list[str] = []
@@ -862,7 +878,8 @@ def _do_download(cfg: DownloadConfig, insp: InspectResult) -> DownloadResult:
             categories=cfg.categories, file_types=cfg.file_types,
             sample_names=cfg.sample_names, dest_dir=cfg.dest_dir,
             max_files=cfg.max_files, max_size_gb=cfg.max_size_gb,
-            parallel_downloads=cfg.parallel)
+            parallel_downloads=cfg.parallel,
+            files_cache_dir=files_cache_dir or None)
         res = download_data_files(c, body)
         all_downloaded += [f.relative_path for f in res.downloaded]
         all_failed += list(res.failed)

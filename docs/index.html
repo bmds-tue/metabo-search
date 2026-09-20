@@ -192,7 +192,7 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>format_summary</code></td><td>Count data files by format, from a recursive FILES/ listing. A quick probe for &quot;does this study…</td></tr>
       <tr><td><code>full_report</code></td><td>Discovery + per-sample sentences (ONE LLM call per study, cached).</td></tr>
       <tr><td><code>harvest</code></td><td>Full report + selective download + manifest export. `download_kwargs` must constrain what is…</td></tr>
-      <tr><td><code>inspect_studies</code></td><td>Deep-inspect candidates in parallel. For each candidate: 1. Download ISA-Tab metadata files…</td></tr>
+      <tr><td><code>inspect_studies</code></td><td>Deep-inspect candidates in parallel. Two phases: 1. **Download** (threads, I/O-bound): fetch…</td></tr>
       <tr><td><code>list_data_files</code></td><td>List data files recursively through FILES/ and its subdirectories. Some studies organize data…</td></tr>
       <tr><td><code>load_samples</code></td><td>Return cached descriptions for this task, or None if not cached.</td></tr>
       <tr><td><code>load_study_from_isa</code></td><td>Reconstruct a deep-inspected StudyCandidate from LOCAL ISA files. Offline / reuse path: if…</td></tr>
