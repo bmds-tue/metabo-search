@@ -184,30 +184,52 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>build_comparison_table</code></td><td>Build a structured comparison table from scored candidates. The table has one row per candidate…</td></tr>
       <tr><td><code>build_study_profile_prompt</code></td><td>Build the ONE prompt the agent&#x27;s LLM uses to author the study recipe.</td></tr>
       <tr><td><code>collect_sample_contexts</code></td><td>Collect the full raw context for every sample in a study. Includes factors, characteristics,…</td></tr>
+      <tr><td><code>custom</code></td><td>Custom predicate reference (must be registered before validate/run).</td></tr>
       <tr><td><code>download_data_files</code></td><td>Download data files matching the given config filters.</td></tr>
       <tr><td><code>download_maf_files</code></td><td>Download ONLY the MAF (metabolite assignment) files for a study. MAF files are the `m_*.tsv`…</td></tr>
       <tr><td><code>filter_by_maf</code></td><td>Post-inspection filter on MAF (metabolite assignment file) presence. Runs on DEEP-inspected…</td></tr>
       <tr><td><code>find_datasets</code></td><td>End-to-end discovery, deterministic when `profile` is structured. Pipeline (no LLM involved):…</td></tr>
       <tr><td><code>format_summary</code></td><td>Count data files by format, from a recursive FILES/ listing. A quick probe for &quot;does this study…</td></tr>
+      <tr><td><code>full_report</code></td><td>Discovery + per-sample sentences (ONE LLM call per study, cached).</td></tr>
+      <tr><td><code>harvest</code></td><td>Full report + selective download + manifest export. `download_kwargs` must constrain what is…</td></tr>
       <tr><td><code>inspect_studies</code></td><td>Deep-inspect candidates in parallel. For each candidate: 1. Download ISA-Tab metadata files…</td></tr>
       <tr><td><code>list_data_files</code></td><td>List data files recursively through FILES/ and its subdirectories. Some studies organize data…</td></tr>
       <tr><td><code>load_samples</code></td><td>Return cached descriptions for this task, or None if not cached.</td></tr>
       <tr><td><code>load_study_from_isa</code></td><td>Reconstruct a deep-inspected StudyCandidate from LOCAL ISA files. Offline / reuse path: if…</td></tr>
+      <tr><td><code>maf</code></td><td>MAF (metabolite assignment) predicate (applies to InspectResult).</td></tr>
       <tr><td><code>parse_study_profile</code></td><td>Parse the LLM&#x27;s JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks.</td></tr>
       <tr><td><code>prepare_samples</code></td><td>Bundle everything for one study: contexts + the single LLM prompt. `revision` feeds the cache…</td></tr>
       <tr><td><code>profile_to_search_args</code></td><td>Deterministically map a profile&#x27;s HARD requirements to search kwargs, so the search API…</td></tr>
+      <tr><td><code>quick_discovery</code></td><td>Stage 2 (the old find_datasets): probe + deep inspect + scored ranking.</td></tr>
+      <tr><td><code>quick_probe</code></td><td>Stage 1: narrow the profile cheaply. Search replays warm across edits.</td></tr>
+      <tr><td><code>register_predicate</code></td><td>Register a custom filter predicate by name (configs stay plain data).</td></tr>
       <tr><td><code>render_maf_summary</code></td><td>Collapse MAF analyses into one paste-ready text block. `&quot;&quot;` when there are no analyses;…</td></tr>
       <tr><td><code>revise_samples</code></td><td>Author a revised wording under the next revision and cache it. Returns the *new* task (already…</td></tr>
       <tr><td><code>score_studies</code></td><td>Score each candidate against the requirement profile. Returns scored candidates sorted…</td></tr>
+      <tr><td><code>screen</code></td><td>Shallow screening predicate (applies to SearchResult). `min_survivors=None` ⇒ never truncate…</td></tr>
       <tr><td><code>screen_candidates</code></td><td>Deterministic pre-screen on search-index data (no LLM, no download). Drops candidates that fail…</td></tr>
       <tr><td><code>search_studies</code></td><td>Broad search returning shallow `StudyCandidate` objects. This is **Phase 1** — get many…</td></tr>
       <tr><td><code>submit_samples</code></td><td>Apply the LLM-authored profile to every sample; cache and return. `profile_json` is the raw…</td></tr>
+      <tr><td><code>CacheOpts</code></td><td>CacheOpts(enabled: &#x27;bool | None&#x27; = None, ttl: &#x27;str | None&#x27; = None)</td></tr>
+      <tr><td><code>Custom</code></td><td>Custom(name: &#x27;str&#x27;, params: &#x27;dict&#x27; = )</td></tr>
+      <tr><td><code>DescribeResult</code></td><td>DescribeResult(by_study: &#x27;dict[str, list[SampleDescription]]&#x27; = , revision: &#x27;int&#x27; = 0, reused:…</td></tr>
       <tr><td><code>DownloadConfig</code></td><td>DownloadConfig(file_types: &#x27;list[str] | None&#x27; = None, sample_names: &#x27;list[str] | None&#x27; = None,…</td></tr>
+      <tr><td><code>DownloadResult</code></td><td>DownloadResult(dest_dir: &#x27;str&#x27; = &#x27;&#x27;, downloaded: &#x27;list[str]&#x27; = , total_bytes: &#x27;int&#x27; = 0,…</td></tr>
+      <tr><td><code>ExportResult</code></td><td>ExportResult(path: &#x27;str&#x27; = &#x27;&#x27;, rows: &#x27;int&#x27; = 0, columns: &#x27;list[str]&#x27; = )</td></tr>
+      <tr><td><code>FilterResult</code></td><td>FilterResult(survivors: &#x27;list[StudyCandidate]&#x27;, dropped: &#x27;list[tuple[StudyCandidate, str]]&#x27; = ,…</td></tr>
+      <tr><td><code>InspectResult</code></td><td>InspectResult(candidates: &#x27;list[StudyCandidate]&#x27;, isa_dirs: &#x27;dict[str, str]&#x27; = )</td></tr>
+      <tr><td><code>Maf</code></td><td>Maf(require: &#x27;bool&#x27; = True, min_metabolites: &#x27;int | None&#x27; = None, name: &#x27;str&#x27; = &#x27;maf&#x27;)</td></tr>
       <tr><td><code>MafAnalysis</code></td><td>What one MAF file contains, in answer-ready numbers. The :attr:`summary` property renders…</td></tr>
+      <tr><td><code>Pipeline</code></td><td>An ordered list of typed steps. Immutable: builders return a new one. - `run(llm=...)` folds…</td></tr>
+      <tr><td><code>PipelineResult</code></td><td>Ordered, typed mapping of step keys → results (r[&quot;score&quot;], r.score).</td></tr>
+      <tr><td><code>PrintOpts</code></td><td>PrintOpts(top: &#x27;int&#x27; = 10, detail: &#x27;bool&#x27; = False)</td></tr>
       <tr><td><code>RequirementProfile</code></td><td>What a researcher is looking for. - `hard`: non-negotiable filters (pass/fail) -…</td></tr>
       <tr><td><code>SampleManifest</code></td><td>SampleManifest(studies: &#x27;dict[str, StudyEntry]&#x27; = , samples: &#x27;dict[str, list[SampleEntry]]&#x27; = ,…</td></tr>
       <tr><td><code>SampleSentencesStore</code></td><td>File-backed cache of generated sample descriptions, keyed by study.</td></tr>
       <tr><td><code>SampleTask</code></td><td>Everything the agent needs for ONE study-level LLM round trip. Flow:: task =…</td></tr>
+      <tr><td><code>ScoreResult</code></td><td>ScoreResult(ranked: &#x27;list[ScoredCandidate]&#x27;, table: &#x27;ComparisonReport&#x27;)</td></tr>
+      <tr><td><code>Screen</code></td><td>Screen(profile: &#x27;RequirementProfile | None&#x27; = None, min_survivors: &#x27;int | None&#x27; = None, name:…</td></tr>
+      <tr><td><code>SearchResult</code></td><td>SearchResult(candidates: &#x27;list[StudyCandidate]&#x27;, query: &#x27;str&#x27; = &#x27;&#x27;, args_used: &#x27;dict[str, Any]&#x27;…</td></tr>
       <tr><td><code>StudyCandidate</code></td><td>All known information about a MetaboLights study. Phase 1 (shallow) fields come from the search…</td></tr>
       <tr><td><code>StudyRequirements</code></td><td>A set of requirements (used for both hard and nice-to-have).</td></tr>
     </tbody>

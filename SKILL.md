@@ -31,39 +31,97 @@ scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
 
 Full API reference: see [references/api.md](references/api.md).
 
+Design doc: see `docs/design-pipeline.md` (typed pipeline over the function
+library). The legacy functions below still work — the pipeline is a thin,
+cached wrapper over exactly those bodies.
+
 ---
 
 ## The One Flow (copy-paste)
 
 ```python
-from mtbls_agent import (find_datasets, prepare_samples, load_samples,
-    submit_samples, SampleSentencesStore, list_data_files,
-    RequirementProfile, StudyRequirements, DownloadConfig)
+from mtbls_agent import (pipeline, search, filter, screen, inspect, score,
+    describe, RequirementProfile, StudyRequirements,
+    quick_probe, quick_discovery, full_report)
 
-# 1) Discovery — search + inspect + score + compare in one call.
-profile = RequirementProfile(hard=StudyRequirements(organisms=["Homo sapiens"]))
-report = find_datasets("urine alzheimer", profile=profile,
-                       max_candidates=20, deep_inspect_top=8, max_workers=10)
-for s in report.candidates:                    # ranked by score
-    print(f"{s.study_id}  {s.score.overall:.2f}  {s.candidate.sample_count} samples")
+# 0) What the researcher needs:
+profile = RequirementProfile(
+    hard=StudyRequirements(organisms=["Homo sapiens"], has_maf=True),
+    nice_to_have=StudyRequirements(techniques=["LC-MS"]),
+)
 
-# 2) Per-sample sentences — ONE LLM call per study, cached forever.
-store = SampleSentencesStore("samples_cache.json")
-for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
-    d      = sc.candidate
-    task   = prepare_samples(d, store)         # builds the single prompt
-    descs  = load_samples(task)                # None unless cached
-    if descs is None:
-        descs = submit_samples(task, call_llm(task.profile_prompt))
-    print(task.study_id, f"{len(descs)} sentences", "→", descs[0].sentence)
+# 1) Discovery — a typed pipeline; each step is Config → Result.
+#    quick_discovery = search → screen → inspect → score (no LLM needed).
+p = quick_discovery("urine alzheimer", profile).cache(".pipeline_cache")
+print(p)                      # ladder: search('urine alzheimer') → filter(screen) → inspect → score
+r = p.run()
+print(r["score"].fmt())       # ranked, one line per study
+
+# 2) Iterate cheaply: reformulate the profile / tighten the screen, then
+#    re-run — warm prefix steps replay from the cache, only the suffix
+#    executes.  Continue = slicing + extending:
+p2 = p.extend(describe(top=3))
+r2 = p2.run(llm=call_llm)     # per-sample sentences (ONE LLM call/study, cached)
+print(r2["describe"].fmt(detail=True))
 ```
 
 > `call_llm(prompt)` = **you** producing text with your own model. The library
-> never calls an LLM; it hands you prompts and stores what you return.
+> never calls an LLM; only `describe` reads it, via `run(llm=...)`.
+
+### The steps (each is Config → Result; empty config = do nothing)
+
+| Step | Input → Output | Defaults / notes |
+|---|---|---|
+| `search(query, profile=…)` | → `SearchResult` | `query` is the one required answer; everything else defaults |
+| `filter(screen(profile, min_survivors))` | SearchResult → `FilterResult` | drop hard-fails on search-index data; rank survivors; no truncation by default |
+| `filter(maf(require, min_metabolites))` | InspectResult → `FilterResult` | drop MAF-poor studies (deep; place after inspect) |
+| `filter(custom(name, **params))` | any → `FilterResult` | registered predicates — the extension point |
+| `inspect(workers=10)` | → `InspectResult` | deep ISA download + parse; cache root keeps the ISA dirs |
+| `score(profile=…)` | → `ScoreResult` | ranked + comparison table; neutral pass-through without profile |
+| `describe(top=3, revision=0)` | ScoreResult → `DescribeResult` | per-sample sentences; ONE LLM call/study, store-cached per revision |
+| `download(categories=…, dest_dir=".")` | InspectResult → `DownloadResult` | needs ≥1 constraint (refuses to download everything) |
+| `export(path="manifest.csv")` | InspectResult → `ExportResult` | flat CSV + traceability |
+
+All steps accept `cache=CacheOpts(enabled, ttl)` and `print=PrintOpts(top, detail)`; cache TTLs are generous by default (search 7d, inspect 30d, describe eternal).
+
+### Staged work (cheap first, deep later)
+
+```python
+probe = quick_probe("urine alzheimer", profile).cache(".pipeline_cache")
+for tightened in profiles:                     # stage 1: narrow the profile,
+    print(probe.run()["filter"].fmt())        #   no inspect, replays warm
+
+deep = probe.extend(inspect(), score(profile))  # stage 2: only when settled
+r = deep.run()
+# continuing from a previous session/result: supply the typed result directly
+r2 = pipeline(score(profile)).run(input=r["inspect"])
+```
+
+### Kick in the annexes when you want them (nothing is implicit)
+
+```python
+from mtbls_agent import maf, custom, download, export, register_predicate
+
+p4 = (p
+      .extend(filter(maf(min_metabolites=200)))        # drop MAF-poor studies
+      .extend(describe(top=3))
+      .extend(download(categories=["raw"], dest_dir="./data"))  # needs a constraint
+      .extend(export(path="manifest.csv")))
+r4 = p4.run(llm=call_llm)
+```
+
+### Direct single-call convenience
+
+```python
+report = quick_discovery("urine alzheimer", profile).run()       # == find_datasets(...)
+all_done = full_report("urine alzheimer", profile, top=3).run(llm=call_llm)
+```
 
 ---
 
-## API table (call this, get that)
+## API table (legacy function surface — still works; the pipeline wraps these)
+
+| Call | Returns | What it does |
 
 | Call | Returns | What it does |
 |------|---------|--------------|
@@ -180,6 +238,10 @@ to scan everything).
 - `.venv` broken → `rm -rf .venv && uv venv && uv pip install -e .`.
 
 ## Limits to be honest about
+- **Free-text queries are phrase-based**: the API matches the whole string, so
+  "urine alzheimer" often returns 0 while "alzheimer" finds the studies.
+  Prefer one strong term and push everything else into the profile's hard
+  filters (organism, min_samples, …); iterate wordings if a query returns 0.
 - The search index does NOT expose file formats or MS level. `format_summary()`
   can confirm mzML/RAW presence from filenames cheaply, but **MS1 vs MS2 can
   only be confirmed by opening a downloaded file or from the paper** — say so

@@ -51,6 +51,18 @@ from mtbls_agent.models import (
     StudyCandidate,
 )
 
+# ── core: typed pipeline (docs/design-pipeline.md) ──
+from mtbls_agent.core import (  # noqa: E402  (isort: keep above __all__)
+    Pipeline, PipelineResult, CacheOpts, PrintOpts,
+    Screen, Maf, Custom,
+    SearchResult, FilterResult, InspectResult, ScoreResult,
+    DescribeResult, DownloadResult, ExportResult,
+    pipeline, search, filter, screen, maf, custom,
+    inspect, score, describe, download, export,
+    register_predicate, registered_predicates,
+    quick_probe, quick_discovery, full_report, harvest,
+)
+
 __all__ = [
     # Functions (the first move)
     "search_studies",
@@ -88,4 +100,13 @@ __all__ = [
     "RequirementProfile",
     "StudyRequirements",
     "StudyCandidate",
+    # core: typed pipeline
+    "Pipeline", "PipelineResult", "CacheOpts", "PrintOpts",
+    "Screen", "Maf", "Custom",
+    "SearchResult", "FilterResult", "InspectResult", "ScoreResult",
+    "DescribeResult", "DownloadResult", "ExportResult",
+    "pipeline", "search", "filter", "screen", "maf", "custom",
+    "inspect", "score", "describe", "download", "export",
+    "register_predicate", "registered_predicates",
+    "quick_probe", "quick_discovery", "full_report", "harvest",
 ]

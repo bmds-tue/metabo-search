@@ -41,8 +41,15 @@ metabolites-metadata-skill/
 │   ├── sample_gen.py      # Per-sample sentence recipe (1 LLM call/study)
 │   ├── downloader.py      # FILES/ listing + selective downloads
 │   ├── manifest.py        # SampleManifest export
-│   └── workflow.py        # End-to-end pipeline
-└── tests/                 # deterministic + real-world linking
+│   ├── workflow.py        # find_datasets (shim over quick_discovery)
+│   ├── core/              # typed pipeline (design: docs/design-pipeline.md)
+│   │   ├── __init__.py    # public surface (pipeline, factories, recipes)
+│   │   ├── results.py     # 8 result types: to_json/from_json/digest/fmt
+│   │   ├── steps.py       # Step, configs, predicates, Pipeline (validate/run/
+│   │   │                  #   extend/diff/ladder), thin body adapters
+│   │   ├── cache.py       # CacheStore: plan.json + results/, TTLs
+│   │   └── recipes.py     # quick_probe/discovery, full_report, harvest
+└── tests/                 # deterministic + real-world linking + core
 ```
 
 ## Current Status
@@ -60,9 +67,17 @@ metabolites-metadata-skill/
 - [x] sample_gen.py — deterministic per-sample sentence recipes (1 LLM call/study)
 - [x] downloader.py — recursive FILES/ listing + selective downloads
 - [x] manifest.py — SampleManifest export
-- [x] workflow.py — find_datasets() convenience wrapper
-- [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md
-- [x] tests/ — 18 passing (deterministic screen, real-world linking)
+- [x] workflow.py — find_datasets() shim over quick_discovery
+- [x] core/ — typed pipeline: results.py (8 result types, to_json/digest/fmt),
+  steps.py (Step/Config/Predicate/Pipeline, validate/run/extend/diff),
+  cache.py (plan.json + results/, TTLs, warm replay), recipes.py
+  (quick_probe/quick_discovery/full_report/harvest). 76 tests green,
+  incl. determinism (pipeline == find_datasets), cache warm-replay, live
+  smoke+zoo verified against the real API (regressions: filter-after-filter
+  chaining; run(force=True) stray results/.json; diff() shows per-predicate
+  deltas).
+- [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md,
+  now pipe-first (typed pipeline), legacy table marked
 
 ### 📝 Future
 - [ ] Advanced MS/compound filters
@@ -88,7 +103,35 @@ The key insight: ISA-Tab files are tiny text files (~15-200KB). HTTP downloads t
 
 The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
 
-## API Quick Reference
+## Typed pipeline (core/ — the preferred entry point today)
+
+```python
+from mtbls_agent import (pipeline, search, filter, screen, maf, custom,
+    inspect, score, describe, download, export, register_predicate,
+    CacheOpts, PrintOpts, quick_probe, quick_discovery, full_report, harvest)
+
+p = quick_discovery("urine alzheimer", profile).cache(".pipeline_cache")
+r = p.run()                       # r["score"], r.score, r.order — typed mapping
+r2 = p.extend(
+        describe(top=3)).run(llm=call_llm)   # sentences: 1 LLM call/study, cached
+```
+
+- Steps are `Config → Result`; step N's output type is step N+1's input type.
+- `pipeline(step..., input=SomeResult)` starts midstream / offline; run() also
+  accepts `input=` and `force=` (bypass cache).
+- Empty config = identity — operations on data do nothing by default. Only
+  `search()` requires a query; `download()` requires ≥1 constraint.
+- Cache: each step's key = sha(kind + config + input digest); warm steps replay
+  from `<root>/results/`, plan recorded in `<root>/plan.json`. TTLs: search 7d,
+  inspect 30d, describe eternal (revision-keyed).
+- `filter()` predicates: `screen(...)` (SearchResult), `maf(...)`
+  (InspectResult), `custom(name, **params)` (registry: register_predicate).
+- Custom predicates keep configs plain-data/cacheable (registered by name).
+- validate() raises plan-time: type-chain breaks, mis-placed predicates,
+  unconstrained download.
+- Full design: `docs/design-pipeline.md`.
+
+## API Quick Reference (legacy function surface — still importable)
 
 ### search_studies(query, ...) → list[StudyCandidate]
 Phase 1 broad search. Returns shallow candidates from the search index.
@@ -221,7 +264,7 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (38 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (76 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 
