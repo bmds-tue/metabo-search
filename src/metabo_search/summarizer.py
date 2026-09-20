@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mtbls_agent.models import (
+from metabo_search.models import (
     ComparisonReport,
     RequirementProfile,
     ScoredCandidate,

@@ -24,7 +24,7 @@ from metabolights_utils.isatab.default.parser.isa_table_parser import (
     parse_isa_table_sheet_from_fs,
 )
 
-from mtbls_agent.inspector import RE_MAF
+from metabo_search.inspector import RE_MAF
 
 logger = logging.getLogger(__name__)
 

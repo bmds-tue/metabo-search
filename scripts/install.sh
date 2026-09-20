@@ -67,5 +67,5 @@ fi
 echo
 echo "Done."
 echo "  venv python:   $REPO/.venv-local/bin/python"
-echo "  run scripts:   $REPO/scripts/python -c 'import mtbls_agent'"
+echo "  run scripts:   $REPO/scripts/python -c 'import metabo_search'"
 echo "  uninstall:     $REPO/scripts/uninstall.sh"

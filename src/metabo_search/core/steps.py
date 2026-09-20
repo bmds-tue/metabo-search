@@ -17,13 +17,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from mtbls_agent.core.cache import DEFAULT_TTL, RESULT_CLASSES, CacheStore
-from mtbls_agent.core.results import (
+from metabo_search.core.cache import DEFAULT_TTL, RESULT_CLASSES, CacheStore
+from metabo_search.core.results import (
     Result,
     SearchResult, FilterResult, InspectResult, ScoreResult,
     DescribeResult, DownloadResult, ExportResult,
 )
-from mtbls_agent.models import (
+from metabo_search.models import (
     FitnessScore,
     RequirementProfile,
     ScoredCandidate,
@@ -726,7 +726,7 @@ def json_dumps_sorted(obj: Any) -> str:
 
 
 def _do_search(cfg: SearchConfig) -> SearchResult:
-    from mtbls_agent.searcher import profile_to_search_args, search_studies
+    from metabo_search.searcher import profile_to_search_args, search_studies
     args = profile_to_search_args(cfg.profile) if cfg.profile else {}
     manual = {
         "filters": cfg.filters, "ms_filters": cfg.ms_filters,
@@ -761,7 +761,7 @@ def _apply_predicate(p: Any, cands: list[StudyCandidate],
                      stage: str) -> tuple[list[StudyCandidate],
                                           list[tuple[StudyCandidate, str]],
                                           dict[str, float] | None]:
-    from mtbls_agent.scorer import filter_by_maf, screen_candidates
+    from metabo_search.scorer import filter_by_maf, screen_candidates
     if isinstance(p, Screen):
         if p.profile is None:
             # identity: no criteria → no drops, no reorder; an explicit cap
@@ -811,7 +811,7 @@ def _do_filter(cfg: FilterConfig, inp: Result,
 
 def _do_inspect(cfg: InspectConfig, inp: Result,
                 tmp_dir: str | None) -> InspectResult:
-    from mtbls_agent.inspector import inspect_studies
+    from metabo_search.inspector import inspect_studies
     cands, _ = _carrier(inp)
     tmp = tmp_dir or cfg.tmp_dir
     deep = inspect_studies(cands, max_workers=cfg.workers,
@@ -829,8 +829,8 @@ def _do_inspect(cfg: InspectConfig, inp: Result,
 
 
 def _do_score(cfg: ScoreConfig, inp: Result) -> ScoreResult:
-    from mtbls_agent.scorer import score_studies
-    from mtbls_agent.summarizer import build_comparison_table
+    from metabo_search.scorer import score_studies
+    from metabo_search.summarizer import build_comparison_table
     cands, _ = _carrier(inp)
     if cfg.profile:
         ranked = score_studies(cands, cfg.profile)
@@ -843,7 +843,7 @@ def _do_score(cfg: ScoreConfig, inp: Result) -> ScoreResult:
 
 def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
                  llm: Callable | None, store_path: str | None):
-    from mtbls_agent.sample_gen import (
+    from metabo_search.sample_gen import (
         SampleSentencesStore, load_samples, prepare_samples, submit_samples)
     if llm is None:
         raise ValueError("describe() needs the LLM — run(llm=call_llm); "
@@ -868,7 +868,7 @@ def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
 
 def _do_download(cfg: DownloadConfig, insp: InspectResult,
                  files_cache_dir: str | None = None) -> DownloadResult:
-    from mtbls_agent.downloader import (
+    from metabo_search.downloader import (
         DownloadConfig as BodyConfig, download_data_files)
     all_downloaded: list[str] = []
     all_failed: list[str] = []
@@ -890,7 +890,7 @@ def _do_download(cfg: DownloadConfig, insp: InspectResult,
 
 def _do_export(cfg: ExportConfig, insp: InspectResult,
                desc: DescribeResult | None) -> ExportResult:
-    from mtbls_agent.manifest import SampleManifest
+    from metabo_search.manifest import SampleManifest
     sentences_map = desc.by_study if desc and cfg.include_sentences else None
     manifest = SampleManifest.build(insp.candidates, sentences_map)
     manifest.export_csv(cfg.path)

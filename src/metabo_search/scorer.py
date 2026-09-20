@@ -10,7 +10,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from mtbls_agent.models import (
+from metabo_search.models import (
     FitnessScore,
     RequirementProfile,
     ScoredCandidate,

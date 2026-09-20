@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from mtbls_agent.core.steps import (
+from metabo_search.core.steps import (
     Pipeline,
     describe, download, export, filter, inspect, score, screen, search,
 )
@@ -80,4 +80,4 @@ def harvest(query: str, profile=None, *,
 
 
 # local alias so the module can stay importable even if `pipeline` is shadowed
-from mtbls_agent.core.steps import pipeline as pipeline_  # noqa: E402
+from metabo_search.core.steps import pipeline as pipeline_  # noqa: E402

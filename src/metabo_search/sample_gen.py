@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from mtbls_agent.models import StudyCandidate
+from metabo_search.models import StudyCandidate
 
 
 # ── Public models ──────────────────────────────────────────────────

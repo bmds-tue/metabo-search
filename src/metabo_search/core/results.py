@@ -21,12 +21,12 @@ import json
 import typing
 from typing import Any
 
-from mtbls_agent.models import (
+from metabo_search.models import (
     ComparisonReport,
     ScoredCandidate,
     StudyCandidate,
 )
-from mtbls_agent.sample_gen import SampleDescription
+from metabo_search.sample_gen import SampleDescription
 
 
 # ──────────────────────────────────────────────────────────────

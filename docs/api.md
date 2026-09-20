@@ -1,4 +1,4 @@
-# metabo-search — API reference (import: mtbls_agent) (auto-generated)
+# metabo-search — API reference (import: metabo_search) (auto-generated)
 
 > Regenerate anytime: `scripts/python scripts/gen_api_docs.py`
 

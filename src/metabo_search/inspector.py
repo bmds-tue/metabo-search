@@ -24,7 +24,7 @@ from metabolights_utils.isatab.default.parser.isa_table_parser import (
 )
 import httpx
 
-from mtbls_agent.models import (
+from metabo_search.models import (
     AssayInfo,
     DataFileInfo,
     ProtocolInfo,
@@ -778,7 +778,7 @@ def _merge_enriched(base: StudyCandidate, enrichment: dict[str, Any]) -> None:
         for pub_data in enrichment["publications"]:
             doi_val = pub_data.get("doi", "") if isinstance(pub_data, dict) else getattr(pub_data, "doi", "")
             if doi_val and doi_val not in existing_dois:
-                from mtbls_agent.models import PublicationInfo
+                from metabo_search.models import PublicationInfo
                 if isinstance(pub_data, dict):
                     base.publications.append(PublicationInfo(**pub_data))
                 else:

@@ -4,8 +4,8 @@ import os
 
 import pytest
 
-from mtbls_agent import inspector as ins
-from mtbls_agent.models import StudyCandidate
+from metabo_search import inspector as ins
+from metabo_search.models import StudyCandidate
 
 MINI_INVESTIGATION = """ONTOLOGY SOURCE REFERENCE
 Term Source Name\tTerm Source File\tTerm Source Version\tTerm Source Description

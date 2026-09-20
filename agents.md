@@ -1,16 +1,18 @@
 # metabo-search — Session Restart Guide
 
 ## Project
-`/Users/frederikkaempchen/projects/metabolites-metadata-skill`
+`/Users/frederikkaempchen/projects/metabo-search`
 
 **Goal:** AI-native search engine for MetaboLights datasets. A pi skill that helps researchers find datasets matching their experimental requirements using natural language, with smart scoring, parallel deep inspection, and comprehensive comparison summaries.
+
+(Note: package module is `metabo_search`, distribution is `metabo-search`.)
 
 ## Environment
 
 ```bash
-cd /Users/frederikkaempchen/projects/metabolites-metadata-skill
+cd /Users/frederikkaempchen/projects/metabo-search
 ./scripts/install.sh       # creates .venv-local, pip-installs -e ., links skills
-scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
+scripts/python -c "import metabo_search; print(metabo_search.__file__)"
 ```
 
 - Private venv: `.venv-local` (isolates from the shared `.venv` / parallel-test copy)
@@ -23,14 +25,14 @@ scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
 ## Project Structure
 
 ```
-metabolites-metadata-skill/
+metabo-search/
 ├── AGENTS.md              # THIS FILE
 ├── pyproject.toml
 ├── SKILL.md               # Pi skill instructions
 ├── docs/                  # browser guide (index.html, api.md)
 ├── references/api.md      # deep API reference
 ├── scripts/               # install.sh, uninstall.sh, python, gen_api_docs.py
-├── src/mtbls_agent/
+├── src/metabo_search/
 │   ├── __init__.py        # Public API exports
 │   ├── models.py          # Dataclass models
 │   ├── client.py          # HTTP client for v2 search API
@@ -71,11 +73,11 @@ metabolites-metadata-skill/
 - [x] core/ — typed pipeline: results.py (8 result types, to_json/digest/fmt),
   steps.py (Step/Config/Predicate/Pipeline, validate/run/extend/diff),
   cache.py (plan.json + results/, TTLs, warm replay), recipes.py
-  (quick_probe/quick_discovery/full_report/harvest). 76 tests green,
-  incl. determinism (pipeline == find_datasets), cache warm-replay, live
-  smoke+zoo verified against the real API (regressions: filter-after-filter
-  chaining; run(force=True) stray results/.json; diff() shows per-predicate
-  deltas).
+  (quick_probe/quick_discovery/full_report/harvest). 86 tests green,
+  incl. determinism (pipeline == find_datasets), cache warm-replay, process
+  parsing, listing cache, live smoke+zoo verified against the real API
+  (regressions: filter-after-filter chaining; run(force=True) stray
+  results/.json; by-value handoff; diff() shows per-predicate deltas).
 - [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md,
   now pipe-first (typed pipeline), legacy table marked
 
@@ -101,12 +103,14 @@ metabolites-metadata-skill/
 
 The key insight: ISA-Tab files are tiny text files (~15-200KB). HTTP downloads them in ~100ms each vs FTP's multi-second connection overhead.
 
-The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
+Today the bottleneck is **network** (shared keep-alive client, ~0.5s/study at
+12 threads), not CPU: parsing runs on process cores, overlapped under the
+download phase. Full measurements + justification: **docs/perf.md**.
 
 ## Parallelism (measured, 8 cores / macOS)
 - **Workers**: inspect download phase ~2s/study serial → ~0.74s at workers=8; 8→12 is diminishing. Default `workers=10`, sweet spot ≈ cores (8).
 - **Parse is GIL-bound**: ~180ms/study CPU; threads give ZERO parse speedup (measured).
-- **Process parsing** (`inspect(parse_workers=...)`, auto ON for ≥8 studies): 16 studies parse 2.95s (threads) → 1.39s (4 procs) ≈ 2.1×. `inspect_studies` = phase 1 threaded download → phase 2 process/thread parse of on-disk ISA → merge. Env `MTBLS_PARSE_PROCESSES=0|N` forces off/N; falls back to threads if spawn unavailable. Core: `inspect(parse_workers=...)`.
+- **Process parsing** (`inspect(parse_workers=...)`, auto ON for ≥8 studies): 16 studies parse 2.95s (threads) → 1.39s (4 procs) ≈ 2.1×. **Overlapped**: each download submits its parse the moment it lands (CPU hides under I/O; threads or processes, identical results). Env `MTBLS_PARSE_PROCESSES=0|N` forces off/N; falls back to threads if spawn unavailable. Core: `inspect(parse_workers=...)`.
 - **HTTP/2 measured SLOWER** on ftp.ebi.ac.uk (0.83s vs 0.37s) — not used.
 - **Real bug bench found**: search-hit `factors` were raw camelCase dicts vs declared `list[OntologyTerm]` → fresh-vs-cached serialization diverged → warm cache keys shifted → inspect re-ran. Fixed in `client.parse_hit` (canonical terms); regression tests in tests/test_client_parse.py.
 - Biggest lever remains the screen cap before inspect (deep work is linear in survivors).
@@ -115,8 +119,10 @@ The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
 - Per study ≈ 1 listing + ~4-6 ISA file GETs. Drive: `httpx.get()` per request = a FRESH TLS connection each time → handshake cost dominates.
 - **Implemented**: shared keep-alive `httpx.Client` in inspector + downloader (module-level `_http_client()`); connection reuse across every request/thread. Monotonic win; re-measure when EBI stops refusing us (heavy benchmarking today earned us a block — be gentle).
 - Search API client is already pooled per call (1-2 requests/run) — fine.
-- Not yet built (in order of value at 300 studies): overlap parse with download; REST-zip as PRIMARY; async inspector.
+- Rejected with measurements (see docs/perf.md): **HTTP/2** (slower), **async** (≈ sync; server caps ≈24 conns), **REST-zip primary** (endpoint 503/404 — HTTP listing+files stays primary, REST stays fallback).
 - Re-runs are already ~0s via the step cache (search 7d / inspect 30d).
+- Repeated bulk querying can trigger temporary blocks from the API (connection-refused/503 until it recovers) — iterate against a warm cache root (TTL'd) when refining.
+- Full measurements: `docs/perf.md`.
 
 ## Network / parallelism — measured round (36 studies, live)
 - Keep-alive: sync 12 threads 36 studies = 19.23s (0.53s/study) — big win over fresh-connection path.
@@ -131,7 +137,7 @@ The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
 ## Typed pipeline (core/ — the preferred entry point today)
 
 ```python
-from mtbls_agent import (pipeline, search, filter, screen, maf, custom,
+from metabo_search import (pipeline, search, filter, screen, maf, custom,
     inspect, score, describe, download, export, register_predicate,
     CacheOpts, PrintOpts, quick_probe, quick_discovery, full_report, harvest)
 
@@ -184,9 +190,9 @@ End-to-end: search → screen → inspect → score → summarize.
 1. Free text focus — NL parsed by agent into RequirementProfile
 2. Iterative search — broad → judge → deep → score → iterate
 3. Hard + nice-to-have — pass/fail + scored 0-1
-4. Caching only for the sentence store (`SampleSentencesStore`); discovery stays fresh
+4. Per-step cache — sha(kind+config+input digest) keys, TTLs (search 7d, inspect 30d, describe eternal); warm steps replay from `<root>/results/` (+ plan.json, isa/, files/)
 5. Mixed summary — structured table + AI narrative
-6. Parallel deep inspection — ThreadPoolExecutor
+6. Parallel: thread download + process/thread parse **overlapped** (parse_workers auto ≥8 studies)
 7. No CLI — library API for LLMs to script against
 8. Sync API — threads handle parallelism internally
 
@@ -206,7 +212,7 @@ End-to-end: search → screen → inspect → score → summarize.
 - Disease is decoded from data-file name codes (e.g. ALZ → Alzheimer's) via the
   `{disease}` slot with `{"type": "code", "field": "data_files"}`.
 - `SampleSentencesStore` caches per-study results (key = study_id + data hash).
-- New file: `src/mtbls_agent/sample_gen.py` (replaced per-sample LLM approach).
+- New file: `src/metabo_search/sample_gen.py` (replaced per-sample LLM approach).
 
 ### Robustness / real-world gaps fixed (from agent feedback)
 - **Offline loader**: `load_study_from_isa(study_id, isa_dir)` reconstructs a
@@ -227,8 +233,9 @@ End-to-end: search → screen → inspect → score → summarize.
   Rebuild: `rm -rf .venv && uv venv && uv pip install -e .`
 
 ## Streamlining (latest)
-- **One import surface**: `from mtbls_agent import ...` only. Slimmed `__all__` from
-  32 → 23; dataclasses are returned by functions, not constructed.
+- **One import surface**: `from metabo_search import ...` only. `__all__` = 63 exports
+  (legacy functions + the typed pipeline surface); dataclasses are returned by
+  functions, not constructed.
 - **Per-sample sentences = one LLM round-trip**: `prepare_samples(deep, store)`
   → `SampleTask` (builds the single profile prompt + contexts).
   `submit_samples(task, llm_text)` applies + caches. `load_samples(task)` reads cache.
@@ -238,8 +245,8 @@ End-to-end: search → screen → inspect → score → summarize.
   "what to decide" list. Gates A–I prose removed.
 - **Parallel-test note**: `~/projects/test-mtbls-meta-skill/metabolites-metadata-skill/`
   is a SEPARATE codebase the user is testing in parallel with its own `.venv`.
-  Do NOT edit it. This directory `~/projects/metabolites-metadata-skill/` is ours;
-  `.venv` here resolves to this `src/`. If `import mtbls_agent` resolves elsewhere,
+  Do NOT edit it. This directory `~/projects/metabo-search/` is ours;
+  `.venv` here resolves to this `src/`. If `import metabo_search` resolves elsewhere,
   run `uv pip install -e .` in THIS directory.
 
 ## Recent fixes (from parallel-agent bug report)
@@ -338,7 +345,9 @@ single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 - Verified: install+uninstall in a sandbox HOME; SKILL.md reachable through all
   harness symlinks (~168 lines < 500).
 
-## Docs (browser-viewable guide)
+## Docs
+- `docs/perf.md` — benchmark results + justification (keep-alive, process parse, overlap, listing cache, by-value fix; rejected options: HTTP/2, async, REST-zip primary).
+- `docs/design-pipeline.md` — the typed-pipeline design document.
 - `docs/index.html` — self-contained styled guide (no build/CDN, opens directly):
   problem → how it works → install → quick start → deterministic-vs-AI → API table
   → troubleshooting. Copy buttons on code blocks; pipeline diagrams.
@@ -346,7 +355,7 @@ single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 
 ## Auto-generated API docs
 - `scripts/gen_api_docs.py` — dependency-free (stdlib `inspect`) scraper over
-  `mtbls_agent.__all__`: writes `docs/api.md` (full reference) and refreshes the
+  `metabo_search.__all__`: writes `docs/api.md` (full reference) and refreshes the
   compact API table in `docs/index.html`. Runs on `install.sh`; manually with
   `scripts/python scripts/gen_api_docs.py`.
 - `docs/index.html` is now compact + includes an SVG workflow flowchart with the

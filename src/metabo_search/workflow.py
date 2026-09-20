@@ -7,11 +7,11 @@ use ``quick_discovery`` / ``full_report`` / ``pipeline(...)`` instead.
 
 from __future__ import annotations
 
-from mtbls_agent.core.steps import (
+from metabo_search.core.steps import (
     filter, inspect, pipeline, score, screen, search,
 )
-from mtbls_agent.models import ComparisonReport
-from mtbls_agent.scorer import ScreeningResult
+from metabo_search.models import ComparisonReport
+from metabo_search.scorer import ScreeningResult
 
 
 def find_datasets(

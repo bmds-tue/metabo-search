@@ -4,18 +4,18 @@ import json
 
 import pytest
 
-import mtbls_agent.inspector
-from mtbls_agent.core.cache import CacheStore, parse_ttl
-from mtbls_agent.core.results import (
+import metabo_search.inspector
+from metabo_search.core.cache import CacheStore, parse_ttl
+from metabo_search.core.results import (
     SearchResult, FilterResult, InspectResult, ScoreResult,
     DescribeResult, DownloadResult, ExportResult,
 )
-from mtbls_agent.core.steps import (
+from metabo_search.core.steps import (
     CacheOpts, Pipeline, Screen, custom,
     describe, download, export, filter, inspect, maf, pipeline,
     register_predicate, score, search, screen,
 )
-from mtbls_agent.models import (
+from metabo_search.models import (
     AssayInfo, OntologyTerm, RequirementProfile, StudyCandidate,
     StudyRequirements,
 )
@@ -174,7 +174,7 @@ def test_run_offline_score_neutral_without_profile():
 
 
 def test_run_full_chain_offline(monkeypatch):
-    monkeypatch.setattr(mtbls_agent.inspector, "inspect_studies", fake_inspect)
+    monkeypatch.setattr(metabo_search.inspector, "inspect_studies", fake_inspect)
     calls = {"llm": 0}
 
     def llm(prompt):
@@ -220,7 +220,7 @@ def test_run_custom_predicate():
 
 
 def test_run_describe_store_reuse(monkeypatch, tmp_path):
-    monkeypatch.setattr(mtbls_agent.inspector, "inspect_studies", fake_inspect)
+    monkeypatch.setattr(metabo_search.inspector, "inspect_studies", fake_inspect)
     root = tmp_path / "c"
     calls = {"llm": 0}
 
@@ -260,7 +260,7 @@ def test_cache_replays_warm_steps(monkeypatch, tmp_path):
         body_calls["n"] += 1
         return [candidate("M1")]
 
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies", counting)
+    monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
     p1 = pipeline(search("urine")).cache(root)
     r1 = p1.run()
     assert body_calls["n"] == 1
@@ -284,7 +284,7 @@ def test_cache_ttl_expiry(monkeypatch, tmp_path):
         n["n"] += 1
         return [candidate("M1")]
 
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies", counting)
+    monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
     step = search("urine", cache=CacheOpts(ttl="0s"))
     pipeline(step).cache(root).run()
     assert n["n"] == 1
@@ -311,7 +311,7 @@ def test_cache_store_lookup_ttl(tmp_path):
 
 
 def test_plan_records_kind_and_config(monkeypatch, tmp_path):
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies",
+    monkeypatch.setattr("metabo_search.searcher.search_studies",
                         lambda *a, **k: [candidate("M1")])
     root = tmp_path / "c"
     pipeline(search("urine")).cache(root).run()
@@ -328,7 +328,7 @@ def test_force_refresh_writes_no_junk_key(monkeypatch, tmp_path):
     def counting(*a, **k):
         return [candidate("M1")]
 
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies", counting)
+    monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
     p = pipeline(search("urine")).cache(root)
     p.run()
     p.run(force=True)
@@ -345,7 +345,7 @@ def test_force_refresh(monkeypatch, tmp_path):
         n["n"] += 1
         return [candidate("M1")]
 
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies", counting)
+    monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
     p = pipeline(search("urine")).cache(root)
     p.run()
     assert n["n"] == 1
@@ -358,7 +358,7 @@ def test_force_refresh(monkeypatch, tmp_path):
 def test_results_cross_steps_by_value(monkeypatch, tmp_path):
     """inspect mutates its input candidates in place — upstream results must
     stay pristine (fresh digests == warm-cache digests; no shared objects)."""
-    import mtbls_agent.inspector
+    import metabo_search.inspector
 
     def mutating_inspect(cands, **k):
         for c in cands:                       # mimics _merge_enriched
@@ -369,8 +369,8 @@ def test_results_cross_steps_by_value(monkeypatch, tmp_path):
     def fake_search(*a, **k):
         return [candidate("M1"), candidate("M2")]
 
-    monkeypatch.setattr("mtbls_agent.searcher.search_studies", fake_search)
-    monkeypatch.setattr(mtbls_agent.inspector, "inspect_studies",
+    monkeypatch.setattr("metabo_search.searcher.search_studies", fake_search)
+    monkeypatch.setattr(metabo_search.inspector, "inspect_studies",
                         mutating_inspect)
     root = tmp_path / "c"
     p = pipeline(

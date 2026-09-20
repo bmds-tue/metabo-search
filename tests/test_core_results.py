@@ -1,15 +1,15 @@
 """Phase 1: core Result types — round-trip, digest stability, fmt."""
 
-from mtbls_agent.core.results import (
+from metabo_search.core.results import (
     SearchResult, FilterResult, InspectResult, ScoreResult,
     DescribeResult, DownloadResult, ExportResult,
 )
-from mtbls_agent.models import (
+from metabo_search.models import (
     AssayInfo, ComparisonReport, DataFileInfo, FitnessScore,
     OntologyTerm, ProtocolInfo, PublicationInfo, RequirementProfile,
     ScoredCandidate, StudyCandidate, StudyRequirements,
 )
-from mtbls_agent.sample_gen import SampleDescription
+from metabo_search.sample_gen import SampleDescription
 
 
 def make_deep_candidate(study_id="MTBLS1", title="Deep study") -> StudyCandidate:

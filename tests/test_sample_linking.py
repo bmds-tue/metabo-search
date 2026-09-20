@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mtbls_agent.manifest import SampleManifest
-from mtbls_agent.sample_gen import (
+from metabo_search.manifest import SampleManifest
+from metabo_search.sample_gen import (
     apply_recipe,
     parse_study_profile,
     prepare_samples,
@@ -19,8 +19,8 @@ from mtbls_agent.sample_gen import (
     SampleContext,
     SampleSentencesStore,
 )
-from mtbls_agent.downloader import _categorize
-from mtbls_agent.models import StudyCandidate
+from metabo_search.downloader import _categorize
+from metabo_search.models import StudyCandidate
 
 
 def _hymet_study():
@@ -78,13 +78,13 @@ def test_factor_value_code_decoding():
         },
         "qc_string": "qc", "study_context": "."}))
     ctx = _context_for(c, 0)
-    from mtbls_agent.sample_gen import apply_recipe
+    from metabo_search.sample_gen import apply_recipe
     d = apply_recipe(ctx, prof)
     assert "oral glucose tolerance test" in d.sentence
 
 
 def _context_for(c, idx):
-    from mtbls_agent.sample_gen import collect_sample_contexts
+    from metabo_search.sample_gen import collect_sample_contexts
     return collect_sample_contexts(c)[idx]
 
 
@@ -106,7 +106,7 @@ def test_revision_cache_does_not_clobber(tmp_path):
     submit_samples(t0, base)
     assert t0.cache_key in store
 
-    from mtbls_agent.sample_gen import revise_samples, load_samples
+    from metabo_search.sample_gen import revise_samples, load_samples
     t1 = revise_samples(t0, base)
     assert t0.cache_key != t1.cache_key, "revision must change the key"
     assert t1.cache_key in store
