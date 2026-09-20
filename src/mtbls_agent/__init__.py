@@ -1,4 +1,4 @@
-"""mtbls-agent: AI-native search + enrichment for MetaboLights datasets.
+"""metabo-search: AI-native search + enrichment for MetaboLights datasets.
 
 One import surface.  The main jobs:
 

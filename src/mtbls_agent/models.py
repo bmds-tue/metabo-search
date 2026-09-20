@@ -1,4 +1,4 @@
-"""Pydantic models for the mtbls-agent library."""
+"""Pydantic models for the metabo-search library."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 [project]
-name = "mtbls-agent"
+name = "metabo-search"
 version = "0.1.0"
 description = "AI-native search engine for MetaboLights datasets — find, score, and compare studies by experimental requirements"
 requires-python = ">=3.11"

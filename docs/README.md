@@ -1,4 +1,4 @@
-# metabolights-search — guide
+# metabo-search — guide
 
 Open **[`index.html`](index.html)** in any browser for the full, styled guide
 (problem → solution → architecture → install → quick start → API → troubleshooting).

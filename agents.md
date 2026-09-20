@@ -1,4 +1,4 @@
-# mtbls-agent — Session Restart Guide
+# metabo-search — Session Restart Guide
 
 ## Project
 `/Users/frederikkaempchen/projects/metabolites-metadata-skill`

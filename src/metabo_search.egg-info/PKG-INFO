@@ -1,5 +1,5 @@
 Metadata-Version: 2.4
-Name: mtbls-agent
+Name: metabo-search
 Version: 0.1.0
 Summary: AI-native search engine for MetaboLights datasets — find, score, and compare studies by experimental requirements
 Requires-Python: >=3.11

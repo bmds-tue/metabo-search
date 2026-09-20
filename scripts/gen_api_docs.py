@@ -67,7 +67,7 @@ def build():
 
     funcs.sort()
     classes.sort()
-    doc = ["# mtbls_agent — API reference (auto-generated)", "",
+    doc = ["# metabo-search — API reference (import: mtbls_agent) (auto-generated)", "",
            "> Regenerate anytime: `scripts/python scripts/gen_api_docs.py`", ""]
 
     doc += ["## Functions", ""]

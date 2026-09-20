@@ -1,5 +1,5 @@
 ---
-name: metabolights-search
+name: metabo-search
 description: Find and enrich MetaboLights metabolomics datasets. Search by experimental needs, score them, and generate per-sample biological sentences for embedding — disease state is the top signal. Use when a researcher needs datasets matching organism/tissue/technique/disease/sample-count/format.
 compatibility: Python 3.11+; uv optional (falls back to python3 -m venv)
 metadata:
@@ -7,7 +7,7 @@ metadata:
   package: mtbls_agent
 ---
 
-# MetaboLights Dataset Search
+# metabo-search
 
 Find datasets, pick the fit, then generate per-sample biological sentences.
 **One import surface**: everything lives at `from mtbls_agent import ...`.

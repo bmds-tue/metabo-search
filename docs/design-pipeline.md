@@ -1,4 +1,4 @@
-# mtbls-agent pipeline design — typed steps over candidate data
+# metabo-search pipeline design — typed steps over candidate data
 
 Status: design (pre-implementation). Applies to `src/mtbls_agent/core/`.
 

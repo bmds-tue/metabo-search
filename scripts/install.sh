@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install the metabolights-search skill:
+# Install the metabo-search skill:
 #   1) set up a repo-local venv (.venv-local) and pip-install the package
 #   2) symlink this repo into each agent's skills directory (pi, claude, opencode, .agents)
 #   3) optionally validate with skills-ref when available
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SKILL_NAME="metabolights-search"
+SKILL_NAME="metabo-search"
 
 echo "==> Repo: $REPO"
 
