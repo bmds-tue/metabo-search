@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from mtbls_agent.downloader import DataFileRef
-from mtbls_agent.models import StudyCandidate
-from mtbls_agent.sample_gen import SampleDescription
+from metabo_search.downloader import DataFileRef
+from metabo_search.models import StudyCandidate
+from metabo_search.sample_gen import SampleDescription
 
 
 @dataclass

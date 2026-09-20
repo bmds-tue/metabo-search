@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from mtbls_agent.client import parse_hit, search_studies_raw
-from mtbls_agent.models import StudyCandidate
+from metabo_search.client import parse_hit, search_studies_raw
+from metabo_search.models import StudyCandidate
 
 
 def search_studies(

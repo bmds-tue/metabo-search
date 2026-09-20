@@ -21,8 +21,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-import mtbls_agent  # noqa: E402
-from mtbls_agent import __all__  # noqa: E402
+import metabo_search  # noqa: E402
+from metabo_search import __all__  # noqa: E402
 
 
 def first_para(doc: str | None, max_chars: int = 220) -> str:
@@ -60,25 +60,25 @@ def build():
     # ── functions vs constructors vs returned dataclasses ──
     funcs, classes = [], []
     for name in __all__:
-        obj = getattr(mtbls_agent, name, None)
+        obj = getattr(metabo_search, name, None)
         if obj is None:
             continue
         (funcs if classify(obj) == "function" else classes).append(name)
 
     funcs.sort()
     classes.sort()
-    doc = ["# metabo-search — API reference (import: mtbls_agent) (auto-generated)", "",
+    doc = ["# metabo-search — API reference (import: metabo_search) (auto-generated)", "",
            "> Regenerate anytime: `scripts/python scripts/gen_api_docs.py`", ""]
 
     doc += ["## Functions", ""]
     for name in funcs:
-        obj = getattr(mtbls_agent, name)
+        obj = getattr(metabo_search, name)
         doc += [f"### `{name}{signature(obj)}`", "",
                 first_para(inspect.getdoc(obj), max_chars=400), ""]
 
     doc += ["## Classes / constructors", ""]
     for name in classes:
-        obj = getattr(mtbls_agent, name)
+        obj = getattr(metabo_search, name)
         doc += [f"### `{name}{signature(obj)}`", "",
                 first_para(inspect.getdoc(obj), max_chars=400), ""]
         if inspect.isclass(obj) and hasattr(obj, "__dataclass_fields__"):
@@ -93,7 +93,7 @@ def build():
     # ── compact table for index.html ──
     rows = []
     for name in funcs + classes:
-        obj = getattr(mtbls_agent, name)
+        obj = getattr(metabo_search, name)
         purpose = first_para(inspect.getdoc(obj), max_chars=96)
         rows.append((name, purpose))
     table_rows = "\n".join(

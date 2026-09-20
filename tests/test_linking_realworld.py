@@ -11,15 +11,15 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mtbls_agent.manifest import _sample_matches, SampleManifest
-from mtbls_agent.downloader import _detect_ext, _infer_sample_name, _categorize
-from mtbls_agent.sample_gen import (
+from metabo_search.manifest import _sample_matches, SampleManifest
+from metabo_search.downloader import _detect_ext, _infer_sample_name, _categorize
+from metabo_search.sample_gen import (
     collect_sample_contexts,
     prepare_samples,
     parse_study_profile,
     apply_recipe,
 )
-from mtbls_agent.models import StudyCandidate, OntologyTerm
+from metabo_search.models import StudyCandidate, OntologyTerm
 
 
 # ── Token fallback matcher (used when a sample is NOT in the assay map) ──
@@ -111,7 +111,7 @@ def test_manifest_links_by_sample_name_map():
     """Primary path: assay `sample_file_map` keyed by Sample Name attaches
     the REAL ALZ_ file names, even though Source Name == DCR00004 differs."""
     c = _mtbls719_shaped_candidate()
-    from mtbls_agent.sample_gen import SampleDescription
+    from metabo_search.sample_gen import SampleDescription
     descs = [SampleDescription("MTBLS719", "DCR00004_U", "urine, alzheimer.", ["qc"])]
     m = SampleManifest.build([c], sentences_map={"MTBLS719": descs})
     e = m.samples["MTBLS719"][0]

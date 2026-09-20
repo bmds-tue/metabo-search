@@ -5,16 +5,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mtbls_agent.models import RequirementProfile, StudyRequirements, StudyCandidate
-from mtbls_agent.searcher import profile_to_search_args
-from mtbls_agent.scorer import screen_candidates
+from metabo_search.models import RequirementProfile, StudyRequirements, StudyCandidate
+from metabo_search.searcher import profile_to_search_args
+from metabo_search.scorer import screen_candidates
 
 
 def _mk(sid, organism="Homo sapiens", count=100, raw=50, techs=("LC-MS",),
         desc="lipidomics of human plasma", parts=("blood plasma",),
         design=("lipidomics",)):
     c = StudyCandidate(study_id=sid)
-    from mtbls_agent.models import OntologyTerm
+    from metabo_search.models import OntologyTerm
     c.organisms = [OntologyTerm(term=organism)]
     c.organism_parts = [OntologyTerm(term=p) for p in parts]
     c.sample_count = count

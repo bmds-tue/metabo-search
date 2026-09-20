@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from mtbls_agent.core.results import (
+from metabo_search.core.results import (
     Result,
     SearchResult, FilterResult, InspectResult, ScoreResult,
     DescribeResult, DownloadResult, ExportResult,

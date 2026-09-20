@@ -129,7 +129,7 @@ flowchart TD
   <h2>Examples</h2>
 
   <div class="codehead"><span class="lbl">1 · discovery — deterministic</span><button class="copybtn" data-copy="e1">copy</button></div>
-  <pre id="e1">from mtbls_agent import find_datasets, RequirementProfile, StudyRequirements
+  <pre id="e1">from metabo_search import find_datasets, RequirementProfile, StudyRequirements
 
 profile = RequirementProfile(
     hard=StudyRequirements(organisms=["Homo sapiens"], min_samples=50, has_raw_data=True),
@@ -141,7 +141,7 @@ report = find_datasets("", profile=profile, max_candidates=30, deep_inspect_top=
 # report.screening.dropped — why each study failed (deterministic)</pre>
 
   <div class="codehead"><span class="lbl">2 · per-sample sentences — one LLM call per study</span><button class="copybtn" data-copy="e2">copy</button></div>
-  <pre id="e2">from mtbls_agent import prepare_samples, submit_samples, load_samples, \
+  <pre id="e2">from metabo_search import prepare_samples, submit_samples, load_samples, \
     revise_samples, SampleSentencesStore
 
 store = SampleSentencesStore("samples_cache.json")
@@ -154,7 +154,7 @@ for sc in report.candidates[:6]:
     # feedback loop:  task2 = revise_samples(task, new_recipe_text)</pre>
 
   <div class="codehead"><span class="lbl">3 · download + formats</span><button class="copybtn" data-copy="e3">copy</button></div>
-  <pre id="e3">from mtbls_agent import format_summary, list_data_files, download_data_files, \
+  <pre id="e3">from metabo_search import format_summary, list_data_files, download_data_files, \
     DownloadConfig
 
 format_summary(d)                     # {".mzml": 157, ".d.zip": 157, ...}
@@ -164,7 +164,7 @@ result = download_data_files(d, DownloadConfig(categories=["derived"],
 result.dest_dir                       # where files landed</pre>
 
   <div class="codehead"><span class="lbl">4 · offline + manifest</span><button class="copybtn" data-copy="e4">copy</button></div>
-  <pre id="e4">from mtbls_agent import load_study_from_isa, SampleManifest
+  <pre id="e4">from metabo_search import load_study_from_isa, SampleManifest
 
 d = load_study_from_isa("MTBLS1375", "/path/to/isa_files")   # no network
 manifest = SampleManifest.build([d], sentences_map={d.study_id: descs})
@@ -247,7 +247,7 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
   </ul>
 </section>
 
-<footer><div class="wrap">metabo-search · <code>mtbls_agent</code> ·
+<footer><div class="wrap">metabo-search · <code>metabo_search</code> ·
 tests: <code>scripts/python -m pytest tests/ -q</code> · chart: Mermaid (CDN, needs internet)</div></footer>
 
 <script type="module">

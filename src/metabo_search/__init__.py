@@ -2,7 +2,7 @@
 
 One import surface.  The main jobs:
 
-    from mtbls_agent import (
+    from metabo_search import (
         find_datasets,              # search + inspect + score + compare
         prepare_samples,            # per-sample sentences: get ONE prompt
         load_samples,               #   ... load cached, or
@@ -16,14 +16,14 @@ One import surface.  The main jobs:
     )
 """
 
-from mtbls_agent.searcher import search_studies, profile_to_search_args
-from mtbls_agent.inspector import inspect_studies, load_study_from_isa, download_maf_files
-from mtbls_agent.scorer import score_studies, screen_candidates, filter_by_maf
-from mtbls_agent.maf import analyze_maf_files, render_maf_summary, MafAnalysis
-from mtbls_agent.summarizer import build_comparison_table
-from mtbls_agent.workflow import find_datasets
+from metabo_search.searcher import search_studies, profile_to_search_args
+from metabo_search.inspector import inspect_studies, load_study_from_isa, download_maf_files
+from metabo_search.scorer import score_studies, screen_candidates, filter_by_maf
+from metabo_search.maf import analyze_maf_files, render_maf_summary, MafAnalysis
+from metabo_search.summarizer import build_comparison_table
+from metabo_search.workflow import find_datasets
 
-from mtbls_agent.sample_gen import (
+from metabo_search.sample_gen import (
     prepare_samples,
     load_samples,
     submit_samples,
@@ -36,23 +36,23 @@ from mtbls_agent.sample_gen import (
     SampleSentencesStore,
 )
 
-from mtbls_agent.downloader import (
+from metabo_search.downloader import (
     list_data_files,
     download_data_files,
     start_download,
     format_summary,
     DownloadConfig,
 )
-from mtbls_agent.manifest import SampleManifest
+from metabo_search.manifest import SampleManifest
 
-from mtbls_agent.models import (
+from metabo_search.models import (
     RequirementProfile,
     StudyRequirements,
     StudyCandidate,
 )
 
 # ── core: typed pipeline (docs/design-pipeline.md) ──
-from mtbls_agent.core import (  # noqa: E402  (isort: keep above __all__)
+from metabo_search.core import (  # noqa: E402  (isort: keep above __all__)
     Pipeline, PipelineResult, CacheOpts, PrintOpts,
     Screen, Maf, Custom,
     SearchResult, FilterResult, InspectResult, ScoreResult,

@@ -14,13 +14,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from mtbls_agent.inspector import (  # noqa: E402
+from metabo_search.inspector import (  # noqa: E402
     RE_MAF,
     _parse_maf_files,
     load_study_from_isa,
 )
-from mtbls_agent.models import StudyCandidate  # noqa: E402
-from mtbls_agent.scorer import _score_one, filter_by_maf  # noqa: E402
+from metabo_search.models import StudyCandidate  # noqa: E402
+from metabo_search.scorer import _score_one, filter_by_maf  # noqa: E402
 
 # ── Real-world MAF filenames (observed on MetaboLights) ─────────────
 
@@ -167,7 +167,7 @@ def test_filter_by_maf_preserves_input_order():
 
 
 def test_score_hard_maf_requirement():
-    from mtbls_agent.models import RequirementProfile, StudyRequirements
+    from metabo_search.models import RequirementProfile, StudyRequirements
 
     with_maf = StudyCandidate(study_id="MTBLS1375")
     with_maf.maf_files_parsed = True
@@ -188,7 +188,7 @@ def test_score_hard_maf_requirement():
 
 
 def test_score_hard_no_maf_requirement():
-    from mtbls_agent.models import RequirementProfile, StudyRequirements
+    from metabo_search.models import RequirementProfile, StudyRequirements
 
     with_maf = StudyCandidate(study_id="MTBLS1375")
     with_maf.maf_files_parsed = True
@@ -201,7 +201,7 @@ def test_score_hard_no_maf_requirement():
 
 
 def test_score_nice_maf_rewards_metabolite_rich_studies():
-    from mtbls_agent.models import RequirementProfile, StudyRequirements
+    from metabo_search.models import RequirementProfile, StudyRequirements
 
     rich = StudyCandidate(study_id="R")
     rich.maf_files_parsed = True
@@ -247,7 +247,7 @@ IDONLY_MAF_TSV = (
 )
 
 
-from mtbls_agent.maf import (  # noqa: E402
+from metabo_search.maf import (  # noqa: E402
     analyze_maf_files,
     render_maf_summary,
 )

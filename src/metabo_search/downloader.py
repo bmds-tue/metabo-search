@@ -17,7 +17,7 @@ import threading
 
 import httpx
 
-from mtbls_agent.models import StudyCandidate
+from metabo_search.models import StudyCandidate
 
 logger = logging.getLogger(__name__)
 

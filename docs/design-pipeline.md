@@ -1,6 +1,6 @@
 # metabo-search pipeline design — typed steps over candidate data
 
-Status: design (pre-implementation). Applies to `src/mtbls_agent/core/`.
+Status: design (pre-implementation). Applies to `src/metabo_search/core/`.
 
 ## The idea in one sentence
 
@@ -310,11 +310,11 @@ back-compat until SKILL.md moves to the pipe syntax.
 
 The new API is **adapter + result/cache layers only**. Zero rewrites of parsing,
 scoring, sample-gen, download, manifest logic. All existing functions stay
-available (they *are* the step bodies — the `import mtbls_agent` surface keeps
+available (they *are* the step bodies — the `import metabo_search` surface keeps
 every current name).
 
 ```
-src/mtbls_agent/
+src/metabo_search/
 ├── core/                 <-- NEW (~600-800 lines total)
 │   ├── __init__.py       pipeline(), step factories, recipes
 │   ├── steps.py          Step type, kind registry, configs, validation

@@ -1,16 +1,16 @@
 ---
 name: metabo-search
-description: Find and enrich MetaboLights metabolomics datasets. Search by experimental needs, score them, and generate per-sample biological sentences for embedding — disease state is the top signal. Use when a researcher needs datasets matching organism/tissue/technique/disease/sample-count/format.
+description: Find and score MetaboLights metabolomics datasets against experimental requirements (organism, tissue, technique, disease, sample count, MAF availability) via a typed, cacheable pipeline — deterministic discovery, warm-cache iteration, per-sample biological sentences, selective downloads, manifest export. Use when a researcher needs datasets matching their experimental setup.
 compatibility: Python 3.11+; uv optional (falls back to python3 -m venv)
 metadata:
   install: scripts/install.sh
-  package: mtbls_agent
+  package: metabo_search
 ---
 
 # metabo-search
 
 Find datasets, pick the fit, then generate per-sample biological sentences.
-**One import surface**: everything lives at `from mtbls_agent import ...`.
+**One import surface**: everything lives at `from metabo_search import ...`.
 
 ## Setup (run once, from the skill root)
 
@@ -22,11 +22,11 @@ Find datasets, pick the fit, then generate per-sample biological sentences.
 Use the venv python wrapper (portable, no hardcoded paths):
 
 ```bash
-scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
+scripts/python -c "import metabo_search; print(metabo_search.__file__)"
 ```
 
 > Never use the system/homebrew python (broken pyexpat on macOS). If
-> `import mtbls_agent` resolves elsewhere, re-run `./scripts/install.sh`
+> `import metabo_search` resolves elsewhere, re-run `./scripts/install.sh`
 > which re-points `.venv-local` at this repo. Uninstall: `scripts/uninstall.sh`.
 
 Full API reference: see [references/api.md](references/api.md).
@@ -40,7 +40,7 @@ cached wrapper over exactly those bodies.
 ## The One Flow (copy-paste)
 
 ```python
-from mtbls_agent import (pipeline, search, filter, screen, inspect, score,
+from metabo_search import (pipeline, search, filter, screen, inspect, score,
     describe, RequirementProfile, StudyRequirements,
     quick_probe, quick_discovery, full_report)
 
@@ -100,7 +100,7 @@ r2 = pipeline(score(profile)).run(input=r["inspect"])
 ### Kick in the annexes when you want them (nothing is implicit)
 
 ```python
-from mtbls_agent import maf, custom, download, export, register_predicate
+from metabo_search import maf, custom, download, export, register_predicate
 
 p4 = (p
       .extend(filter(maf(min_metabolites=200)))        # drop MAF-poor studies
@@ -232,7 +232,7 @@ to scan everything).
   `if __name__ == "__main__":` (spawn on macOS re-imports the entry script
   into each parse worker). In a throwaway script, set
   `MTBLS_PARSE_PROCESSES=0` to force thread parsing instead.
-- `import mtbls_agent` resolves to a weird path → this repo shares a workspace
+- `import metabo_search` resolves to a weird path → this repo shares a workspace
   with a parallel-test copy. Use the **private venv** so you always import THIS
   src: `uv venv .venv-local && uv pip install --python .venv-local/bin/python -e .`
   then run with `.venv-local/bin/python`. Never rely on the shared `.venv`'s

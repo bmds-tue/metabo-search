@@ -3,9 +3,9 @@
 import dataclasses
 import json
 
-from mtbls_agent.core.results import InspectResult
-from mtbls_agent.downloader import DataFileRef, list_data_files
-from mtbls_agent.models import StudyCandidate
+from metabo_search.core.results import InspectResult
+from metabo_search.downloader import DataFileRef, list_data_files
+from metabo_search.models import StudyCandidate
 
 CANNED = [
     DataFileRef(relative_path="FILES/RAW/a.raw", size_bytes=1000,
@@ -23,7 +23,7 @@ def test_listing_cache_skips_repeat_walks(tmp_path, monkeypatch):
         calls["n"] += 1
         files.extend(CANNED)
 
-    monkeypatch.setattr("mtbls_agent.downloader._walk_dir", patched_walk)
+    monkeypatch.setattr("metabo_search.downloader._walk_dir", patched_walk)
     c = StudyCandidate(study_id="MTBLSx")
 
     d1 = list_data_files(c, cache_dir=str(tmp_path))
@@ -44,7 +44,7 @@ def test_listing_cache_corrupt_rewalks(tmp_path, monkeypatch):
         calls["n"] += 1
         files.extend(CANNED)
 
-    monkeypatch.setattr("mtbls_agent.downloader._walk_dir", patched_walk)
+    monkeypatch.setattr("metabo_search.downloader._walk_dir", patched_walk)
     c = StudyCandidate(study_id="MTBLSx")
     cache = tmp_path / "c" / "file_listings"
     cache.mkdir(parents=True)
@@ -59,7 +59,7 @@ def test_listing_cache_corrupt_rewalks(tmp_path, monkeypatch):
 def test_core_download_uses_listing_cache(tmp_path, monkeypatch):
     """The download step wires its cache root into the walk cache: two runs of
     the same download() pipeline → one HTTP listing."""
-    import mtbls_agent.downloader as dl
+    import metabo_search.downloader as dl
     calls = {"n": 0}
 
     def patched_walk(url, rel_prefix, files, depth):
@@ -72,7 +72,7 @@ def test_core_download_uses_listing_cache(tmp_path, monkeypatch):
     monkeypatch.setattr(dl, "_download_files",
                         lambda files, base, workers, sid: dl.DownloadResult(
                             downloaded=files))
-    from mtbls_agent.core.steps import download, pipeline
+    from metabo_search.core.steps import download, pipeline
     c = StudyCandidate(study_id="MTBLSx")
     c.assays = []
     p = pipeline(download(categories=["raw"], dest_dir=str(tmp_path / "d")),

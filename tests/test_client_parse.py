@@ -5,11 +5,11 @@ while the field type is ``list[OntologyTerm]`` — fresh vs cached serialization
 diverged, so warm-pipeline cache keys shifted and steps re-ran.
 """
 
-from mtbls_agent.client import parse_hit
-from mtbls_agent.core.cache import CacheStore
-from mtbls_agent.core.results import SearchResult
-from mtbls_agent.models import OntologyTerm, StudyCandidate
-from mtbls_agent.searcher import search_studies
+from metabo_search.client import parse_hit
+from metabo_search.core.cache import CacheStore
+from metabo_search.core.results import SearchResult
+from metabo_search.models import OntologyTerm, StudyCandidate
+from metabo_search.searcher import search_studies
 
 HIT = {
     "studyId": "MTBLSx",

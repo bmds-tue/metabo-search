@@ -1,13 +1,13 @@
-# mtbls_agent — API reference
+# metabo_search — API reference
 
-Everything is importable from one surface: `from mtbls_agent import ...`
+Everything is importable from one surface: `from metabo_search import ...`
 
 ## Install / env
 
 ```bash
 ./scripts/install.sh          # sets up .venv-local, pip-installs the package,
                               # links the skill into pi/claude/opencode skill dirs
-scripts/python -c "import mtbls_agent"   # venv python wrapper (portable)
+scripts/python -c "import metabo_search"   # venv python wrapper (portable)
 ```
 
 Never use the system/homebrew python (broken pyexpat on some setups); always
@@ -66,7 +66,7 @@ Deep inspection surfaces them as `candidate.metabolite_count` and
 fetches just the `m_*.tsv` files.
 
 ```python
-from mtbls_agent import filter_by_maf, download_maf_files, \
+from metabo_search import filter_by_maf, download_maf_files, \
     analyze_maf_files, render_maf_summary
 kept = filter_by_maf(deep_candidates, require_maf=True, min_metabolites=100)
 paths = download_maf_files("MTBLS1375", "./mafs")   # -> [./mafs/MTBLS1375/m_*.tsv]
@@ -86,7 +86,7 @@ m/z-only classification is done by the library.
 ## Per-sample sentences (one LLM round-trip per study)
 
 ```python
-from mtbls_agent import prepare_samples, submit_samples, load_samples, \
+from metabo_search import prepare_samples, submit_samples, load_samples, \
     revise_samples, SampleSentencesStore
 
 store = SampleSentencesStore("samples_cache.json")
@@ -121,7 +121,7 @@ Challenge codes like OGTT/OLTT/PAT/SLD often hide in factor values, not filename
 ## Download / formats
 
 ```python
-from mtbls_agent import list_data_files, download_data_files, start_download, \
+from metabo_search import list_data_files, download_data_files, start_download, \
     DownloadConfig, format_summary
 
 files = list_data_files(deep_study)               # recursive FILES/ walk + sizes
@@ -142,7 +142,7 @@ task = start_download(deep_study, cfg); result = task.result()   # background
 ## Manifest / export
 
 ```python
-from mtbls_agent import SampleManifest
+from metabo_search import SampleManifest
 m = SampleManifest.build(deep, sentences_map={sid: descs},
                          data_files_map={sid: list_data_files(s)})
 m.export_csv("samples.csv")
@@ -162,7 +162,7 @@ Offline; real-world filenames from MTBLS719/1375/78/640/1333.
 
 ## Troubleshooting
 
-- `import mtbls_agent` resolves elsewhere → run `scripts/install.sh`; it points
+- `import metabo_search` resolves elsewhere → run `scripts/install.sh`; it points
   `.venv-local` at this repo.
 - Transient download failures → library retries with backoff+jitter; a failing
   study stays shallow — don't loop.

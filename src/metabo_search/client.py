@@ -78,7 +78,7 @@ def search_studies_raw(
 
 def parse_hit(hit: dict[str, Any]) -> dict[str, Any]:
     """Flatten a raw API hit into a cleaner dict for constructing a StudyCandidate."""
-    from mtbls_agent.models import OntologyTerm, PublicationInfo
+    from metabo_search.models import OntologyTerm, PublicationInfo
 
     def _to_ontology(items: list) -> list[OntologyTerm]:
         return [
@@ -101,7 +101,7 @@ def parse_hit(hit: dict[str, Any]) -> dict[str, Any]:
 
     publications_raw = hit.get("publications", []) or []
 
-    from mtbls_agent.models import OntologyTerm, PublicationInfo
+    from metabo_search.models import OntologyTerm, PublicationInfo
 
     def _to_ontology(items: list) -> list[OntologyTerm]:
         return [
