@@ -1,3 +1,5 @@
+# this project is a work in progress - no stability guarantees. 
+please create an issue if you have one
 # metabo-search — guide
 
 Open **[`index.html`](index.html)** in any browser for the full, styled guide
