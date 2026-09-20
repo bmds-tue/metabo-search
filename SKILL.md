@@ -72,6 +72,8 @@ for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
 | `profile_to_search_args(profile)` | `dict` | maps hard reqs to search API filters (server-side) |
 | `filter_by_maf(deep, require_maf=..., min_metabolites=...)` | `[StudyCandidate]` | post-inspection: keep/exclude studies shipping MAF files |
 | `download_maf_files(study_id, dest)` | `[Path]` | download just the `m_*.tsv` metabolite-assignment files |
+| `analyze_maf_files(id, isa_dir\|maf_paths)` | `[MafAnalysis]` | **no-LLM MAF analysis**: #metabolites, #samples, names vs identifiers vs m/z-only |
+| `render_maf_summary(analyses)` | `str` | paste-ready text block of the analyses |
 | `prepare_samples(deep_study, store)` | `SampleTask` | bundles contexts + the ONE profile prompt |
 | `load_samples(task)` | `[SampleDescription] \| None` | cached sentences, else None |
 | `submit_samples(task, llm_profile_text)` | `[SampleDescription]` | applies your LLM recipe to all samples, caches |
@@ -103,7 +105,11 @@ Each study ships ISA-Tab metadata + data files on
 present and how many metabolites it lists. Use `filter_by_maf(candidates,
 min_metabolites=N)` to require (or exclude) metabolite assignments after deep
 inspection, or `download_maf_files(id, dir)` to fetch the MAFs themselves.
-Metadata never exposes MS level — confirm from a downloaded file or the paper.
+When a user asks “how many metabolites / samples, and does it have real names?”,
+call `analyze_maf_files(id, isa_dir=...)` — it returns counts + a
+`named | identified | mz_only` verdict with zero LLM calls; paste
+`render_maf_summary(...)` into your answer. Metadata never exposes MS level —
+confirm from a downloaded file or the paper.
 
 ---
 

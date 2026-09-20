@@ -4,6 +4,10 @@
 
 ## Functions
 
+### `analyze_maf_files(study_id: 'str', isa_dir: 'str | Path | None' = None, maf_paths: 'list[str | Path] | None' = None, max_examples: 'int' = 5) -> 'list[MafAnalysis]'`
+
+Analyze the MAF (`m_*.tsv`) files of a study — locally, no LLM. Provide either downloaded MAF paths (`maf_paths`, e.g. from :func:`download_maf_files`) or an ISA directory (`isa_dir`) holding the files. `{isa_dir}/{study_id}/` layout (the downloader's layout) is also searched, so `analyze_maf_files(id, download_root)` works directly. Parameters ---------- study_id : str MetaboLights accession…
+
 ### `apply_recipe(context: 'SampleContext', profile: 'StudyProfile') -> 'SampleDescription'`
 
 Deterministically fill the recipe template for one sample.
@@ -68,6 +72,10 @@ Bundle everything for one study: contexts + the single LLM prompt. `revision` fe
 
 Deterministically map a profile's HARD requirements to search kwargs, so the search API pre-filters (server-side) instead of fetching everything. Only criteria the API/filter can express are mapped: organism, technique, sample_type, min_samples. Everything else is enforced later (shallow or deep screening).
 
+### `render_maf_summary(analyses: 'list[MafAnalysis]') -> 'str'`
+
+Collapse MAF analyses into one paste-ready text block. `""` when there are no analyses; otherwise one `summary` line per file.
+
 ### `revise_samples(task: 'SampleTask', profile_json: 'str') -> 'SampleTask'`
 
 Author a revised wording under the next revision and cache it. Returns the *new* task (already submitted). Read results with `load_samples(new_task)`. Old wording remains under the previous revision, so the user can compare without clobbering.
@@ -105,6 +113,23 @@ DownloadConfig(file_types: 'list[str] | None' = None, sample_names: 'list[str] |
 - `max_files`: `int | None`
 - `max_size_gb`: `float | None`
 - `parallel_downloads`: `int`
+
+### `MafAnalysis(study_id: 'str' = '', file_name: 'str' = '', file_path: 'str' = '', metabolite_count: 'int' = 0, sample_count: 'int' = 0, sample_columns: 'list[str]' = <factory>, named_count: 'int' = 0, identified_count: 'int' = 0, mz_count: 'int' = 0, annotation_level: 'str' = 'empty', examples: 'list[str]' = <factory>, parse_error: 'str' = '') -> None`
+
+What one MAF file contains, in answer-ready numbers. The :attr:`summary` property renders everything into one line the agent can paste straight into its answer / reasoning.
+
+- `study_id`: `str`
+- `file_name`: `str`
+- `file_path`: `str`
+- `metabolite_count`: `int`
+- `sample_count`: `int`
+- `sample_columns`: `list[str]`
+- `named_count`: `int`
+- `identified_count`: `int`
+- `mz_count`: `int`
+- `annotation_level`: `str`
+- `examples`: `list[str]`
+- `parse_error`: `str`
 
 ### `RequirementProfile(hard: 'StudyRequirements' = <factory>, nice_to_have: 'StudyRequirements' = <factory>, free_text: 'str' = '') -> None`
 

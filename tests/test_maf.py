@@ -217,3 +217,121 @@ def test_score_nice_maf_rewards_metabolite_rich_studies():
     s_poor = _score_one(poor, prof)
     assert s_rich.overall > s_poor.overall
     assert s_rich.per_criterion["min_metabolites (nice)"] > 0
+
+
+# ── Analysis (analyze_maf_files) ───────────────────────────────────
+
+
+# A realistic NAMED MAF: metadata columns mostly empty, name in
+# metabolite_identification, sample columns like MTBLS1375.
+NAMED_MAF_TSV = (
+    "database_identifier\tmetabolite_identification\tmass_to_charge\t"
+    "retention_time\t5_NIST_A-1\t11_PLASMA_H002_A-1\n"
+    "\tCE 16:1\t640.6027\t11.44\t110460\t99603\n"
+    "\tCE 16:2\t638.5871\t11.25\t3543\t4057\n"
+    "\tCer d18:1/16:0\t520.5088\t8.05\t46459\t39581\n"
+)
+
+# A m/z-ONLY MAF: no names, no identifiers — just scores plus samples.
+MZONLY_MAF_TSV = (
+    "mass_to_charge\tretention_time\tS1\tS2\tS3\n"
+    "640.6027\t11.44\t110460\t99603\t8000\n"
+    "638.5871\t11.25\t3543\t4057\t10000\n"
+)
+
+# An IDENTIFIER-ONLY MAF: uri/database ids populated, name column empty.
+IDONLY_MAF_TSV = (
+    "database_identifier\tmetabolite_identification\tmass_to_charge\tS1\n"
+    "SLM:000500345\t\t640.6027\t110460\n"
+    "SLM:000500344\t\t638.5871\t3543\n"
+)
+
+
+from mtbls_agent.maf import (  # noqa: E402
+    analyze_maf_files,
+    render_maf_summary,
+)
+
+
+def _write(tmp_path, name, content) -> Path:
+    d = tmp_path / "isa"
+    d.mkdir(exist_ok=True)
+    p = d / name
+    p.write_text(content)
+    return d
+
+
+def test_analyze_named_maf_counts_and_detects_names(tmp_path):
+    d = _write(tmp_path, REAL_MAF_NAMES[0], NAMED_MAF_TSV)
+    res = analyze_maf_files("MTBLS1375", isa_dir=d)
+    assert len(res) == 1
+    a = res[0]
+    assert a.metabolite_count == 3
+    assert a.sample_count == 2
+    assert a.sample_columns == ["5_NIST_A-1", "11_PLASMA_H002_A-1"]
+    assert a.has_names is True
+    assert a.named_count == 3
+    assert a.annotation_level == "named"
+    assert a.mz_only is False
+    assert a.examples[:3] == ["CE 16:1", "CE 16:2", "Cer d18:1/16:0"]
+    assert "286" not in a.summary  # no stale counts
+
+
+def test_analyze_mz_only_maf(tmp_path):
+    d = _write(tmp_path, "m_MTBLS78_LC-MS_maf.tsv", MZONLY_MAF_TSV)
+    res = analyze_maf_files("MTBLS78", isa_dir=d)
+    assert len(res) == 1
+    a = res[0]
+    assert a.metabolite_count == 2
+    assert a.sample_count == 3
+    assert a.has_names is False
+    assert a.has_identifiers is False
+    assert a.annotation_level == "mz_only"
+    assert a.mz_only is True
+    assert a.mz_count == 2
+    assert "m/z only" in a.summary
+
+
+def test_analyze_identifier_only_maf(tmp_path):
+    d = _write(tmp_path, "m_MTBLS719_maf.tsv", IDONLY_MAF_TSV)
+    res = analyze_maf_files("MTBLS719", isa_dir=d)
+    a = res[0]
+    assert a.metabolite_count == 2
+    assert a.sample_count == 1
+    assert a.has_names is False
+    assert a.has_identifiers is True
+    assert a.identified_count == 2
+    assert a.annotation_level == "identified"
+    assert a.examples == ["SLM:000500345", "SLM:000500344"]
+
+
+def test_analyze_isfa_dir_subdirectory_layout(tmp_path):
+    """analyze_maf_files(id, root) finds files under root/<study_id>/, which
+    is exactly the download_maf_files output layout."""
+    sub = tmp_path / "maf_dl" / "MTBLS1375"
+    sub.mkdir(parents=True)
+    (sub / REAL_MAF_NAMES[0]).write_text(NAMED_MAF_TSV)
+    res = analyze_maf_files("MTBLS1375", isa_dir=tmp_path / "maf_dl")
+    assert len(res) == 1
+    assert res[0].file_name == REAL_MAF_NAMES[0]
+
+
+def test_analyze_explicit_paths_and_sorted_params(tmp_path):
+    d = _write(tmp_path, "m_MTBLS1375_maf.tsv", NAMED_MAF_TSV)
+    p = d / "m_MTBLS1375_maf.tsv"
+    res = analyze_maf_files("MTBLS1375", maf_paths=[str(p)], max_examples=2)
+    assert len(res) == 1
+    assert len(res[0].examples) == 2
+
+
+def test_analyze_no_maf_returns_empty(tmp_path):
+    d = tmp_path / "empty"
+    d.mkdir()
+    assert analyze_maf_files("MTBLS1", isa_dir=d) == []
+
+
+def test_render_maf_summary_multiline(tmp_path):
+    d = _write(tmp_path, "m_MTBLS1375_maf.tsv", NAMED_MAF_TSV)
+    res = analyze_maf_files("MTBLS1375", isa_dir=d)
+    s = render_maf_summary(res)
+    assert "MTBLS1375" in s and "3 metabolites" in s and "2 samples" in s

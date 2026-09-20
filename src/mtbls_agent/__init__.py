@@ -19,6 +19,7 @@ One import surface.  The main jobs:
 from mtbls_agent.searcher import search_studies, profile_to_search_args
 from mtbls_agent.inspector import inspect_studies, load_study_from_isa, download_maf_files
 from mtbls_agent.scorer import score_studies, screen_candidates, filter_by_maf
+from mtbls_agent.maf import analyze_maf_files, render_maf_summary, MafAnalysis
 from mtbls_agent.summarizer import build_comparison_table
 from mtbls_agent.workflow import find_datasets
 
@@ -62,6 +63,9 @@ __all__ = [
     "build_comparison_table",
     "find_datasets",
     "download_maf_files",
+    "analyze_maf_files",
+    "render_maf_summary",
+    "MafAnalysis",
     # Per-sample sentences (one-round-trip)
     "prepare_samples",
     "load_samples",

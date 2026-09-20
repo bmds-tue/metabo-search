@@ -179,6 +179,7 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
   <table>
     <thead><tr><th>Name</th><th>Purpose</th></tr></thead>
     <tbody id="api-rows">
+      <tr><td><code>analyze_maf_files</code></td><td>Analyze the MAF (`m_*.tsv`) files of a study — locally, no LLM. Provide either downloaded MAF…</td></tr>
       <tr><td><code>apply_recipe</code></td><td>Deterministically fill the recipe template for one sample.</td></tr>
       <tr><td><code>build_comparison_table</code></td><td>Build a structured comparison table from scored candidates. The table has one row per candidate…</td></tr>
       <tr><td><code>build_study_profile_prompt</code></td><td>Build the ONE prompt the agent&#x27;s LLM uses to author the study recipe.</td></tr>
@@ -195,12 +196,14 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>parse_study_profile</code></td><td>Parse the LLM&#x27;s JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks.</td></tr>
       <tr><td><code>prepare_samples</code></td><td>Bundle everything for one study: contexts + the single LLM prompt. `revision` feeds the cache…</td></tr>
       <tr><td><code>profile_to_search_args</code></td><td>Deterministically map a profile&#x27;s HARD requirements to search kwargs, so the search API…</td></tr>
+      <tr><td><code>render_maf_summary</code></td><td>Collapse MAF analyses into one paste-ready text block. `&quot;&quot;` when there are no analyses;…</td></tr>
       <tr><td><code>revise_samples</code></td><td>Author a revised wording under the next revision and cache it. Returns the *new* task (already…</td></tr>
       <tr><td><code>score_studies</code></td><td>Score each candidate against the requirement profile. Returns scored candidates sorted…</td></tr>
       <tr><td><code>screen_candidates</code></td><td>Deterministic pre-screen on search-index data (no LLM, no download). Drops candidates that fail…</td></tr>
       <tr><td><code>search_studies</code></td><td>Broad search returning shallow `StudyCandidate` objects. This is **Phase 1** — get many…</td></tr>
       <tr><td><code>submit_samples</code></td><td>Apply the LLM-authored profile to every sample; cache and return. `profile_json` is the raw…</td></tr>
       <tr><td><code>DownloadConfig</code></td><td>DownloadConfig(file_types: &#x27;list[str] | None&#x27; = None, sample_names: &#x27;list[str] | None&#x27; = None,…</td></tr>
+      <tr><td><code>MafAnalysis</code></td><td>What one MAF file contains, in answer-ready numbers. The :attr:`summary` property renders…</td></tr>
       <tr><td><code>RequirementProfile</code></td><td>What a researcher is looking for. - `hard`: non-negotiable filters (pass/fail) -…</td></tr>
       <tr><td><code>SampleManifest</code></td><td>SampleManifest(studies: &#x27;dict[str, StudyEntry]&#x27; = , samples: &#x27;dict[str, list[SampleEntry]]&#x27; = ,…</td></tr>
       <tr><td><code>SampleSentencesStore</code></td><td>File-backed cache of generated sample descriptions, keyed by study.</td></tr>

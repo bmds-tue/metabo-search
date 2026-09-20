@@ -221,7 +221,7 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (31 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (38 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 
@@ -239,8 +239,18 @@ single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
   `_score_one`, enforced after deep inspection like ionization/formats.
 - **Download**: `download_maf_files(study_id, dest)` fetches only the
   `m_*.tsv` files; ``{dest}/{study_id}/`` layout, same retry logic.
-- Tests: tests/test_maf.py (13: real names, regex, parsing count, filter,
-  scoring).  Run: `.venv-local/bin/python -m pytest tests/ -q`.
+- **Analysis (LLM-free)**: `maf.py` — `analyze_maf_files(id, isa_dir|maf_paths)`
+  → `MafAnalysis` list: `metabolite_count` (fullest populated column),
+  `sample_count` + `sample_columns` (non-metadata cols), `named_count` /
+  `identified_count` / `mz_count`, `annotation_level`
+  (`'named'|'identified'|'mz_only'|'empty'`, name > identifier > m/z precedence),
+  `examples`.  `render_maf_summary()` → paste-ready block.  Column
+  classification is name-pattern based (`_is_metadata_col`, `_is_identifier_col`)
+  so real headers like `5_NIST_A-1` count as samples and `SwissLipid_identifier`
+  as metadata.  Zero LLM calls; agent just reads numbers.
+- Tests: tests/test_maf.py (20: real names, regex, parsing count, filter,
+  scoring, analysis named/mz-only/identifier-only, subdir layout, summary).
+  Run: `.venv-local/bin/python -m pytest tests/ -q`.
 
 ## Installable skill (portable packaging)
 - Standard: Agent Skills spec (agentskills.io) — `SKILL.md` + `frontmatter`

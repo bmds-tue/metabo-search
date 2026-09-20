@@ -33,6 +33,8 @@ Never use the system/homebrew python (broken pyexpat on some setups); always
 | `score_studies(deep, profile)` | `[ScoredCandidate]` | hard pass/fail + soft 0-1, sorted |
 | `screen_candidates(shallow, profile)` | `ScreeningResult` | deterministic shallow hard-pass + rank |
 | `filter_by_maf(cands, ...)` | `[StudyCandidate]` | post-inspection: require or exclude MAF files (optionally min metabolites) |
+| `analyze_maf_files(id, isa_dir\|maf_paths)` | `[MafAnalysis]` | **LLM-free MAF analysis**: metabolite count, sample count, names vs identifiers vs m/z-only |
+| `render_maf_summary(analyses)` | `str` | one paste-ready text block from analyses |
 | `profile_to_search_args(profile)` | `dict` | hard reqs → search API filters |
 | `build_comparison_table(scored, profile)` | `ComparisonReport` | table rows/cols |
 
@@ -64,10 +66,20 @@ Deep inspection surfaces them as `candidate.metabolite_count` and
 fetches just the `m_*.tsv` files.
 
 ```python
-from mtbls_agent import filter_by_maf, download_maf_files
+from mtbls_agent import filter_by_maf, download_maf_files, \
+    analyze_maf_files, render_maf_summary
 kept = filter_by_maf(deep_candidates, require_maf=True, min_metabolites=100)
 paths = download_maf_files("MTBLS1375", "./mafs")   # -> [./mafs/MTBLS1375/m_*.tsv]
+analyses = analyze_maf_files("MTBLS1375", isa_dir="./mafs")
+for a in analyses:
+    print(a.summary)      # e.g. "286 metabolites, 88 samples, named (286/286)"
+print(render_maf_summary(analyses))   # whole block, paste-ready
+# a.metabolite_count, a.sample_count, a.sample_columns, a.has_names,
+# a.has_identifiers, a.mz_only, a.annotation_level ('named'|'identified'|'mz_only')
 ```
+
+Analysis is 100% local + deterministic — no LLM needed to get numbers; names vs
+m/z-only classification is done by the library.
 
 ---
 
