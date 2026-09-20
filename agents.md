@@ -1,7 +1,7 @@
 # metabo-search — Session Restart Guide
 
 ## Project
-`/Users/frederikkaempchen/projects/metabo-search`
+`metabo-search` (this repository)
 
 **Goal:** AI-native search engine for MetaboLights datasets. A pi skill that helps researchers find datasets matching their experimental requirements using natural language, with smart scoring, parallel deep inspection, and comprehensive comparison summaries.
 
@@ -10,9 +10,8 @@
 ## Environment
 
 ```bash
-cd /Users/frederikkaempchen/projects/metabo-search
-./scripts/install.sh       # creates .venv-local, pip-installs -e ., links skills
-scripts/python -c "import metabo_search; print(metabo_search.__file__)"
+./scripts/install.sh       # from the repo root: creates .venv-local, pip-installs -e ., links skills
+scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
 ```
 
 - Private venv: `.venv-local` (isolates from the shared `.venv` / parallel-test copy)
@@ -243,11 +242,10 @@ End-to-end: search → screen → inspect → score → summarize.
 - **`find_datasets` cleaned** (removed `__import__` hack; clean no-profile path).
 - **SKILL.md** rewritten to: The One Flow (copy-paste) + an API table + short
   "what to decide" list. Gates A–I prose removed.
-- **Parallel-test note**: `~/projects/test-mtbls-meta-skill/metabolites-metadata-skill/`
-  is a SEPARATE codebase the user is testing in parallel with its own `.venv`.
-  Do NOT edit it. This directory `~/projects/metabo-search/` is ours;
-  `.venv` here resolves to this `src/`. If `import metabo_search` resolves elsewhere,
-  run `uv pip install -e .` in THIS directory.
+- **Parallel-test note**: the user keeps a separate codebase (with its own
+  `.venv`) for parallel testing. Do NOT edit it. In THIS repository, `.venv`
+  resolves to this `src/`. If `import mtbls_agent` resolves elsewhere, run
+  `uv pip install -e .` in THIS directory.
 
 ## Recent fixes (from parallel-agent bug report)
 - [#1 linking] manifest prefers Sample Name over Source Name (HuMet WCQA-* vs

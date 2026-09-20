@@ -1,7 +1,0 @@
-metabolights-utils>=1.4.35
-httpx>=0.28
-pydantic>=2.0
-
-[dev]
-pytest
-pytest-asyncio
