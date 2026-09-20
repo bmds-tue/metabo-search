@@ -70,6 +70,8 @@ for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
 | `find_datasets(query, profile, ...)` | `ComparisonReport` | **deterministic** discovery: API-filter by hard reqs → shallow screen → deep-inspect survivors → score → rank. No LLM needed. |
 | `screen_candidates(shallow, profile)` | `ScreeningResult` | deterministic hard-pass on search-index data + shallow rank (drop failures before the slow deep-inspect) |
 | `profile_to_search_args(profile)` | `dict` | maps hard reqs to search API filters (server-side) |
+| `filter_by_maf(deep, require_maf=..., min_metabolites=...)` | `[StudyCandidate]` | post-inspection: keep/exclude studies shipping MAF files |
+| `download_maf_files(study_id, dest)` | `[Path]` | download just the `m_*.tsv` metabolite-assignment files |
 | `prepare_samples(deep_study, store)` | `SampleTask` | bundles contexts + the ONE profile prompt |
 | `load_samples(task)` | `[SampleDescription] \| None` | cached sentences, else None |
 | `submit_samples(task, llm_profile_text)` | `[SampleDescription]` | applies your LLM recipe to all samples, caches |
@@ -81,6 +83,27 @@ for sc in report.candidates[:8]:              # deep-inspected ScoredCandidates
 | `load_study_from_isa(id, dir)` | `StudyCandidate` | offline: rebuild from local ISA files |
 
 You construct: `RequirementProfile`, `StudyRequirements`, `DownloadConfig`.
+
+---
+
+## MetaboLights files vocabulary (read once, saves probing)
+
+Each study ships ISA-Tab metadata + data files on
+`https://ftp.ebi.ac.uk/pub/databases/metabolights/studies/public/{MTBLS}/`:
+
+| File | What it is |
+|------|-----------|
+| `i_Investigation.txt` | study title/abstract, organisms, publications, protocols |
+| `s_*.txt` | sample file — one row per sample (names, characteristics, factors) |
+| `a_*.txt` | assay file — sample → data-file links, instrument, ion mode |
+| `m_*.tsv` | **MAF** (metabolite assignment) — one row per identified metabolite: name, formula, m/z, RT, species, database, per-sample abundance |
+| `FILES/` | the actual data (raw/derived spectra) — listed recursively by `list_data_files` |
+
+`candidate.metabolite_count` / `candidate.maf_files_parsed` tell you a MAF was
+present and how many metabolites it lists. Use `filter_by_maf(candidates,
+min_metabolites=N)` to require (or exclude) metabolite assignments after deep
+inspection, or `download_maf_files(id, dir)` to fetch the MAFs themselves.
+Metadata never exposes MS level — confirm from a downloaded file or the paper.
 
 ---
 

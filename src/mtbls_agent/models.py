@@ -25,6 +25,11 @@ class StudyRequirements:
     min_samples: int | None = None
     has_raw_data: bool | None = None
     has_derived_data: bool | None = None
+    has_maf: bool | None = None
+    """True = study must ship a MAF (metabolite assignment file, m_*.tsv).
+    False = study must NOT ship one.  Only known after deep inspection."""
+    min_metabolites: int | None = None
+    """Minimum metabolite count from the MAF.  Deep-only criterion."""
 
     def __bool__(self) -> bool:
         """True if any field is set."""

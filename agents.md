@@ -9,34 +9,40 @@
 
 ```bash
 cd /Users/frederikkaempchen/projects/metabolites-metadata-skill
-source .venv/bin/activate
+./scripts/install.sh       # creates .venv-local, pip-installs -e ., links skills
+scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
 ```
 
-- Python: 3.14 (uv-managed virtualenv)
-- Package manager: `uv pip install ...`
+- Private venv: `.venv-local` (isolates from the shared `.venv` / parallel-test copy)
+- Package manager: `uv pip install --python .venv-local/bin/python ...`
 - Key dep: `metabolights-utils>=1.4.35`
 - MetaboLights API base: `https://www.ebi.ac.uk/metabolights/ws3`
 - Search endpoint: `POST /public/v2/public-study-index/search`
-- Package installed in dev mode: `uv pip install -e .`
+- Rebuild: `uv venv .venv-local && uv pip install --python .venv-local/bin/python -e .`
 
 ## Project Structure
 
 ```
 metabolites-metadata-skill/
-├── agents.md              # THIS FILE
+├── AGENTS.md              # THIS FILE
 ├── pyproject.toml
-├── SKILL.md                # Pi skill instructions
-├── src/
-│   └── mtbls_agent/
-│       ├── __init__.py     # Public API exports
-│       ├── models.py       # Dataclass models
-│       ├── client.py       # HTTP client for v2 search API
-│       ├── searcher.py     # Phase 1: broad search
-│       ├── inspector.py    # Phase 2: deep ISA inspection (parallel)
-│       ├── scorer.py       # Hard filters + soft scoring
-│       ├── summarizer.py   # Comparison table builder
-│       └── workflow.py     # End-to-end pipeline
-└── tests/
+├── SKILL.md               # Pi skill instructions
+├── docs/                  # browser guide (index.html, api.md)
+├── references/api.md      # deep API reference
+├── scripts/               # install.sh, uninstall.sh, python, gen_api_docs.py
+├── src/mtbls_agent/
+│   ├── __init__.py        # Public API exports
+│   ├── models.py          # Dataclass models
+│   ├── client.py          # HTTP client for v2 search API
+│   ├── searcher.py        # Phase 1: broad search
+│   ├── inspector.py       # Phase 2: deep ISA inspection (parallel)
+│   ├── scorer.py          # Hard filters + soft scoring + shallow screen
+│   ├── summarizer.py      # Comparison table builder
+│   ├── sample_gen.py      # Per-sample sentence recipe (1 LLM call/study)
+│   ├── downloader.py      # FILES/ listing + selective downloads
+│   ├── manifest.py        # SampleManifest export
+│   └── workflow.py        # End-to-end pipeline
+└── tests/                 # deterministic + real-world linking
 ```
 
 ## Current Status
@@ -51,12 +57,15 @@ metabolites-metadata-skill/
 - [x] inspector.py — Phase 2 parallel HTTP download + ISA-Tab parsing
 - [x] scorer.py — Hard requirement filters + nice-to-have scoring
 - [x] summarizer.py — Comparison table builder
+- [x] sample_gen.py — deterministic per-sample sentence recipes (1 LLM call/study)
+- [x] downloader.py — recursive FILES/ listing + selective downloads
+- [x] manifest.py — SampleManifest export
 - [x] workflow.py — find_datasets() convenience wrapper
-- [x] SKILL.md — Pi skill instructions
+- [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md
+- [x] tests/ — 18 passing (deterministic screen, real-world linking)
 
 ### 📝 Future
 - [ ] Advanced MS/compound filters
-- [ ] Unit tests
 - [ ] BioBERT sample embeddings (Phase 3)
 - [ ] Paper connector (Phase 3)
 
@@ -82,10 +91,16 @@ The bottleneck is now parsing the ISA files (CPU), not downloading them (I/O).
 ## API Quick Reference
 
 ### search_studies(query, ...) → list[StudyCandidate]
-Phase 1 broad search. Returns shallow candidates from search index.
+Phase 1 broad search. Returns shallow candidates from the search index.
 
 ### inspect_studies(candidates, max_workers=10) → list[StudyCandidate]
-Phase 2 parallel deep-dive. Downloads + parses ISA-Tab via FTP.
+Phase 2 parallel deep-dive. HTTP-downloads ISA-Tab and parses it (~0.5s/study).
+
+### load_study_from_isa(study_id, isa_dir) → StudyCandidate
+Offline: rebuild deep info from local ISA files, no network.
+
+### screen_candidates(candidates, profile) → ScreeningResult
+Deterministic shallow hard-pass on search-index data + soft rank.
 
 ### score_studies(candidates, profile) → list[ScoredCandidate]
 Hard filters + nice-to-have scoring. Returns sorted by score.
@@ -94,14 +109,14 @@ Hard filters + nice-to-have scoring. Returns sorted by score.
 Structured table + candidate details.
 
 ### find_datasets(query, profile, ...) → ComparisonReport
-End-to-end: search → inspect → score → summarize.
+End-to-end: search → screen → inspect → score → summarize.
 
 ## Key Design Decisions
 
 1. Free text focus — NL parsed by agent into RequirementProfile
 2. Iterative search — broad → judge → deep → score → iterate
 3. Hard + nice-to-have — pass/fail + scored 0-1
-4. No caching — fresh lookups
+4. Caching only for the sentence store (`SampleSentencesStore`); discovery stays fresh
 5. Mixed summary — structured table + AI narrative
 6. Parallel deep inspection — ThreadPoolExecutor
 7. No CLI — library API for LLMs to script against
@@ -109,9 +124,10 @@ End-to-end: search → inspect → score → summarize.
 
 ## Troubleshooting
 
-- **FTP timeout**: Some studies aren't on public FTP. Inspector falls back to shallow mode gracefully.
-- **REST fallback**: If FTP fails, inspector tries REST API. May fail for very old studies.
-- **Missing deps**: Run `uv pip install -e .` to reinstall.
+- **HTTP download failure**: Some studies aren't reachable on the public mirror.
+  The inspector retries with backoff+jitter, then REST-ZIP fallback, then keeps the
+  shallow version gracefully.
+- **Missing deps**: `uv pip install --python .venv-local/bin/python -e .` to reinstall.
 ### Sample Description Generation (Option D — recipe-based)
 - ONE LLM call per study: `build_study_profile_prompt()` → the LLM studies the
   metadata layout (columns, rows, file-name codes, factors, abstract) and
@@ -205,9 +221,26 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (18 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (31 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
+
+## MAF (metabolite assignment) support
+- **What**: `m_*.tsv` ISA files — one row per identified metabolite (name,
+  formula, m/z, RT, database, per-sample abundance).  Parsed in
+  `_parse_maf_files` into `StudyCandidate.metabolite_count` +
+  `maf_files_parsed`; surfaced via `load_study_from_isa` / `inspect_studies`.
+- **Gotcha fixed**: real MAFs (e.g. MTBLS1375) leave `database_identifier`
+  empty and put the name in `metabolite_identification` — the counter now uses
+  the fullest populated column, not the first one (regression-test `test_maf.py`).
+- **Filter**: `filter_by_maf(cands, require_maf=True, min_metabolites=N)` —
+  post-inspection (search index has no MAF).  `StudyRequirements` gained
+  `has_maf` (True/False) + `min_metabolites`; wired as hard/nice criteria in
+  `_score_one`, enforced after deep inspection like ionization/formats.
+- **Download**: `download_maf_files(study_id, dest)` fetches only the
+  `m_*.tsv` files; ``{dest}/{study_id}/`` layout, same retry logic.
+- Tests: tests/test_maf.py (13: real names, regex, parsing count, filter,
+  scoring).  Run: `.venv-local/bin/python -m pytest tests/ -q`.
 
 ## Installable skill (portable packaging)
 - Standard: Agent Skills spec (agentskills.io) — `SKILL.md` + `frontmatter`
@@ -225,7 +258,7 @@ single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 - SKILL.md now portable: setup points at `./scripts/install.sh` + `scripts/python`;
   deep API detail moved to `references/api.md`; never references a home dir.
 - Verified: install+uninstall in a sandbox HOME; SKILL.md reachable through all
-  harness symlinks (157 lines < 500).
+  harness symlinks (~168 lines < 500).
 
 ## Docs (browser-viewable guide)
 - `docs/index.html` — self-contained styled guide (no build/CDN, opens directly):

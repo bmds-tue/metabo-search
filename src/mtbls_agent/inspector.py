@@ -233,6 +233,54 @@ def _download_isa_files(study_id: str, dest: str) -> None:
         _download_via_rest(study_id, dest)
 
 
+def download_maf_files(
+    study_id: str,
+    dest: str,
+) -> list[Path]:
+    """Download ONLY the MAF (metabolite assignment) files for a study.
+
+    MAF files are the ``m_*.tsv`` ISA-Tab files: one row per identified
+    metabolite, with per-sample abundance columns.  They are the metadata
+    source for ``metabolite_count`` and ``maf_files_parsed``.
+
+    Parameters
+    ----------
+    study_id : str
+        MetaboLights accession (e.g. ``"MTBLS1375"``).
+    dest : str
+        Directory to save into; files land in ``{dest}/{study_id}/``.
+
+    Returns
+    -------
+    list[Path]
+        Local paths of the downloaded MAF files (empty if none found).
+    """
+    study_url = f"{HTTP_STUDY_BASE}/{study_id}/"
+    target_dir = Path(dest) / study_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    resp = _http_get_with_retry(study_url, timeout=30)
+    resp.raise_for_status()
+
+    maf_names = [
+        f for f in re.findall(r'href="([^"]+\.tsv)"', resp.text)
+        if RE_MAF.match(f) and not f.startswith(".")
+    ]
+    if not maf_names:
+        logger.info("No MAF files found for %s", study_id)
+        return []
+
+    downloaded: list[Path] = []
+    for name in maf_names:
+        r = _http_get_with_retry(study_url + name, timeout=60, retries=4)
+        r.raise_for_status()
+        dst = target_dir / name
+        dst.write_bytes(r.content)
+        downloaded.append(dst)
+        logger.debug("Downloaded MAF %s (%d bytes)", name, len(r.content))
+    return downloaded
+
+
 def _http_get_with_retry(
     url: str, timeout: int = 30, retries: int = 4
 ) -> httpx.Response:
@@ -513,15 +561,41 @@ def _parse_maf_files(enrichment: dict, study_id: str, study_path: Path) -> None:
                 continue
             table = isa_file.table
             if table.data and table.columns:
-                first_col = table.columns[0]
-                vals = table.data.get(first_col, []) or []
-                total_metabolites += sum(1 for v in vals if v and v.strip())
+                total_metabolites += _count_maf_rows(table)
         except Exception as e:
             logger.debug("Failed to parse MAF file %s: %s", mf.name, e)
 
     if total_metabolites > 0:
         enrichment["metabolite_count"] = total_metabolites
         enrichment["maf_files_parsed"] = True
+
+
+def _count_maf_rows(table) -> int:
+    """Count metabolite rows in a parsed MAF table.
+
+    Prefers an identifying column passed on the most populated one:
+    real MAF files often leave ``database_identifier`` empty and store the
+    name in ``metabolite_identification`` (or only fill ``mass_to_charge``).
+    So count rows in whichever column has the most non-empty values; if all
+    columns are empty, fall back to a simple all-columns-are-empty check.
+    """
+    cols = table.columns or []
+    if not cols:
+        return 0
+
+    def nonempty(col: str) -> int:
+        vals = table.data.get(col, []) or []
+        return sum(1 for v in vals if v and v.strip())
+
+    best_col = max(cols, key=nonempty)
+    n = nonempty(best_col)
+    if n > 0:
+        return n
+
+    # No populated column at all — fall back to row count (header-only files
+    # still represent one metabolite row per data line).
+    first = table.data.get(cols[0], []) or []
+    return sum(1 for _ in first)
 
 
 def _list_data_files(enrichment: dict, study_id: str, study_path: Path) -> None:

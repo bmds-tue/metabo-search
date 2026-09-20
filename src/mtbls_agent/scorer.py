@@ -74,6 +74,44 @@ def screen_candidates(
                            shallow_scores=scores)
 
 
+def filter_by_maf(
+    candidates: list[StudyCandidate],
+    *,
+    require_maf: bool = True,
+    min_metabolites: int | None = None,
+) -> list[StudyCandidate]:
+    """Post-inspection filter on MAF (metabolite assignment file) presence.
+
+    Runs on DEEP-inspected candidates (the search index does not expose MAF
+    files — they are only known after :func:`inspect_studies`).  Keeps
+    candidates in input order.
+
+    Parameters
+    ----------
+    candidates : list[StudyCandidate]
+        Deep-inspected candidates (``maf_files_parsed`` populated).
+    require_maf : bool
+        True: keep only studies that ship ≥1 MAF.  False: keep only studies
+        with NO MAF.
+    min_metabolites : int | None
+        If set, also require ``metabolite_count >= min_metabolites``.
+
+    Returns
+    -------
+    list[StudyCandidate]
+        Filtered subset, input order preserved.
+    """
+    kept: list[StudyCandidate] = []
+    for c in candidates:
+        has_maf = c.maf_files_parsed and (c.metabolite_count or 0) > 0
+        if has_maf != require_maf:
+            continue
+        if min_metabolites is not None and (c.metabolite_count or 0) < min_metabolites:
+            continue
+        kept.append(c)
+    return kept
+
+
 def _shallow_hard_fail(cand: StudyCandidate, hard) -> str | None:
     """Return a failure reason string if a shallow-checkable hard constraint
     fails, else None.  Ionization + data formats are deliberately skipped
@@ -219,6 +257,27 @@ def _score_one(
         per_criterion["data_format (hard)"] = 1.0 if passed else 0.0
         explanations["data_format (hard)"] = expl
 
+    if hard.has_maf is not None:
+        has_maf = candidate.maf_files_parsed and (candidate.metabolite_count or 0) > 0
+        if hard.has_maf is True and not has_maf:
+            hard_fails.append("MAF: needs a metabolite assignment file")
+        if hard.has_maf is False and has_maf:
+            hard_fails.append("MAF: must NOT contain a metabolite assignment file")
+        per_criterion["maf (hard)"] = 1.0 if has_maf == hard.has_maf else 0.0
+        explanations["maf (hard)"] = (
+            f"maf_files_parsed={candidate.maf_files_parsed}, "
+            f"metabolite_count={candidate.metabolite_count}"
+        )
+
+    if hard.min_metabolites is not None:
+        actual = candidate.metabolite_count or 0
+        if actual < hard.min_metabolites:
+            hard_fails.append(
+                f"min metabolites: needs ≥{hard.min_metabolites}, got {actual}"
+            )
+        per_criterion["min_metabolites (hard)"] = 1.0 if actual >= hard.min_metabolites else 0.0
+        explanations["min_metabolites (hard)"] = f"{actual} metabolites (need ≥{hard.min_metabolites})"
+
     score.hard_fail_reasons = hard_fails
     score.hard_passed = len(hard_fails) == 0
 
@@ -277,6 +336,26 @@ def _score_one(
         nice_scores.append(s)
         per_criterion["data_format (nice)"] = s
         explanations["data_format (nice)"] = expl
+
+    if nice.has_maf is True:
+        has_maf = candidate.maf_files_parsed and (candidate.metabolite_count or 0) > 0
+        s = 1.0 if has_maf else 0.0
+        nice_scores.append(s)
+        per_criterion["maf (nice)"] = s
+        explanations["maf (nice)"] = (
+            f"{candidate.metabolite_count} metabolites in MAF"
+            if has_maf else "no MAF / metabolite count"
+        )
+
+    if nice.min_metabolites is not None:
+        actual = candidate.metabolite_count or 0
+        if actual >= nice.min_metabolites:
+            s = min(1.0, actual / (nice.min_metabolites * 2))
+        else:
+            s = actual / nice.min_metabolites if nice.min_metabolites > 0 else 0.0
+        nice_scores.append(s)
+        per_criterion["min_metabolites (nice)"] = s
+        explanations["min_metabolites (nice)"] = f"{actual} metabolites (target ≥{nice.min_metabolites})"
 
     # Free-text relevance via description word overlap
     if profile.free_text:

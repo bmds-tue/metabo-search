@@ -24,6 +24,14 @@ Collect the full raw context for every sample in a study. Includes factors, char
 
 Download data files matching the given config filters.
 
+### `download_maf_files(study_id: 'str', dest: 'str') -> 'list[Path]'`
+
+Download ONLY the MAF (metabolite assignment) files for a study. MAF files are the `m_*.tsv` ISA-Tab files: one row per identified metabolite, with per-sample abundance columns. They are the metadata source for `metabolite_count` and `maf_files_parsed`. Parameters ---------- study_id : str MetaboLights accession (e.g. `"MTBLS1375"`). dest : str Directory to save into; files land in…
+
+### `filter_by_maf(candidates: 'list[StudyCandidate]', *, require_maf: 'bool' = True, min_metabolites: 'int | None' = None) -> 'list[StudyCandidate]'`
+
+Post-inspection filter on MAF (metabolite assignment file) presence. Runs on DEEP-inspected candidates (the search index does not expose MAF files — they are only known after :func:`inspect_studies`). Keeps candidates in input order. Parameters ---------- candidates : list[StudyCandidate] Deep-inspected candidates (`maf_files_parsed` populated). require_maf : bool True: keep only studies that…
+
 ### `find_datasets(query: 'str' = '', *, profile: 'RequirementProfile | None' = None, max_candidates: 'int' = 100, deep_inspect_top: 'int' = 10, max_workers: 'int' = 10, min_survivors: 'int | None' = None, organism: 'str | list[str] | None' = None, technique: 'str | list[str] | None' = None, sample_type: 'str | list[str] | None' = None, min_samples: 'int | None' = None) -> 'ComparisonReport'`
 
 End-to-end discovery, deterministic when `profile` is structured. Pipeline (no LLM involved): 1. Push hard requirements into the search API (server-side filter). 2. Screen the shallow results: drop hard-fails on search-index data, rank survivors by a deterministic soft score. 3. Deep-inspect only the top `deep_inspect_top` survivors — the slow network step runs on a far smaller, already-qualified…
@@ -169,7 +177,7 @@ All known information about a MetaboLights study. Phase 1 (shallow) fields come 
 - `sample_file_map`: `dict[str, dict[str, list[str]]]`
 - `_raw_api_result`: `dict[str, Any]`
 
-### `StudyRequirements(organisms: 'list[str] | None' = None, sample_types: 'list[str] | None' = None, techniques: 'list[str] | None' = None, ionization_modes: 'list[str] | None' = None, analysis_types: 'list[str] | None' = None, instrument_models: 'list[str] | None' = None, data_formats: 'list[str] | None' = None, min_samples: 'int | None' = None, has_raw_data: 'bool | None' = None, has_derived_data: 'bool | None' = None) -> None`
+### `StudyRequirements(organisms: 'list[str] | None' = None, sample_types: 'list[str] | None' = None, techniques: 'list[str] | None' = None, ionization_modes: 'list[str] | None' = None, analysis_types: 'list[str] | None' = None, instrument_models: 'list[str] | None' = None, data_formats: 'list[str] | None' = None, min_samples: 'int | None' = None, has_raw_data: 'bool | None' = None, has_derived_data: 'bool | None' = None, has_maf: 'bool | None' = None, min_metabolites: 'int | None' = None) -> None`
 
 A set of requirements (used for both hard and nice-to-have).
 
@@ -183,3 +191,5 @@ A set of requirements (used for both hard and nice-to-have).
 - `min_samples`: `int | None`
 - `has_raw_data`: `bool | None`
 - `has_derived_data`: `bool | None`
+- `has_maf`: `bool | None`
+- `min_metabolites`: `int | None`

@@ -32,6 +32,7 @@ Never use the system/homebrew python (broken pyexpat on some setups); always
 | `load_study_from_isa(id, dir)` | `StudyCandidate` | offline rebuild from local ISA files |
 | `score_studies(deep, profile)` | `[ScoredCandidate]` | hard pass/fail + soft 0-1, sorted |
 | `screen_candidates(shallow, profile)` | `ScreeningResult` | deterministic shallow hard-pass + rank |
+| `filter_by_maf(cands, ...)` | `[StudyCandidate]` | post-inspection: require or exclude MAF files (optionally min metabolites) |
 | `profile_to_search_args(profile)` | `dict` | hard reqs → search API filters |
 | `build_comparison_table(scored, profile)` | `ComparisonReport` | table rows/cols |
 
@@ -51,8 +52,22 @@ profile = RequirementProfile(
 Hard = non-negotiable (pass/fail). Nice-to-have = scored. `free_text` = soft
 relevance hint. All fields optional. Shallow-checkable hard criteria: organisms,
 sample_types, techniques, min_samples, has_raw_data, analysis_types.
-`ionization_modes` and `data_formats` are enforced **after** deep inspection
-(not in the shallow screen).
+`ionization_modes`, `data_formats`, **`has_maf`** and **`min_metabolites`** are
+enforced **after** deep inspection (not in the shallow screen) — MAF presence
+and metabolite counts only exist once `m_*.tsv` files are parsed.
+
+### MAF (metabolite assignment) files
+`m_*.tsv` ISA-Tab files carry one row per identified metabolite (name,
+formula, m/z, retention time, database, per-sample abundance columns).
+Deep inspection surfaces them as `candidate.metabolite_count` and
+`candidate.maf_files_parsed`; `filter_by_maf()` filters, `download_maf_files()`
+fetches just the `m_*.tsv` files.
+
+```python
+from mtbls_agent import filter_by_maf, download_maf_files
+kept = filter_by_maf(deep_candidates, require_maf=True, min_metabolites=100)
+paths = download_maf_files("MTBLS1375", "./mafs")   # -> [./mafs/MTBLS1375/m_*.tsv]
+```
 
 ---
 

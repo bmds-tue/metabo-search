@@ -184,6 +184,8 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>build_study_profile_prompt</code></td><td>Build the ONE prompt the agent&#x27;s LLM uses to author the study recipe.</td></tr>
       <tr><td><code>collect_sample_contexts</code></td><td>Collect the full raw context for every sample in a study. Includes factors, characteristics,…</td></tr>
       <tr><td><code>download_data_files</code></td><td>Download data files matching the given config filters.</td></tr>
+      <tr><td><code>download_maf_files</code></td><td>Download ONLY the MAF (metabolite assignment) files for a study. MAF files are the `m_*.tsv`…</td></tr>
+      <tr><td><code>filter_by_maf</code></td><td>Post-inspection filter on MAF (metabolite assignment file) presence. Runs on DEEP-inspected…</td></tr>
       <tr><td><code>find_datasets</code></td><td>End-to-end discovery, deterministic when `profile` is structured. Pipeline (no LLM involved):…</td></tr>
       <tr><td><code>format_summary</code></td><td>Count data files by format, from a recursive FILES/ listing. A quick probe for &quot;does this study…</td></tr>
       <tr><td><code>inspect_studies</code></td><td>Deep-inspect candidates in parallel. For each candidate: 1. Download ISA-Tab metadata files…</td></tr>
