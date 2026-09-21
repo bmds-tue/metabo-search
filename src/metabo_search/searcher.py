@@ -49,7 +49,12 @@ def search_studies(
     technique : str | list[str] | None
         Shortcut: filter by assay technique (e.g. ``"LC-MS"``).
     sample_type : str | list[str] | None
-        Shortcut: filter by sample type / organism part (e.g. ``"blood plasma"``).
+        Shortcut: filter by sample type / organism part.  Values are the
+        index's ``organismParts.term`` FACETS, case and wording matter:
+        ``"blood plasma"`` (≈202 human studies) and ``"blood serum"``
+        (≈128) vs residual ``"Serum"``/``"Plasma"`` (~19/5).  Use the
+        faceted variants for full recall; disease/condition belongs in the
+        profile/filters, not the facet.
     min_samples : int | None
         Shortcut: minimum sample count.
     min_raw_files : int | None

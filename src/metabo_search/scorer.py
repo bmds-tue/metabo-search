@@ -405,7 +405,17 @@ def _term_names(
 def _check_terms(
     candidate_terms: list[Any], required: list[str], mode: str = "any"
 ) -> tuple[bool, str]:
-    """Check if candidate has at least one (any) or all of the required terms."""
+    """Check if candidate has at least one (any) or all of the required terms.
+
+    Matching is SUBSTRING-based (case-insensitive ``req in name``): the term
+    must appear inside the candidate's value verbatim.  This is why the
+    profile must use each repository's canonical vocabulary — e.g. Workbench
+    organisms are Latin names (``Homo sapiens``, ``"Human"`` never matches),
+    and MetaboLights sample types are the ``organismParts.term`` facets
+    (``"blood plasma"``, not ``"Serum"``).  The screen therefore also CANNOT
+    decide serum-vs-plasma from the search index (the facet value is a single
+    string); that distinction is per-sample, deep-only.
+    """
     names = [t.lower() for t in _term_names(candidate_terms)]
     required_lower = [r.lower() for r in required]
 

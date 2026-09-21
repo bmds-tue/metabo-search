@@ -58,6 +58,19 @@ sample_types, techniques, min_samples, has_raw_data, analysis_types.
 enforced **after** deep inspection (not in the shallow screen) — MAF presence
 and metabolite counts only exist once `m_*.tsv` files are parsed.
 
+**Vocabulary per repository (read before filling the fields):** each repo's
+controlled values are matched literally (substring, case-insensitive), so the
+wrong vocabulary silently under-recalls. MetaboLights `sample_types` are the
+index's `organismParts.term` **facet values**: `"blood plasma"` (≈202 human
+studies), `"blood serum"` (≈128) — NOT `"Serum"`/`"Plasma"` (~19/5), which
+collapse the universe. Workbench `organisms` are the **Latin names**
+(`"Homo sapiens"`, not `"Human"`); its SOURCE vocabulary has only `"Blood"`
+for biofluids (serum/plasma must be verified per-sample from factors after
+`inspect`); its disease values are title-cased canonicals (`"Cancer"`, `"Lung
+cancer"`) and the matcher prefers an exact canonical over a fuzzy subtype.
+Workbench `metabolite_count` is the identified-metabolite list length (no
+sample columns); only MetaboLights MAF files give a true m×s matrix.
+
 ### MAF (metabolite assignment) files
 `m_*.tsv` ISA-Tab files carry one row per identified metabolite (name,
 formula, m/z, retention time, database, per-sample abundance columns).

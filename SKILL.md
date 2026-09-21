@@ -105,6 +105,36 @@ All steps accept `cache=CacheOpts(enabled, ttl)` and `print=PrintOpts(top, detai
 - `StudyRequirements.diseases` is the structured disease channel (Workbench
   slot + vocabulary matching); free text is matched against titles client-side.
 
+### Facets & vocabularies (read before searching)
+
+Each repository has its OWN controlled values; the shared screen/profile
+match them literally (substring, case-insensitive). Wrong vocabulary = silent
+under-recall — read these before writing a profile:
+
+- **MetaboLights `sample_types` are the index's `organismParts.term` facet
+  values — case and wording matter.** For biofluids the canonical facets are
+  `"blood plasma"` and `"blood serum"` (counts w/ query `Homo sapiens`: ≈202
+  and ≈128); `"Serum"` (19), `"serum"` (31), `"Plasma"` (5), `"plasma"` (7)
+  are residual variants. `sample_types=["Serum","Plasma"]` collapses the
+  human-plasma universe to ~5 studies. Recipe: facet on the canonical
+  variants (often with `free_text=""` or a one-word term) and push
+  disease/condition filtering client-side (title/abstract/descriptors), since
+  facets don't carry it.
+- **Workbench `organisms` are the Latin names** (`"Homo sapiens"`); the
+  metstat SPECIES slot maps latin→common itself (`Homo sapiens` → `Human`),
+  and the shallow screen matches substrings — so
+  `hard.organisms=["Human"]` silently drops every candidate. Use the Latin
+  name and one shared profile serves both repositories.
+- **Workbench SOURCE has no serum/plasma values** — the canonical biofluid
+  source is `"Blood"` (plus variants like `Seminal plasma`); serum vs plasma
+  must be verified per-sample from the factors payload after `inspect`
+  (e.g. `sample_source = "Blood (plasma)"`). Don't claim serum/plasma from
+  the search screen.
+- **Workbench disease terms are title-cased canonicals** (`Cancer`, `Lung
+  cancer`, `Alzheimers disease`) and the matcher prefers an exact value over
+  a fuzzy subtype — use the exact canonical (`"cancer"` resolves to
+  `"Cancer"`, never `"Lung cancer"`).
+
 ### Staged work (cheap first, deep later)
 
 ```python
@@ -267,7 +297,23 @@ to scan everything).
   "urine alzheimer" often returns 0 while "alzheimer" finds the studies.
   Prefer one strong term and push everything else into the profile's hard
   filters (organism, min_samples, …); iterate wordings if a query returns 0.
+- `min_samples` / `min_raw_files` are **client-side post-filters** over at
+  most `max_results` fetched hits, in the API's default relevance order —
+  raise `max_results` when heavy filters bite, and don't assume the returned
+  set is the "best" matching set.
 - The search index does NOT expose file formats or MS level. `format_summary()`
   can confirm mzML/RAW presence from filenames cheaply, but **MS1 vs MS2 can
   only be confirmed by opening a downloaded file or from the paper** — say so
   rather than guessing from the search result.
+- **Workbench `metabolite_count` is a proxy, not a matrix dimension**: it is
+  the length of the identified-metabolite list (`/metabolites`), with no
+  per-sample abundance columns. The m×s signal matrix lives in mwTab
+  datatables, which the library does not parse yet (metabolomics_workbench's
+  `metabolite_table` is a stub). For “≥N metabolites” as a matrix requirement,
+  prefer MetaboLights MAF numbers (`analyze_maf_files` reads the true
+  per-sample matrix); quote workbench numbers as “ident. metabolite list
+  length”.
+- **One-match metstat pools and transient disconnects are handled**: the
+  workbench client normalizes the API's flat single-study response and retries
+  dropped connections; a failed/empty slot pool degrades to corpus matching
+  with a notice — the pool is an optimization, never a hard filter.
