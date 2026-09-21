@@ -17,6 +17,8 @@ Contract notes
 from __future__ import annotations
 
 import json
+import os
+import time
 from typing import Any
 
 import httpx
@@ -120,9 +122,63 @@ def metstat(slots: tuple[str, ...]) -> dict[str, dict[str, str]]:
     -------
     dict[str, dict]
         ``{"RowN": {"study", "study_title", "species", "source",
-        "disease"}}`` — empty dict/list when nothing matches.
+        "disease"}}`` — always table-shaped; the API's flat single-study
+        record and its {} / [] no-match forms are normalized here (see
+        :func:`_normalize_metstat`).
+
+    Raises
+    ------
+    RuntimeError
+        In offline fixture mode (``METABO_WORKBENCH_FIXTURES`` set) — this is
+        a live REST search with no fixture counterpart; callers degrade to
+        the corpus backstop.  Also after 3 attempts when the server keeps
+        dropping the connection (transient flakiness observed on narrow
+        slot intersections).
     """
+    if os.environ.get("METABO_WORKBENCH_FIXTURES"):
+        raise RuntimeError(
+            "metstat is a live REST search — unavailable in offline fixture "
+            "mode (METABO_WORKBENCH_FIXTURES)")
     joined = ";".join(slots)
-    out = get(f"/metstat/{joined}")
-    # the API returns {} or [] on no-match; normalize to dict
-    return out if isinstance(out, dict) else {}
+    # the endpoint occasionally disconnects mid-response on narrow queries;
+    # retry a couple of times before giving up (same pattern as the corpus
+    # fetch).
+    payload = None
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            payload = get(f"/metstat/{joined}")
+            break
+        except httpx.HTTPError as e:  # RemoteProtocolError / Connect / Timeout
+            last_err = e
+            time.sleep(2 * (attempt + 1))
+    if payload is None:
+        raise RuntimeError(f"metstat slot search failed: {last_err}")
+    return _normalize_metstat(payload)
+
+
+def _normalize_metstat(payload: Any) -> dict[str, dict[str, str]]:
+    """Normalize the /metstat response to the table shape ``{"RowN": {…}}``.
+
+    The API returns three forms:
+    - ``{}`` / ``[]`` on no match,
+    - a FLAT record ``{"study": …, "study_title": …}`` when exactly one
+      study matches the slot intersection (verified live),
+    - the usual ``{"RowN": {…}}`` table.
+
+    All are normalized to the table form so callers can safely iterate
+    ``.values()``; anything that is not a dict with a string ``study`` is
+    dropped.
+    """
+    if isinstance(payload, dict):
+        if isinstance(payload.get("study"), str):
+            return {"Row1": payload}
+        return {k: v for k, v in payload.items()
+                if isinstance(v, dict) and isinstance(v.get("study"), str)}
+    if isinstance(payload, list):
+        rows: dict[str, dict[str, str]] = {}
+        for i, v in enumerate(payload, start=1):
+            if isinstance(v, dict) and isinstance(v.get("study"), str):
+                rows[f"Row{i}"] = v
+        return rows
+    return {}

@@ -118,10 +118,16 @@ def build_corpus(
     for sid, row in species.items():
         common = row.get("Common name")
         latin = row.get("Latin name")
+        # The REST response keys the rows by row index ('1', '2', …); the
+        # canonical study id lives in the "Study ID" field.  species_common
+        # must key BY STUDY ID so screening joins with ``summaries`` (which
+        # are keyed by study id) — otherwise every organism screen matches
+        # NOTHING (verified against the live corpus: 0 of 1891 intersect).
+        real_id = row.get("Study ID") or sid
         if common:
-            c.species_common.setdefault(common, set()).add(sid)
+            c.species_common.setdefault(common, set()).add(real_id)
         elif latin:
-            c.species_common.setdefault(latin, set()).add(sid)
+            c.species_common.setdefault(latin, set()).add(real_id)
     return c
 
 

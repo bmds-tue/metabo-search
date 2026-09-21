@@ -35,6 +35,10 @@ def _fetch_study(c: StudyCandidate, load: PayloadLoader) -> None:
         {k for row in c.sample_metadata for k in row})
     if c.sample_metadata:
         c.sample_count = len(c.sample_metadata)
+        # the sample sheet is KNOWN (factor rows) — drives describe/manifest
+        # (collect_sample_contexts gates on this flag).  No ISA files exist
+        # for workbench studies, but the samples themselves do.
+        c.sample_file_parsed = True
     c.assays = _analysis_rows(analysis)
     c.metabolite_count = _metabolite_count(metabolites)
     # deep marker (drives inspection_depth); no ISA files by definition
@@ -42,18 +46,56 @@ def _fetch_study(c: StudyCandidate, load: PayloadLoader) -> None:
 
 
 def _factors_rows(factors: dict) -> list[dict[str, str]]:
+    """Normalize an /factors payload into per-sample rows.
+
+    The row keeps its native lowercase keys (``sample_name``, ``factors``,
+    …) so repository-specific consumers keep working, and ALSO carries
+    ISA-compatible aliases (``Sample Name`` / ``Source Name`` /
+    ``Factor Value[<label>]``) so the shared describe/manifest consumers
+    resolve names and factors without special-casing the repository.
+    """
     rows = []
     for row in factors.values():
         if not isinstance(row, dict):
             continue
         sample_name = row.get("local_sample_id") or row.get("mb_sample_id") or ""
-        rows.append({
+        base = {
             "sample_name": sample_name,
             "mb_sample_id": row.get("mb_sample_id", ""),
             "sample_source": row.get("sample_source", ""),
             "factors": row.get("factors", ""),
-        })
+        }
+        aliases = {
+            "Source Name": sample_name,
+            "Sample Name": sample_name,
+        }
+        for label, value in (_parse_factors(row.get("factors", ""))).items():
+            aliases[f"Factor Value[{label}]"] = value
+        rows.append({**base, **aliases})
     return rows
+
+
+def _parse_factors(value: str) -> dict[str, str]:
+    """Parse the workbench combined factors string into label → value.
+
+    The /factors payload packs factors as ::
+
+        "Arabidopsis Genotype:fatb-ko KD; At1g08510 |"
+        " Plant Wounding Treatment:Control - Non-Wounded"
+
+    Groups are `` | `` separated, label:value pairs ``; `` separated; pieces
+    without a colon (bare accessions) are ignored.
+    """
+    out: dict[str, str] = {}
+    if not value:
+        return out
+    for group in str(value).split("|"):
+        for piece in group.split(";"):
+            label, sep, val = piece.partition(":")
+            label, val = label.strip(), val.strip()
+            if sep and label and val:
+                out[label] = val
+    return out
 
 
 def _analysis_rows(analysis) -> list[AssayInfo]:
@@ -75,6 +117,15 @@ def _analysis_rows(analysis) -> list[AssayInfo]:
 
 
 def _metabolite_count(metabolites: dict) -> int | None:
+    """Identified-metabolite LIST length from /metabolites.
+
+    PROXY ONLY — the payload rows are ``(study_id, analysis_id,
+    analysis_summary, metabolite_name, refmet_name)`` with NO per-sample
+    abundance columns, so this is not a signal-matrix dimension.  The m×s
+    matrix lives in mwTab datatables (``metabolite_table`` is a stub until
+    the MAF-adapter milestone); quote this number as list length, and prefer
+    MetaboLights MAF counts when the matrix dimension itself matters.
+    """
     n = 0
     for row in metabolites.values():
         if isinstance(row, dict) and row.get("metabolite_name"):

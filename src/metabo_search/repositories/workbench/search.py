@@ -110,8 +110,13 @@ def metstat_matches(slots: tuple[str, ...]) -> set[str]:
     """
     from metabo_search.repositories.workbench.client import metstat
     rows = metstat(slots)
+    # defensive: the client normalizes the flat single-study record, but a
+    # flat dict can also arrive from direct/monkeypatched callers — read it
+    # as one study rather than crash or silently drop it.
+    if isinstance(rows, dict) and isinstance(rows.get("study"), str):
+        return {rows["study"]}
     return {row.get("study") for row in rows.values()
-            if row.get("study")}
+            if isinstance(row, dict) and row.get("study")}
 
 
 def build_candidates(
@@ -228,11 +233,31 @@ def search_workbench(
     if profile and profile.free_text:
         q_tokens |= _tokens(profile.free_text)
 
+    notice_extra: str | None = None
+    fast_path = False
     if assembly.used_fast_path:
         # structured profile → server-side pool; free text only RANKS it
         # (never starves it: pool studies with no token overlap stay, score 0)
-        pool = metstat_matches(assembly.slots)
-        ranked = corpus_rank(q_tokens, corpus, only_ids=pool)
+        pool, pool_meta = _metstat_pool_best_effort(assembly.slots)
+        known = set(corpus.summaries)
+        if pool and pool & known:
+            ranked = corpus_rank(q_tokens, corpus, only_ids=pool)
+            fast_path = True
+        else:
+            # metstat unusable (offline / empty) or its pool doesn't
+            # intersect the cached corpus (stale partial snapshot) → fall
+            # back to the corpus backstop; never silently return nothing.
+            ranked = corpus_rank(q_tokens, corpus)
+            notice_extra = (
+                f"metstat pool ({len(pool)} studies) had no overlap with the "
+                f"cached corpus — ranked corpus-wide instead"
+                if pool else (pool_meta or "metstat pool unavailable — "
+                              "corpus-term match used"))
+            if profile is not None and (profile.hard.organisms
+                                        if profile.hard else None):
+                ranked = screen_by_organisms(
+                    ranked, list(profile.hard.organisms), corpus,
+                    vocab.latin_to_common, vocab.species_common)
     else:
         # no confident slots → pure free-text term match (the backstop);
         # profile organisms still constrain the view
@@ -249,14 +274,38 @@ def search_workbench(
                  if (c.sample_count or 0) >= min_samples]
 
     notice = build_notice(assembly.decisions)
+    if notice_extra:
+        notice = f"{notice}; {notice_extra}" if notice else notice_extra
     meta: dict[str, Any] = {
         "slots": list(assembly.slots),
         "decisions": {k: v.fmt() for k, v in assembly.decisions.items()},
-        "fast_path": assembly.used_fast_path,
+        "fast_path": fast_path,
         "notice": notice,
         "matched": len(cands),
     }
     return cands, meta
+
+
+def _metstat_pool_best_effort(
+    slots: tuple[str, ...]
+) -> tuple[set[str], str | None]:
+    """Server-side slot pool, best-effort.
+
+    Returns ``(pool, reason)``.  ``reason`` is non-None whenever the pool
+    could not be *used* (metstat offline / raised / returned nothing) so
+    :func:`search_workbench` can fall back to the corpus backstop with an
+    actionable notice instead of silently returning nothing.
+    """
+    if not any(slots):
+        return set(), None
+    try:
+        pool = metstat_matches(slots)
+    except Exception as e:  # noqa: BLE001 — any fetch failure → offline path
+        return set(), (f"metstat pool unavailable "
+                       f"({type(e).__name__}: {e})")
+    if not pool:
+        return set(), "metstat pool returned no studies for the resolved slots"
+    return pool, None
 
 
 def build_notice(decisions: dict[str, MatchResult]) -> str | None:

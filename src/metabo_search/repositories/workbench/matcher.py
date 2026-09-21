@@ -9,8 +9,13 @@ Contract
 - ``MatchResult.value is None`` ⇒ the caller must NOT act on the match
   (abstention).  The fast-path slot stays empty; screening falls back to
   the corpus term-match.  A failed match can never drop correct studies.
-- ``match()`` is deterministic (same inputs → same result); all thresholds
-  are module constants so tests can pin behavior.
+- An EXACT canonical value (normalized equality) always wins over fuzzy
+  similarity: ``"cancer"`` → ``"Cancer"``, never the subtype ``"Lung
+  cancer"`` (WRatio's partial-ratio boost would prefer the subtype), and
+  ``"brain"`` → ``"Brain"`` (no Bee-Brain coin-flip).  Aliases resolve
+  first.
+- ``match()`` is deterministic (same inputs → same result); all
+  thresholds are module constants so tests can pin behavior.
 """
 
 from __future__ import annotations
@@ -164,6 +169,20 @@ def match(
                 margin=0.0, alternates=[(m, s) for m, s, _ in top],
                 study_count=study_counts.get(matched_alias)
                 if study_counts else None, by_alias=True)
+
+    # Exact-value preference: when the normalized input IS a canonical value,
+    # that value wins outright — never a fuzzy subtype.  Without this,
+    # WRatio('cancer','Cancer') = 83.3 (case penalty) loses to
+    # WRatio('cancer','Lung cancer') = 90 (partial-ratio boost), so a generic
+    # term silently narrows to a subtype and the metstat pool starves every
+    # other study of that class.
+    exact_value = next((ch for ch in choices if _normalize(ch) == norm), None)
+    if exact_value is not None:
+        return MatchResult(
+            term=term, value=exact_value, score=100.0, margin=100.0,
+            alternates=[(m, s) for m, s, _ in top if m != exact_value],
+            study_count=study_counts.get(exact_value)
+            if study_counts else None)
 
     if not top:
         return MatchResult(term=term)

@@ -35,8 +35,11 @@ def test_similarity_hits_with_clear_margins():
 
 def test_tie_and_offtarget_abstain_without_slot():
     """Coin-flips and off-topic sentences never claim a canonical value."""
-    assert match("brain", VOCAB.sources).value is None   # Bee Brain/Brain tie
-    assert match("fever", VOCAB.diseases).value is None  # Valley fever 90/0
+    # 'brain' is EXACTLY the canonical 'Brain' → the exact-value preference
+    # resolves it (it never was a 50/50: picking the exact value is right);
+    # a genuine coin-flip like Valley fever/Hay fever still abstains.
+    assert match("brain", VOCAB.sources).value == "Brain"
+    assert match("fever", VOCAB.diseases).value is None  # tie, no exact
     assert match("serum metabolomics", VOCAB.diseases).value is None
     assert match("gout", VOCAB.diseases).value is None   # 68 < cutoff
 
