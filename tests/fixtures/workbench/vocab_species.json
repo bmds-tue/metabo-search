@@ -1,0 +1,2028 @@
+{
+"values": [
+{
+"latin": "Abiotic",
+"common": "Abiotic"
+},
+{
+"latin": "Acer Saccharum",
+"common": "Sugar Maple"
+},
+{
+"latin": "Acidithiobacillus ferrooxidans",
+"common": "Acidithiobacillus"
+},
+{
+"latin": "Acinetobacter",
+"common": "Acinetobacter"
+},
+{
+"latin": "Acinetobacter baumannii",
+"common": "Acinetobacter baumannii"
+},
+{
+"latin": "Acropora cervicornis",
+"common": "Acropora cervicornis"
+},
+{
+"latin": "Acropora hyacinthus",
+"common": "Stony coral"
+},
+{
+"latin": "Aedes albopictus",
+"common": "Mosquito"
+},
+{
+"latin": "Ailuropoda melanoleuca",
+"common": "Giant Panda"
+},
+{
+"latin": "Akkermansia muciniphila",
+"common": "Akkermansia muciniphila"
+},
+{
+"latin": "Alexandrium catenella",
+"common": "Alexandrium catenella"
+},
+{
+"latin": "Alexandrium minutum",
+"common": "Alexandrium minutum"
+},
+{
+"latin": "Alexandrium pacificum",
+"common": "Alexandrium pacificum"
+},
+{
+"latin": "Alexandrium tamarense",
+"common": "Alexandrium tamarense"
+},
+{
+"latin": "Algae",
+"common": "Algae"
+},
+{
+"latin": "Alkanna tinctoria",
+"common": "Alkanet"
+},
+{
+"latin": "Allium cepa",
+"common": "Onion"
+},
+{
+"latin": "Allium sativum",
+"common": "Garlic"
+},
+{
+"latin": "Alpinaria cf. rhododendri",
+"common": "Alpinaria cf. rhododendri"
+},
+{
+"latin": "Alternaria alternata",
+"common": "Alternaria alternata"
+},
+{
+"latin": "Alternaria arborescens",
+"common": "Alternaria arborescens"
+},
+{
+"latin": "Alternaria cf. alternata",
+"common": "Alternaria cf. alternata"
+},
+{
+"latin": "Alternaria infectoria",
+"common": "Alternaria infectoria"
+},
+{
+"latin": "Alternaria sp.",
+"common": "Fungi"
+},
+{
+"latin": "Amaranthus caudatus L.",
+"common": "Pendant amaranth"
+},
+{
+"latin": "Anthostomella sp.",
+"common": "Anthostomella sp."
+},
+{
+"latin": "Aphaenogaster picea",
+"common": "Ant"
+},
+{
+"latin": "Aphyosemion striatum",
+"common": "Red-striped killifish"
+},
+{
+"latin": "Apis mellifera",
+"common": "Honey bee"
+},
+{
+"latin": "Apis mellifera",
+"common": "Insect"
+},
+{
+"latin": "Aposphaeria corallinolutea",
+"common": "Aposphaeria corallinolutea"
+},
+{
+"latin": "Arabidopsis thaliana",
+"common": "Arabidopsis thaliana"
+},
+{
+"latin": "Arabidopsis thaliana",
+"common": "Plant"
+},
+{
+"latin": "Archosargus probatocephalus",
+"common": "Sheepshead"
+},
+{
+"latin": "Arma chinensis",
+"common": "Arma chinensis"
+},
+{
+"latin": "Artemia salina",
+"common": "Brine shrimp"
+},
+{
+"latin": "Artemisia argyi",
+"common": "Artemisia argyi"
+},
+{
+"latin": "Articulospora atra",
+"common": "Articulospora atra"
+},
+{
+"latin": "Asparagopsis taxiformis",
+"common": "Red algae"
+},
+{
+"latin": "Aspergillus amstelodami",
+"common": "Aspergillus amstelodami"
+},
+{
+"latin": "Aspergillus niger",
+"common": "Aspergillus niger"
+},
+{
+"latin": "Astragalus mongholicus",
+"common": "Plant"
+},
+{
+"latin": "Athorix diptoa",
+"common": "Athorix"
+},
+{
+"latin": "Aurantiochytrium limacinum",
+"common": "Aurantiochytrium limacinum"
+},
+{
+"latin": "Aureobasidium cf. subglaciale",
+"common": "Aureobasidium cf. subglaciale"
+},
+{
+"latin": "Auxenochlorella protothecoides",
+"common": "Auxenochlorella"
+},
+{
+"latin": "Auxenochlorella pyrenoidosa",
+"common": "Algae"
+},
+{
+"latin": "Avena sativa",
+"common": "Oat"
+},
+{
+"latin": "Babesia divergens",
+"common": "Blood parasite"
+},
+{
+"latin": "Bacillus cereus",
+"common": "Bacillus cereus"
+},
+{
+"latin": "Bacillus licheniformis",
+"common": "Bacillus licheniformis"
+},
+{
+"latin": "Bacillus megaterium",
+"common": "Bacillus megaterium"
+},
+{
+"latin": "Bacillus pumilus",
+"common": "Bacillus pumilus"
+},
+{
+"latin": "Bacillus subtilis",
+"common": "Bacillus subtilis"
+},
+{
+"latin": "Bacteria",
+"common": "Bacteria"
+},
+{
+"latin": "Bacteroides fragilis",
+"common": "Bacteroides fragilis"
+},
+{
+"latin": "Bacteroides ovatus ATCC 8483",
+"common": "Bacteroides ovatus"
+},
+{
+"latin": "Bacteroides thetaiotaomicron",
+"common": "Bacteroides thetaiotaomicron"
+},
+{
+"latin": "Bacteroides thetaiotaomicron VPI-5482",
+"common": "Bacteroides thetaiotaomicron"
+},
+{
+"latin": "Bacteroides uniformis",
+"common": "Bacteroides uniformis"
+},
+{
+"latin": "Bacteroides xylanisolvens",
+"common": "Bacteroides"
+},
+{
+"latin": "Banisteriopsis caapi",
+"common": "Chacrona"
+},
+{
+"latin": "Barbatosphaeriaceae sp.",
+"common": "Barbatosphaeriaceae sp."
+},
+{
+"latin": "Beauveria bassiana",
+"common": "Fungi"
+},
+{
+"latin": "Beta vulgaris",
+"common": "Beet"
+},
+{
+"latin": "Bifidobacteria",
+"common": "Bifidobacteria"
+},
+{
+"latin": "Bifidobacterium longum",
+"common": "Bifidobacterium"
+},
+{
+"latin": "Blautia producta",
+"common": "Blautia producta"
+},
+{
+"latin": "Bombus impatiens",
+"common": "Bumble Bee"
+},
+{
+"latin": "Bombyx mori",
+"common": "Silk moth"
+},
+{
+"latin": "Bombyx mori",
+"common": "Silkworm"
+},
+{
+"latin": "Bos grunniens",
+"common": "Yak"
+},
+{
+"latin": "Bos indicus",
+"common": "Cow"
+},
+{
+"latin": "Bos taurus",
+"common": "Cow"
+},
+{
+"latin": "Botrytis cinerea",
+"common": "Botrytis cinerea"
+},
+{
+"latin": "Botrytis cinerea",
+"common": "Gray fruit mold"
+},
+{
+"latin": "Brassica napus",
+"common": "Rapeseed"
+},
+{
+"latin": "Brassica nigra",
+"common": "Black mustard"
+},
+{
+"latin": "Brassica oleracea",
+"common": "Cabbage"
+},
+{
+"latin": "Brucella abortus",
+"common": "Brucella abortus"
+},
+{
+"latin": "Brugia malayi",
+"common": "Roundworm"
+},
+{
+"latin": "Caenorhabditis elegans",
+"common": "C. elegans"
+},
+{
+"latin": "Caenorhabditis elegans",
+"common": "Roundworm"
+},
+{
+"latin": "Callinectes sapidus",
+"common": "Maryland\u00a0blue crab"
+},
+{
+"latin": "Callinectus sapidus",
+"common": "Blue Crab"
+},
+{
+"latin": "Callithrix jacchus",
+"common": "Marmoset"
+},
+{
+"latin": "Camaropella sp.",
+"common": "Camaropella sp."
+},
+{
+"latin": "Camelina sativa",
+"common": "Camelina"
+},
+{
+"latin": "Camellia sinensis",
+"common": "Tea plant"
+},
+{
+"latin": "Camelus bactrianus",
+"common": "Camel"
+},
+{
+"latin": "Candida albicans",
+"common": "Candida albicans"
+},
+{
+"latin": "Candida albicans",
+"common": "Yeast"
+},
+{
+"latin": "Candida auris",
+"common": "Candida auris"
+},
+{
+"latin": "Canis lupus familiaris",
+"common": "Dog"
+},
+{
+"latin": "Capra hircus",
+"common": "Goat"
+},
+{
+"latin": "Capreolus pygargus",
+"common": "\u00a0Asian roe deer"
+},
+{
+"latin": "Capsicum",
+"common": "Capsicum"
+},
+{
+"latin": "Capsicum Chinense",
+"common": "Habanero pepper"
+},
+{
+"latin": "Capsicum annuum",
+"common": "Chili pepper"
+},
+{
+"latin": "Capsicum annuum",
+"common": "Pepper"
+},
+{
+"latin": "Carassius cuvieri",
+"common": "Japanese crucian carp"
+},
+{
+"latin": "Casaresia cf. sphagnorum",
+"common": "Casaresia cf. sphagnorum"
+},
+{
+"latin": "Cassiopea andromeda",
+"common": "Cassiopea andromeda"
+},
+{
+"latin": "Centella asiatica",
+"common": "Centella asiatica"
+},
+{
+"latin": "Centroptilum triangulifer",
+"common": "Mayfly"
+},
+{
+"latin": "Cerastium regelii",
+"common": "Regel's chickweed"
+},
+{
+"latin": "Ceratodon purpurues",
+"common": "Moss"
+},
+{
+"latin": "Cervus nippon",
+"common": "Sika deer"
+},
+{
+"latin": "Chaetomium globosum",
+"common": "Chaetomium globosum"
+},
+{
+"latin": "Chaetopsis sp.",
+"common": "Chaetopsis sp."
+},
+{
+"latin": "Cherax tenuimanus",
+"common": "Crayfish"
+},
+{
+"latin": "Chlamydomonas reinhardtii",
+"common": "Chlamydomonas reinhardtii"
+},
+{
+"latin": "Chlorella minutissima",
+"common": "Chlorella"
+},
+{
+"latin": "Chromobacterium vaccinii",
+"common": "Chromobacterium vaccinii"
+},
+{
+"latin": "Chromobacterium violaceum",
+"common": "Chromobacterium violaceum"
+},
+{
+"latin": "Chromochloris zofingiensis",
+"common": "Algae"
+},
+{
+"latin": "Cicer arietinum",
+"common": "Chickpea"
+},
+{
+"latin": "Citrus sinensis",
+"common": "Orange"
+},
+{
+"latin": "Cladosporium allicinum",
+"common": "Cladosporium allicinum"
+},
+{
+"latin": "Cladosporium cf. cladosporioides",
+"common": "Cladosporium cf. cladosporioides"
+},
+{
+"latin": "Clathrus transvaalensis",
+"common": "Bermudagrass"
+},
+{
+"latin": "Clavularia inflata",
+"common": "Coral"
+},
+{
+"latin": "Clostridioides difficile",
+"common": "C. difficile"
+},
+{
+"latin": "Clostridium",
+"common": "Clostridium"
+},
+{
+"latin": "Clostridium clostridioforme",
+"common": "Clostridium clostridioforme"
+},
+{
+"latin": "Clostridium hathewayi",
+"common": "Clostridium hathewayi"
+},
+{
+"latin": "Clostridium hylemonae",
+"common": "Clostridium hylemonae"
+},
+{
+"latin": "Clostridium scindens",
+"common": "Clostridium scindens"
+},
+{
+"latin": "Clostridium symbiosum",
+"common": "Clostridium symbiosum"
+},
+{
+"latin": "Cobetia marina",
+"common": "Cobetia marina"
+},
+{
+"latin": "Coelastrella tenuitheca",
+"common": "Microalga "
+},
+{
+"latin": "Colletotrichum cf. truncatum",
+"common": "Colletotrichum cf. truncatum"
+},
+{
+"latin": "Colletotrichum fioriniae",
+"common": "Colletotrichum fioriniae"
+},
+{
+"latin": "Collinsella aerofaciens",
+"common": "Collinsella aerofaciens"
+},
+{
+"latin": "Coniochaeta cf. marina",
+"common": "Coniochaeta cf. marina"
+},
+{
+"latin": "Coniothyrium ferrarisianum",
+"common": "Coniothyrium ferrarisianum"
+},
+{
+"latin": "Cordyceps militaris",
+"common": "Cordyceps"
+},
+{
+"latin": "Cormus domestica",
+"common": "Cormus domestica"
+},
+{
+"latin": "Corydalis yanhusuo",
+"common": "Corydalis yanhusuo"
+},
+{
+"latin": "Corylus americana",
+"common": "Corylus americana"
+},
+{
+"latin": "Corylus avellana",
+"common": "Corylus avellana"
+},
+{
+"latin": "Crassostrea virginica",
+"common": "Eastern oyster"
+},
+{
+"latin": "Creosphaeria sassafras",
+"common": "Creosphaeria sassafras"
+},
+{
+"latin": "Cricetulus griseus",
+"common": "Chinese hamster"
+},
+{
+"latin": "Cryptococcus neoformans",
+"common": "Cryptococcus neoformans"
+},
+{
+"latin": "Cryptosporella sp.",
+"common": "Cryptosporella sp."
+},
+{
+"latin": "Cucumis sativus",
+"common": "Cucumber"
+},
+{
+"latin": "Cystophora cristata",
+"common": "Hooded seal"
+},
+{
+"latin": "Cytospora cf. cedri",
+"common": "Cytospora cf. cedri"
+},
+{
+"latin": "Cytospora ribis",
+"common": "Cytospora ribis"
+},
+{
+"latin": "Danio rerio",
+"common": "Zebrafish"
+},
+{
+"latin": "Daphnia magna",
+"common": "Water flea"
+},
+{
+"latin": "Daucus carota",
+"common": "Carrot"
+},
+{
+"latin": "Diadema antillarum",
+"common": "Sea urchin"
+},
+{
+"latin": "Diaporthe phaseolorum",
+"common": "Diaporthe phaseolorum"
+},
+{
+"latin": "Diaporthe vaccinii",
+"common": "Diaporthe vaccinii"
+},
+{
+"latin": "Didymella pomorum",
+"common": "Didymella pomorum"
+},
+{
+"latin": "Didymella sp.",
+"common": "Didymella sp."
+},
+{
+"latin": "Discosia rubi",
+"common": "Discosia rubi"
+},
+{
+"latin": "Dorea longicatena",
+"common": "Dorea longicatena"
+},
+{
+"latin": "Doryteuthis pealeii",
+"common": "Longfin inshore squid"
+},
+{
+"latin": "Dothideaceae sp.",
+"common": "Dothideaceae sp."
+},
+{
+"latin": "Drosophila melanogaster",
+"common": "Fruit fly"
+},
+{
+"latin": "Drosophila melanogaster",
+"common": "Insect"
+},
+{
+"latin": "Duponchelia fovealis",
+"common": "European pepper moth"
+},
+{
+"latin": "Echium vulgare",
+"common": "Echium vulgare"
+},
+{
+"latin": "Eggerthella lenta",
+"common": "Eggerthella lenta"
+},
+{
+"latin": "Elaeis guineensis Jacq.",
+"common": "Oil palm"
+},
+{
+"latin": "Enterobacter sp.",
+"common": "Enterobacter sp."
+},
+{
+"latin": "Enterococcus faecalis",
+"common": "Enterococcus faecalis"
+},
+{
+"latin": "Enterococcus faecium",
+"common": "Enterococcus faecium"
+},
+{
+"latin": "Enterococcus hirae",
+"common": "Enterococcus hirae"
+},
+{
+"latin": "Epicoccum nigrum",
+"common": "Epicoccum nigrum"
+},
+{
+"latin": "Epicoleosporium ramularioides",
+"common": "Epicoleosporium ramularioides"
+},
+{
+"latin": "Epinephelus coioides",
+"common": "Orange-spotted grouper"
+},
+{
+"latin": "Equisetum arvense",
+"common": "Equisetum arvense"
+},
+{
+"latin": "Equisetum hyemale",
+"common": "Equisetum hyemale"
+},
+{
+"latin": "Equisetum telmateia",
+"common": "Equisetum telmateia"
+},
+{
+"latin": "Equus africanus asinus",
+"common": "Donkey"
+},
+{
+"latin": "Equus caballus",
+"common": "Horse"
+},
+{
+"latin": "Equus ferus caballus",
+"common": "Horse"
+},
+{
+"latin": "Eriobotrya japonica",
+"common": "Loquat"
+},
+{
+"latin": "Escherichia coli",
+"common": "E coli"
+},
+{
+"latin": "Escherichia coli",
+"common": "Escherichia coli"
+},
+{
+"latin": "Escherichia fergusonii",
+"common": "Escherichia fergusonii"
+},
+{
+"latin": "Exaiptasia diaphana",
+"common": "Sea anemone"
+},
+{
+"latin": "Exidia glandulosa",
+"common": "Exidia glandulosa"
+},
+{
+"latin": "Faecalibacterium prausnitzii",
+"common": "Faecalibacterium prausnitzii"
+},
+{
+"latin": "Felis catus",
+"common": "Cat"
+},
+{
+"latin": "Flavonifractor plautii",
+"common": "Flavonifractor plautii"
+},
+{
+"latin": "Food item",
+"common": "Food item"
+},
+{
+"latin": "Fragaria x ananassa",
+"common": "Strawberry"
+},
+{
+"latin": "Fragilariopsis cylindrus",
+"common": "Fragilariopsis cylindrus"
+},
+{
+"latin": "Fraxinus americana",
+"common": "White ash"
+},
+{
+"latin": "Fraxinus chinensis",
+"common": "Chinese ash"
+},
+{
+"latin": "Fraxinus excelsior",
+"common": "European ash"
+},
+{
+"latin": "Fraxinus mandshurica",
+"common": "Manchurian ash"
+},
+{
+"latin": "Fraxinus nigra",
+"common": "Black ash"
+},
+{
+"latin": "Fraxinus pennsylvanica",
+"common": "Green ash"
+},
+{
+"latin": "Fraxinus platypoda",
+"common": "Chinese red ash"
+},
+{
+"latin": "Fusarium tricinctum",
+"common": "Fusarium tricinctum"
+},
+{
+"latin": "Fusobacterium nucleatum",
+"common": "Fusobacterium nucleatum"
+},
+{
+"latin": "Galaxea fascicularis",
+"common": "Coral"
+},
+{
+"latin": "Gallus gallus",
+"common": "Bird"
+},
+{
+"latin": "Gallus gallus",
+"common": "Chicken"
+},
+{
+"latin": "Gammarus locusta",
+"common": "Amphipods"
+},
+{
+"latin": "Gardenerella vaginalis",
+"common": "Gardenerella vaginalis"
+},
+{
+"latin": "Gastrolobium bilobum",
+"common": "Heart-leaved poison"
+},
+{
+"latin": "Geastrumia polystigmatis",
+"common": "Geastrumia polystigmatis"
+},
+{
+"latin": "Gemella morbillorum",
+"common": "Gemella morbillorum"
+},
+{
+"latin": "Ginkgo biloba",
+"common": "Ginkgo biloba"
+},
+{
+"latin": "Gloeophyllum sepiarium",
+"common": "Gloeophyllum sepiarium"
+},
+{
+"latin": "Glycine max",
+"common": "Soybean"
+},
+{
+"latin": "Glycyrrhiza glabra",
+"common": "Glycyrrhiza glabra"
+},
+{
+"latin": "Godronia cassandrae",
+"common": "Godronia cassandrae"
+},
+{
+"latin": "Godronia cf. cassandrae",
+"common": "Godronia cf. cassandrae"
+},
+{
+"latin": "Gracilaria edulis",
+"common": "Malaysian red seaweed"
+},
+{
+"latin": "Haemophilus influenzae",
+"common": "Haemophilus influenzae"
+},
+{
+"latin": "Haliotis discus hannai",
+"common": "Pacific Abalone"
+},
+{
+"latin": "Haloxylon salicornicum",
+"common": "Haloxylon salicornicum"
+},
+{
+"latin": "Halyomorpha halys",
+"common": "Halyomorpha halys"
+},
+{
+"latin": "Helicoverpa armigera",
+"common": "Insect"
+},
+{
+"latin": "Hevea brasiliensis",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea brasiliensis strain:RRIM 600",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea guianensis pauciflora",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea guianensis pauciflora var. coriacea",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea guianensis var. collina",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea guianensis var. guianensis",
+"common": "Rubber tree"
+},
+{
+"latin": "Hevea spruceana",
+"common": "Rubber tree"
+},
+{
+"latin": "Homo sapiens",
+"common": "Human"
+},
+{
+"latin": "Hordeum vulgare",
+"common": "Barley"
+},
+{
+"latin": "Hyaloscyphaceae sp.",
+"common": "Hyaloscyphaceae sp."
+},
+{
+"latin": "Hydrochoerus hydrochaeris",
+"common": "Capybara"
+},
+{
+"latin": "Hypoderma cf. rubi",
+"common": "Hypoderma cf. rubi"
+},
+{
+"latin": "Hypoxylon submonticulosum",
+"common": "Hypoxylon submonticulosum"
+},
+{
+"latin": "Ilyonectria estremocensis",
+"common": "Ilyonectria estremocensis"
+},
+{
+"latin": "Ilyonectria mors-panacis",
+"common": "Ilyonectria mors-panacis"
+},
+{
+"latin": "Ilyonectria robusta",
+"common": "Ilyonectria robusta"
+},
+{
+"latin": "Ilyonectria rufa",
+"common": "Ilyonectria rufa"
+},
+{
+"latin": "Ilyonectria torresensis",
+"common": "Ilyonectria torresensis"
+},
+{
+"latin": "Ipomoea batatas",
+"common": "Sweet potato"
+},
+{
+"latin": "Karenia brevis",
+"common": "Karenia brevis"
+},
+{
+"latin": "Kretzschmaria hedjaroudei",
+"common": "Kretzschmaria hedjaroudei"
+},
+{
+"latin": "Lachnellula calyciformis",
+"common": "Lachnellula calyciformis"
+},
+{
+"latin": "Lachnum sp.",
+"common": "Lachnum sp."
+},
+{
+"latin": "Lacticaseibacillus casei",
+"common": "Lacticaseibacillus casei"
+},
+{
+"latin": "Lacticaseibacillus paracasei",
+"common": "Lacticaseibacillus paracasei"
+},
+{
+"latin": "Lacticaseibacillus rhamnosus",
+"common": "Lacticaseibacillus rhamnosus"
+},
+{
+"latin": "Lacticaseibacillus rhamnosus GG",
+"common": "Lacticaseibacillus rhamnosus"
+},
+{
+"latin": "Lactobacillus",
+"common": "Lactobacillus"
+},
+{
+"latin": "Lactobacillus crispatus",
+"common": "Lactobacillus crispatus"
+},
+{
+"latin": "Lactobacillus iners",
+"common": "Lactobacillus iners"
+},
+{
+"latin": "Lactobacillus plantarum",
+"common": "Lactobacillus plantarum"
+},
+{
+"latin": "Lactobacillus reuter",
+"common": "Lactobacillus reuter"
+},
+{
+"latin": "Lactuca sativa",
+"common": "Lettuce"
+},
+{
+"latin": "Lactuca sativa L.",
+"common": "Plant"
+},
+{
+"latin": "Lake water",
+"common": "Lake water"
+},
+{
+"latin": "Lemnoideae",
+"common": "Plant"
+},
+{
+"latin": "Lens culinaris",
+"common": "Lentil"
+},
+{
+"latin": "Lentilactobacillus kefiri",
+"common": "Lentilactobacillus kefiri"
+},
+{
+"latin": "Leptodontidium sp.",
+"common": "Leptodontidium sp."
+},
+{
+"latin": "Leptospira interrogans",
+"common": "Leptospira interrogans"
+},
+{
+"latin": "Lethenteron camtschaticum",
+"common": "Arctic lamprey"
+},
+{
+"latin": "Lithospermum officinale",
+"common": "Common gromwell"
+},
+{
+"latin": "Loktanella vestfoldensis",
+"common": "Loktanella vestfoldensis"
+},
+{
+"latin": "Lophiotrema mucilaginosis",
+"common": "Lophiotrema mucilaginosis"
+},
+{
+"latin": "Lycopersicon esculentum",
+"common": "Tomato"
+},
+{
+"latin": "Macaca fascicularis",
+"common": "Macaque monkey"
+},
+{
+"latin": "Macaca mulatta",
+"common": "Rhesus monkey"
+},
+{
+"latin": "Macrobrachium rosenbergii",
+"common": "Prawn"
+},
+{
+"latin": "Malassezia globosa",
+"common": "Malassezia globosa"
+},
+{
+"latin": "Malus domestica",
+"common": "Apple"
+},
+{
+"latin": "Malus domestica, Pyrus communis, Apple-pear intergeneric hybrid",
+"common": "Apple-pear hybrid"
+},
+{
+"latin": "Manihot esculenta",
+"common": "Cassava"
+},
+{
+"latin": "Marine microbes",
+"common": "Marine microbes"
+},
+{
+"latin": "Marine plankton",
+"common": "Marine plankton"
+},
+{
+"latin": "Medicago sativa L.",
+"common": "Alfalfa"
+},
+{
+"latin": "Megachile rotundata",
+"common": "Megachile rotundata"
+},
+{
+"latin": "Megalobrama amblycephala",
+"common": "Wuchang bream"
+},
+{
+"latin": "Mesocricetus auratus",
+"common": "Golden hamster"
+},
+{
+"latin": "Metacarcinus magister",
+"common": "Dungeness crab"
+},
+{
+"latin": "Methanococcus maripaludis",
+"common": "Methanococcus maripaludis"
+},
+{
+"latin": "Microbacterium sediminis",
+"common": "Microbacterium sediminis"
+},
+{
+"latin": "Microchloropsis gaditana",
+"common": "Microchloropsis gaditana"
+},
+{
+"latin": "Microcoleus vaginatus",
+"common": "Microcoleus vaginatus"
+},
+{
+"latin": "Microdochium neoqueenslandicum",
+"common": "Microdochium neoqueenslandicum"
+},
+{
+"latin": "Mirounga angustirostris",
+"common": "Seal"
+},
+{
+"latin": "Mollisia cf. melaleuca",
+"common": "Mollisia cf. melaleuca"
+},
+{
+"latin": "Mollisia cf. nigrescens",
+"common": "Mollisia cf. nigrescens"
+},
+{
+"latin": "Mollisia sp.",
+"common": "Mollisia sp."
+},
+{
+"latin": "Mortierella alpina",
+"common": "Mortierella alpina"
+},
+{
+"latin": "Mucidula mucida",
+"common": "Mucidula mucida"
+},
+{
+"latin": "Multi-species non-defined biofilm consortium",
+"common": "Bacteria"
+},
+{
+"latin": "Multiple bacterial species",
+"common": "Multiple bacterial species"
+},
+{
+"latin": "Mus musculus",
+"common": "Mouse"
+},
+{
+"latin": "Musa acuminata",
+"common": "Banana"
+},
+{
+"latin": "Mustela putorius furo",
+"common": "Ferret"
+},
+{
+"latin": "Mycobacterium tuberculosis",
+"common": "Mycobacterium tuberculosis"
+},
+{
+"latin": "Mycobacterium tuberculosis H37Rv",
+"common": "Mycobacterium tuberculosis"
+},
+{
+"latin": "Mycoplasma gallisepticum",
+"common": "Bacteria"
+},
+{
+"latin": "Mycoplasma mycoides",
+"common": "Mycoplasma mycoides"
+},
+{
+"latin": "Myotis lucifugus",
+"common": "Little brown bat"
+},
+{
+"latin": "Myracrodruon urundeuva",
+"common": "Aroeira tree"
+},
+{
+"latin": "Nannochloropsis gaditana",
+"common": "Nannochloropsis"
+},
+{
+"latin": "Natural mixed marine microbial community",
+"common": "Phytoplankton"
+},
+{
+"latin": "Navicula cf. perminuta",
+"common": "Navicula cf. perminuta"
+},
+{
+"latin": "Navicula pelliculosa",
+"common": "Navicula pelliculosa"
+},
+{
+"latin": "Neisseria flava",
+"common": "Neisseria flava"
+},
+{
+"latin": "Nemania diffusa",
+"common": "Nemania diffusa"
+},
+{
+"latin": "Nemania serpens",
+"common": "Nemania serpens"
+},
+{
+"latin": "Nemania sp.",
+"common": "Nemania sp."
+},
+{
+"latin": "Neocucurbitaria sp.",
+"common": "Neocucurbitaria sp."
+},
+{
+"latin": "Neodevriesiaceae sp.",
+"common": "Neodevriesiaceae sp."
+},
+{
+"latin": "Neonectria obtusispora",
+"common": "Neonectria obtusispora"
+},
+{
+"latin": "Neovaginatispora sp.",
+"common": "Neovaginatispora sp."
+},
+{
+"latin": "Nesterenkonia flava",
+"common": "Actinobacteria"
+},
+{
+"latin": "Neurospora crassa",
+"common": "Fungi"
+},
+{
+"latin": "Nicotiana tabacum",
+"common": "Tobacco"
+},
+{
+"latin": "Nigrospora sp.",
+"common": "Nigrospora sp."
+},
+{
+"latin": "Nigrospora sphaerica",
+"common": "Nigrospora sphaerica"
+},
+{
+"latin": "Nitzschia lecointei",
+"common": "Nitzschia lecointei"
+},
+{
+"latin": "Nothobranchius furzeri",
+"common": "Killifish"
+},
+{
+"latin": "Nothobranchius furzeri",
+"common": "Turquoise killifish"
+},
+{
+"latin": "Ocimum basilicum",
+"common": "Basil"
+},
+{
+"latin": "Olea europaea",
+"common": "Olive"
+},
+{
+"latin": "Oncorhynchus kisutch",
+"common": "Coho salmon"
+},
+{
+"latin": "Oncorhynchus mykiss",
+"common": "Rainbow trout"
+},
+{
+"latin": "Oncorhynchus tshawytscha",
+"common": "Chinook salmon"
+},
+{
+"latin": "Ophiocordyceps sinensis",
+"common": "Ophiocordyceps"
+},
+{
+"latin": "Ophiocordyceps sinensis",
+"common": "Ophiocordyceps sinensis"
+},
+{
+"latin": "Oreochromis mossambicus",
+"common": "Mozambique tilapia"
+},
+{
+"latin": "Oryctolagus cuniculus",
+"common": "Rabbit"
+},
+{
+"latin": "Oryza sativa",
+"common": "Rice"
+},
+{
+"latin": "Oryza sativa Japonica Group",
+"common": "Rice"
+},
+{
+"latin": "Other",
+"common": "Other"
+},
+{
+"latin": "Other Organism",
+"common": "Biofilm Microbial Community"
+},
+{
+"latin": "Other Organism",
+"common": "Other"
+},
+{
+"latin": "Other abiotic sample",
+"common": "Other"
+},
+{
+"latin": "Other abiotic sample",
+"common": "Other abiotic sample"
+},
+{
+"latin": "Ovis aries",
+"common": "Sheep"
+},
+{
+"latin": "Ovis canadensis canadensis",
+"common": "Bighorn sheep"
+},
+{
+"latin": "Palaemon serratus",
+"common": "Common prawn"
+},
+{
+"latin": "Panax ginseng",
+"common": "Panax ginseng"
+},
+{
+"latin": "Panax notoginseng",
+"common": "Ginseng"
+},
+{
+"latin": "Panax notoginseng",
+"common": "Panax notoginseng"
+},
+{
+"latin": "Panicum maximum(Megathyrsis maximus (Jacq.))",
+"common": "Guinea Grass"
+},
+{
+"latin": "Panopeus herbstii",
+"common": "Mud Crab"
+},
+{
+"latin": "Papio hamadryas",
+"common": "Baboon"
+},
+{
+"latin": "Parabacteroides distasonis",
+"common": "Parabacteroides distasonis"
+},
+{
+"latin": "Paradoxurus hermaphroditus",
+"common": "Civet"
+},
+{
+"latin": "Paramecium bursaria",
+"common": "Ciliate"
+},
+{
+"latin": "Paramycosphaerella sp.",
+"common": "Paramycosphaerella sp."
+},
+{
+"latin": "Paraphaeosphaeria neglecta",
+"common": "Paraphaeosphaeria neglecta"
+},
+{
+"latin": "Penicillium camponotum",
+"common": "Penicillium camponotum"
+},
+{
+"latin": "Peromyscus californicus",
+"common": "Mouse"
+},
+{
+"latin": "Peromyscus leucopus",
+"common": "White-footed mouse"
+},
+{
+"latin": "Phaeoacremonium fraxinopennsylvanicum",
+"common": "Phaeoacremonium fraxinopennsylvanicum"
+},
+{
+"latin": "Phaeodactylum tricornutum",
+"common": "Phaeodactylum tricornutum"
+},
+{
+"latin": "Phaeomoniellales sp.",
+"common": "Phaeomoniellales sp."
+},
+{
+"latin": "Phaseolus vulgaris",
+"common": "Common bean"
+},
+{
+"latin": "Phialocephala sp.",
+"common": "Phialocephala sp."
+},
+{
+"latin": "Phoenix dactylifera",
+"common": "Date palm"
+},
+{
+"latin": "Phyllosticta cf. pyrolae",
+"common": "Phyllosticta cf. pyrolae"
+},
+{
+"latin": "Phyllosticta pyrolae",
+"common": "Phyllosticta pyrolae"
+},
+{
+"latin": "Phyllostictina vaccinii",
+"common": "Phyllostictina vaccinii"
+},
+{
+"latin": "Pico Synechococcus sp.",
+"common": "Pico Synechococcus sp."
+},
+{
+"latin": "Picochlorum celeri",
+"common": "Picochlorum celeri"
+},
+{
+"latin": "Pilidium concavum",
+"common": "Pilidium concavum"
+},
+{
+"latin": "Pinus koraiensis",
+"common": "Pine"
+},
+{
+"latin": "Pinus pinaster",
+"common": "Maritime pine"
+},
+{
+"latin": "Pinus pinaster",
+"common": "Pine"
+},
+{
+"latin": "Piper longum",
+"common": "Long pepper"
+},
+{
+"latin": "Pipistrellus nathusii",
+"common": "Bat"
+},
+{
+"latin": "Pitcairnia flammea",
+"common": "Flame Bromeliad"
+},
+{
+"latin": "Plagiostoma petiolophilum",
+"common": "Plagiostoma petiolophilum"
+},
+{
+"latin": "Plankton",
+"common": "Plankton"
+},
+{
+"latin": "Plants",
+"common": "Plants"
+},
+{
+"latin": "Plasmodium berghei ANKA",
+"common": "Plasmodium berghei"
+},
+{
+"latin": "Plasmodium falciparum",
+"common": "Parasite"
+},
+{
+"latin": "Plasmodium falciparum",
+"common": "Plasmodium falciparum"
+},
+{
+"latin": "Pleosporales sp.",
+"common": "Pleosporales sp."
+},
+{
+"latin": "Pocillopora damicornis",
+"common": "Stony coral"
+},
+{
+"latin": "Pogonias cromis",
+"common": "Black drum"
+},
+{
+"latin": "Pontastacus leptodactylus",
+"common": "Narrow-clawed crayfish"
+},
+{
+"latin": "Populus",
+"common": "Poplar"
+},
+{
+"latin": "Populus trichocarpa",
+"common": "Populus trichocarpa"
+},
+{
+"latin": "Porites lutea",
+"common": "Stony coral"
+},
+{
+"latin": "Porphyromonas gingivalis",
+"common": "Porphyromonas gingivalis"
+},
+{
+"latin": "Porphyromonas gingivalis ATCC33277",
+"common": "Porphyromonas gingivalis"
+},
+{
+"latin": "Portulaca oleracea",
+"common": "Purslane"
+},
+{
+"latin": "Prevotella intermedia",
+"common": "Prevotella intermedia"
+},
+{
+"latin": "Prochlorococcus marinus",
+"common": "Prochlorococcus marinus"
+},
+{
+"latin": "Proliferodiscus sp.",
+"common": "Proliferodiscus sp."
+},
+{
+"latin": "Propionibacterium acidipropionici",
+"common": "Propionibacterium"
+},
+{
+"latin": "Prunus armeniaca",
+"common": "Plant"
+},
+{
+"latin": "Prunus persica",
+"common": "Peach"
+},
+{
+"latin": "Pseudomonas aeruginosa",
+"common": "Pseudomonas aeruginosa"
+},
+{
+"latin": "Pseudoplectania nigrella",
+"common": "Pseudoplectania nigrella"
+},
+{
+"latin": "Psychotria viridis",
+"common": "Chacrona"
+},
+{
+"latin": "Pteris vittata",
+"common": "Chinese brake fern"
+},
+{
+"latin": "Pteropus alecto",
+"common": "Black flying fox fruit bat"
+},
+{
+"latin": "Pyrenopeziza sp.",
+"common": "Pyrenopeziza sp."
+},
+{
+"latin": "Pyrus communis",
+"common": "Pear"
+},
+{
+"latin": "Quercus coccifera",
+"common": "Oak"
+},
+{
+"latin": "Quercus faginea",
+"common": "Oak"
+},
+{
+"latin": "Quercus ilex",
+"common": "Oak"
+},
+{
+"latin": "Quercus ilex subsp. ballota",
+"common": "Oak"
+},
+{
+"latin": "Quercus ilex subsp. ilex",
+"common": "Oak"
+},
+{
+"latin": "Quercus petraea",
+"common": "Oak"
+},
+{
+"latin": "Quercus pubescens",
+"common": "Oak"
+},
+{
+"latin": "Quercus robur",
+"common": "Oak"
+},
+{
+"latin": "Quercus suber",
+"common": "Oak"
+},
+{
+"latin": "Ramularia sp.",
+"common": "Ramularia sp."
+},
+{
+"latin": "Rattus norvegicus",
+"common": "Rat"
+},
+{
+"latin": "Rhytismataceae sp.",
+"common": "Rhytismataceae sp."
+},
+{
+"latin": "Rickettsia parkeri",
+"common": "Rickettsia parkeri"
+},
+{
+"latin": "Rothia dentocariosa",
+"common": "Rothia dentocariosa"
+},
+{
+"latin": "Rothia mucilaginosa",
+"common": "Rothia"
+},
+{
+"latin": "Rubrivivax benzoatilyticus",
+"common": "Rubrivivax benzoatilyticus"
+},
+{
+"latin": "Ruditapes philippinarum",
+"common": "Clam"
+},
+{
+"latin": "Ruegeria pomeroyi",
+"common": "Ruegeria pomeroyi"
+},
+{
+"latin": "Rumex patientia",
+"common": "Rumex patientia"
+},
+{
+"latin": "Rumex patientia L.\u00d7 Rumex tianschanicus A. LOS",
+"common": "Grass"
+},
+{
+"latin": "Saccharomyces cerevisiae",
+"common": "Saccharomyces cerevisiae"
+},
+{
+"latin": "Saccharomyces cerevisiae",
+"common": "Yeast"
+},
+{
+"latin": "Saccharum spp",
+"common": "Sugarcane"
+},
+{
+"latin": "Salmonella enterica",
+"common": "Salmonella enterica"
+},
+{
+"latin": "Salmonella enterica subsp. enterica serovar Typhimurium",
+"common": "Salmonella enterica"
+},
+{
+"latin": "Salmonella typhimurium",
+"common": "Salmonella typhimurium"
+},
+{
+"latin": "Salvia",
+"common": "Sage"
+},
+{
+"latin": "Sarcophaga crassipalpis",
+"common": "Flesh Fly"
+},
+{
+"latin": "Sarea difformis",
+"common": "Sarea difformis"
+},
+{
+"latin": "Scenedesmus obliquus",
+"common": "Scenedesmus obliquus"
+},
+{
+"latin": "Schistosoma mansoni",
+"common": "Worm"
+},
+{
+"latin": "Scophthalmus maximus",
+"common": "Turbot fish"
+},
+{
+"latin": "Scyliorhinus canicula",
+"common": "Catshark"
+},
+{
+"latin": "Seawater",
+"common": "Seawater"
+},
+{
+"latin": "Seimatosporium lichenicola",
+"common": "Seimatosporium lichenicola"
+},
+{
+"latin": "Setaria italica",
+"common": "Millet"
+},
+{
+"latin": "Setomelanomma holmii",
+"common": "Setomelanomma holmii"
+},
+{
+"latin": "Sinorhizobium meliloti",
+"common": "Sinorhizobium"
+},
+{
+"latin": "Sisymbrium officinale",
+"common": "Mustard"
+},
+{
+"latin": "Soil",
+"common": "Soil"
+},
+{
+"latin": "Solanum lycopersicum",
+"common": "Tomato"
+},
+{
+"latin": "Solanum tuberosum",
+"common": "Plant"
+},
+{
+"latin": "Sorex araneus",
+"common": "Shrew"
+},
+{
+"latin": "Sphaerulina vaccinii",
+"common": "Sphaerulina vaccinii"
+},
+{
+"latin": "Spinacia oleracea",
+"common": "Spinach"
+},
+{
+"latin": "Staphylococcus aureus",
+"common": "Staphylococcus aureus"
+},
+{
+"latin": "Staphylococcus epidermidis",
+"common": "Bacteria"
+},
+{
+"latin": "Staphylococcus epidermidis",
+"common": "Staphylococcus epidermidis"
+},
+{
+"latin": "Stellaria longipes",
+"common": "Longstalk starwort"
+},
+{
+"latin": "Stemphylium globuliferum",
+"common": "Stemphylium globuliferum"
+},
+{
+"latin": "Streptococcus",
+"common": "Streptococcus"
+},
+{
+"latin": "Streptococcus mutans",
+"common": "Streptococcus mutans"
+},
+{
+"latin": "Streptococcus pyogenes",
+"common": "Streptococcus pyogenes"
+},
+{
+"latin": "Streptococcus salivarius",
+"common": "Streptococcus salivarius"
+},
+{
+"latin": "Stylophora pistillata",
+"common": "Stylophora pistillata"
+},
+{
+"latin": "Sulfolobus acidocaldarius",
+"common": "Sulfolobus acidocaldarius"
+},
+{
+"latin": "Sulfolobus islandicus",
+"common": "Sulfolobus islandicus"
+},
+{
+"latin": "Sus scrofa",
+"common": "Pig"
+},
+{
+"latin": "Swine colonic microbiota",
+"common": "Swine colonic microbiota"
+},
+{
+"latin": "Symbiodiniaceae",
+"common": "Symbiodiniaceae"
+},
+{
+"latin": "Synechococcus",
+"common": "Synechococcus"
+},
+{
+"latin": "Synechococcus elongatus",
+"common": "Synechococcus elongatus"
+},
+{
+"latin": "Synechococcus elongatus PCC 11801",
+"common": "Synechococcus elongatus"
+},
+{
+"latin": "Synechococcus elongatus PCC 11802",
+"common": "Synechococcus elongatus"
+},
+{
+"latin": "Synechococcus sp CC9605",
+"common": "Synechococcus"
+},
+{
+"latin": "Synechococcus sp. PCC 7002",
+"common": "Synechococcus"
+},
+{
+"latin": "Synechococcus sp. SAG2156",
+"common": "Synechococcus"
+},
+{
+"latin": "Synechocystis sp. PCC 6803",
+"common": "Synechococcus"
+},
+{
+"latin": "Synthetic",
+"common": "Synthetic"
+},
+{
+"latin": "Tamiasciurus hudsonicus",
+"common": "Squirrel"
+},
+{
+"latin": "Taxus wallichiana",
+"common": "Yew"
+},
+{
+"latin": "Tetrastigma loheri",
+"common": "Woody vine"
+},
+{
+"latin": "Thalassiosira pseudonana",
+"common": "Thalassiosira pseudonana"
+},
+{
+"latin": "Thermococcus kodakarensis",
+"common": "Thermococcus kodakarensis"
+},
+{
+"latin": "Thermococcus sp. AM4",
+"common": "Thermococcus"
+},
+{
+"latin": "Thyronectria cucurbitula",
+"common": "Thyronectria cucurbitula"
+},
+{
+"latin": "Toxoplasma gondii",
+"common": "Toxoplasma gondii"
+},
+{
+"latin": "Treponema pectinovorum",
+"common": "Treponema"
+},
+{
+"latin": "Trichaptum abietinum",
+"common": "Trichaptum abietinum"
+},
+{
+"latin": "Trichechus manatus latirostris",
+"common": "Florida manatee"
+},
+{
+"latin": "Trichinella spiralis",
+"common": "Trichinella spiralis"
+},
+{
+"latin": "Triticum aestivum",
+"common": "Plant"
+},
+{
+"latin": "Triticum aestivum",
+"common": "Wheat"
+},
+{
+"latin": "Triticum durum",
+"common": "Wheat"
+},
+{
+"latin": "Trypanosoma brucei brucei",
+"common": "Trypanosoma brucei"
+},
+{
+"latin": "Tursiops truncatus",
+"common": "Dolphin"
+},
+{
+"latin": "Tympanidaceae sp.",
+"common": "Tympanidaceae sp."
+},
+{
+"latin": "Unknown",
+"common": "Unknown"
+},
+{
+"latin": "Various marine planktons",
+"common": "Phytoplankton"
+},
+{
+"latin": "Veillonella parvula",
+"common": "Veillonella parvula"
+},
+{
+"latin": "Venturia sp.",
+"common": "Venturia sp."
+},
+{
+"latin": "Vibrio cholerae",
+"common": "Vibrio cholerae"
+},
+{
+"latin": "Vigna unguiculata",
+"common": "Cowpea"
+},
+{
+"latin": "Vitis vinifera",
+"common": "Vine"
+},
+{
+"latin": "Waste water",
+"common": "Waste water"
+},
+{
+"latin": "Xenopus laevis",
+"common": "Frog"
+},
+{
+"latin": "Xenopus tropicalis",
+"common": "Western clawed frog"
+},
+{
+"latin": "Xylaria corniformis",
+"common": "Xylaria corniformis"
+},
+{
+"latin": "Xylaria ellisii",
+"common": "Xylaria ellisii"
+},
+{
+"latin": "Xylaria sp.",
+"common": "Xylaria sp."
+},
+{
+"latin": "Xylariaceae sp.",
+"common": "Xylariaceae sp."
+},
+{
+"latin": "Zea mays",
+"common": "Maize"
+},
+{
+"latin": "Zingiberaceae",
+"common": "Ginger"
+}
+]
+}

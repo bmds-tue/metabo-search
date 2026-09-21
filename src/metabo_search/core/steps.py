@@ -13,21 +13,34 @@ from __future__ import annotations
 import copy
 import dataclasses
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from metabo_search.core.cache import DEFAULT_TTL, RESULT_CLASSES, CacheStore
 from metabo_search.core.results import (
+    DescribeResult,
+    DownloadResult,
+    ExportResult,
+    FilterResult,
+    InspectResult,
     Result,
-    SearchResult, FilterResult, InspectResult, ScoreResult,
-    DescribeResult, DownloadResult, ExportResult,
+    ScoreResult,
+    SearchResult,
+    candidates_from_json,
+    candidates_to_json,
 )
 from metabo_search.models import (
     FitnessScore,
     RequirementProfile,
     ScoredCandidate,
     StudyCandidate,
+)
+from metabo_search.repositories.base import (
+    DEFAULT_DATABASES,
+    DISPATCH,
+    validate_databases,
 )
 
 # ──────────────────────────────────────────────────────────────
@@ -56,6 +69,8 @@ class PrintOpts:
 class SearchConfig:
     query: str                                      # ⛔ required
     profile: RequirementProfile | None = None
+    databases: tuple[str, ...] = DEFAULT_DATABASES
+    """Which repositories to search, in merge order.  Default: all known."""
     page_size: int = 100
     max_results: int = 200
     filters: list[dict] | None = None
@@ -202,7 +217,8 @@ def _step_label(step: Step) -> str:
 # ──────────────────────────────────────────────────────────────
 
 
-def search(query: str, *, profile=None, page_size: int = 100,
+def search(query: str, *, profile=None, databases=None,
+           page_size: int = 100,
            max_results: int = 200, filters: list[dict] | None = None,
            ms_filters: dict | None = None, sort_field: str | None = None,
            sort_direction: str = "desc",
@@ -212,8 +228,10 @@ def search(query: str, *, profile=None, page_size: int = 100,
            print_opts: PrintOpts | None = None) -> Step:
     if not query:
         raise ValueError("search() needs a query")
+    databases = validate_databases(databases)
     return Step("search", SearchConfig(
-        query=query, profile=profile, page_size=page_size,
+        query=query, profile=profile, databases=databases,
+        page_size=page_size,
         max_results=max_results, filters=filters, ms_filters=ms_filters,
         sort_field=sort_field, sort_direction=sort_direction,
         organism=organism, technique=technique, sample_type=sample_type,
@@ -370,11 +388,11 @@ class Pipeline:
 
     # ── immutable builders ──────────────────────────────────────────
 
-    def extend(self, *steps: Step) -> "Pipeline":
+    def extend(self, *steps: Step) -> Pipeline:
         return Pipeline(*self.steps, *steps, input=self.input,
                         cache_root=self.cache_root)
 
-    def cache(self, root: str | Path | None) -> "Pipeline":
+    def cache(self, root: str | Path | None) -> Pipeline:
         """Set (or clear, with None) the cache root."""
         return Pipeline(*self.steps, input=self.input, cache_root=root)
 
@@ -554,14 +572,14 @@ class Pipeline:
                             f"    +predicates[{i}].{fk}: "
                             f"{Pipeline._short(mfa.get(fk))} → "
                             f"{Pipeline._short(mfb.get(fk))}")
-            return lines or [f"    +predicates: changed"]
+            return lines or ["    +predicates: changed"]
         for k in sorted(set(fa) | set(fb)):
             if fa.get(k) != fb.get(k):
                 lines.append(f"    +{k}: {Pipeline._short(fa.get(k))}"
                              f" → {Pipeline._short(fb.get(k))}")
         return lines
 
-    def diff(self, other: "Pipeline") -> str:
+    def diff(self, other: Pipeline) -> str:
         a, b = self.steps, other.steps
         out = []
         for i in range(max(len(a), len(b))):
@@ -642,7 +660,8 @@ class Pipeline:
             if cached is not None:
                 result = cached
             else:
-                result = self._execute(step, chain, results, previous, llm)
+                result = self._execute(step, chain, results, previous, llm,
+                                       force=force)
                 if self._cache and enabled:
                     self._cache.store(kind, key, result, self._ttl_for(step))
                     used_plan.append(self._cache.plan_record(
@@ -674,11 +693,14 @@ class Pipeline:
             return step.cache.ttl
         return DEFAULT_TTL.get(step.kind)
 
-    def _execute(self, step, chain, results, previous, llm) -> Result:
+    def _execute(self, step, chain, results, previous, llm, force: bool = False) -> Result:
         kind, cfg = step.kind, step.config
         cache_root = self.cache_root
         if kind == "search":
-            return _do_search(cfg)
+            in_digest = chain.digest() if chain is not None else "init"
+            return _do_search(cfg, cache_root=(
+                str(cache_root) if cache_root else None), in_digest=in_digest,
+                force=force, ttl=self._ttl_for(step))
         if kind == "filter":
             return _do_filter(cfg, chain, cache_root)
         if kind == "inspect":
@@ -721,29 +743,121 @@ def json_dumps_sorted(obj: Any) -> str:
 
 
 # ──────────────────────────────────────────────────────────────
-# Bodies — thin adapters over the existing function library
+# Bodies — thin adapters over the repository seam / function library
 # ──────────────────────────────────────────────────────────────
 
 
-def _do_search(cfg: SearchConfig) -> SearchResult:
-    from metabo_search.searcher import profile_to_search_args, search_studies
-    args = profile_to_search_args(cfg.profile) if cfg.profile else {}
-    manual = {
-        "filters": cfg.filters, "ms_filters": cfg.ms_filters,
-        "organism": cfg.organism, "technique": cfg.technique,
-        "sample_type": cfg.sample_type, "min_samples": cfg.min_samples,
-        "min_raw_files": cfg.min_raw_files,
+def _db_scope_cfg(cfg: SearchConfig) -> SearchConfig:
+    """SearchConfig with the ``databases`` selector removed.
+
+    Per-db cache keys must stay stable when ``databases`` changes (adding a
+    repository must not invalidate another's cached outcome), so the
+    selector is excluded from db-scoped key material.
+    """
+    import dataclasses
+    return dataclasses.replace(cfg, databases=())
+
+
+def _db_cache_key(db: str, cfg_scope: SearchConfig, in_digest: str) -> str:
+    import hashlib
+    raw = f"searchdb|{db}|{json_dumps_sorted(cfg_scope)}|{in_digest}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:24]
+
+
+def _run_db_search(repo, cfg: SearchConfig, in_digest: str,
+                   cache_root: str | None, force: bool = False,
+                   ttl: str | None = None) -> tuple[list[StudyCandidate], dict]:
+    """Run one repository's search, honoring its per-db cache entry.
+
+    Parameters
+    ----------
+    repo : StudyRepository
+        The repository to search.
+    cfg : SearchConfig
+        Full search config (databases selector ignored for the key).
+    in_digest : str
+        Input digest of the search step (normally ``"init"``).
+    cache_root : str | None
+        Pipeline cache root.  ``None`` disables per-db caching.
+    force : bool
+        Bypass the per-db cache read (recompute + rewrite).
+    ttl : str | None
+        Same TTL as the step cache (e.g. ``"7d"``); per-db entries expire
+        together with their step so stale bodies are never reused.
+
+    Returns
+    -------
+    (candidates, meta)
+        Candidates tagged ``repository=repo.name`` plus the repository's
+        search meta (notices, slot decisions, counts) for ``args_used``.
+
+    Caching contract: the per-db entry is keyed on
+    ``(db, db-scoped config, input digest)`` and stores candidates + meta, so
+    a later run with a different ``databases`` tuple reuses the outcome
+    (including the notice, which is deterministic per db+config).
+    """
+    import json as _json
+    import time
+
+    from metabo_search.core.cache import parse_ttl
+    scope = _db_scope_cfg(cfg)
+    key = _db_cache_key(repo.name, scope, in_digest)
+    path = (CacheStore(cache_root).results_dir / f"{key}.json"
+            if cache_root else None)
+    if (cache_root and not force and path is not None
+            and path.exists()):
+        delta = parse_ttl(ttl)
+        fresh = delta is None or (
+            time.time() - path.stat().st_mtime) < delta.total_seconds()
+        if fresh:
+            blob = _json.loads(path.read_text())
+            return (candidates_from_json(_json.dumps(blob["cands"])),
+                    blob.get("meta", {}))
+    out = repo.search(
+        query=cfg.query, profile=cfg.profile,
+        page_size=cfg.page_size, max_results=cfg.max_results,
+        filters=cfg.filters, ms_filters=cfg.ms_filters,
+        sort_field=cfg.sort_field, sort_direction=cfg.sort_direction,
+        organism=cfg.organism, technique=cfg.technique,
+        sample_type=cfg.sample_type, min_samples=cfg.min_samples,
+        min_raw_files=cfg.min_raw_files, cache_root=cache_root)
+    cands, meta = out if isinstance(out, tuple) else (out, {})
+    for c in cands:
+        c.repository = repo.name
+    if cache_root:
+        blob = {"cands": _json.loads(candidates_to_json(cands)), "meta": meta}
+        path.write_text(_json.dumps(blob, sort_keys=True,
+                                    separators=(",", ":")))
+    return cands, meta
+
+
+def _do_search(cfg: SearchConfig, cache_root: str | None = None,
+               in_digest: str = "init", force: bool = False,
+               ttl: str | None = None) -> SearchResult:
+    """Search every selected repository and merge.
+
+    Dispatch contract: repositories run in ``cfg.databases`` order; their
+    candidates are concatenated in that order, each tagged with
+    ``repository``.  The merged ``SearchResult`` is a pure function of the
+    per-db pieces + the ordered databases tuple (never mutated downstream).
+    ``args_used`` records the resolved databases, per-db meta (counts,
+    notices, slot decisions) so agents can audit exactly what ran.
+    """
+    dbs = validate_databases(cfg.databases)
+    merged: list[StudyCandidate] = []
+    per_db_args: dict[str, Any] = {}
+    for db in dbs:
+        repo = DISPATCH[db]
+        cands, meta = _run_db_search(repo, cfg, in_digest, cache_root,
+                                     force=force, ttl=ttl)
+        merged += cands
+        per_db_args[db] = {"count": len(cands), **meta}
+    args_used: dict[str, Any] = {
+        "databases": list(dbs), **per_db_args,
+        "config": {k: v for k, v in dataclasses.asdict(cfg).items()
+                   if k not in ("profile", "databases")},
     }
-    args = {**args, **{k: v for k, v in manual.items() if v is not None}}
-    # merge raw filters lists
-    if cfg.filters or args.get("filters"):
-        base = list(args.get("filters") or []) + list(cfg.filters or [])
-        args["filters"] = base
-    cands = search_studies(
-        query=cfg.query, page_size=cfg.page_size,
-        max_results=cfg.max_results, sort_field=cfg.sort_field,
-        sort_direction=cfg.sort_direction, **args)
-    return SearchResult(candidates=cands, query=cfg.query, args_used=args)
+    return SearchResult(candidates=merged, query=cfg.query, args_used=args_used)
 
 
 def _carrier(r: Result) -> tuple[list[StudyCandidate], str]:
@@ -811,21 +925,42 @@ def _do_filter(cfg: FilterConfig, inp: Result,
 
 def _do_inspect(cfg: InspectConfig, inp: Result,
                 tmp_dir: str | None) -> InspectResult:
-    from metabo_search.inspector import inspect_studies
+    """Deep-inspect candidates, dispatching each repository's implementation.
+
+    Candidates are grouped by ``candidate.repository``; each group goes to
+    its repository's ``deep_metadata`` (MetaboLights: ISA download+parse;
+    Workbench: parallel REST fetch).  Deep lists must preserve input order
+    and be the same length (the seam contract); output preserves the input
+    candidate order.
+    """
     cands, _ = _carrier(inp)
+    positions: dict[str, list[int]] = {}
+    for i, c in enumerate(cands):
+        positions.setdefault(c.repository, []).append(i)
+    deep_all: list[StudyCandidate | None] = [None] * len(cands)
+    isa_dirs: dict[str, str] = {}
     tmp = tmp_dir or cfg.tmp_dir
-    deep = inspect_studies(cands, max_workers=cfg.workers,
-                           tmp_dir=tmp,
-                           parse_workers=cfg.parse_workers)
-    isa_dirs = {}
-    if tmp:
-        from pathlib import Path
-        base = Path(tmp)
-        for c in deep:
-            d = base / c.study_id / c.study_id
-            if d.is_dir():
-                isa_dirs[c.study_id] = str(d)
-    return InspectResult(candidates=deep, isa_dirs=isa_dirs)
+    for repo_name in positions:
+        repo = DISPATCH[repo_name]
+        sub = [cands[i] for i in positions[repo_name]]
+        deep = repo.deep_metadata(
+            sub, workers=cfg.workers, tmp_dir=tmp,
+            parse_workers=cfg.parse_workers)
+        if len(deep) != len(sub):
+            raise RuntimeError(
+                f"inspect: repository {repo_name} returned {len(deep)} "
+                f"candidates for {len(sub)} inputs (must match)")
+        for idx, c in zip(positions[repo_name], deep):
+            deep_all[idx] = c
+            if repo_name == "metabolights" and tmp:
+                d = Path(tmp) / c.study_id / c.study_id
+                if d.is_dir():
+                    isa_dirs[c.study_id] = str(d)
+    if any(c is None for c in deep_all):
+        raise RuntimeError("inspect: not every candidate was deepened "
+                            "(a repository skipped an input)")
+    return InspectResult(candidates=[c for c in deep_all if c is not None],
+                         isa_dirs=isa_dirs)
 
 
 def _do_score(cfg: ScoreConfig, inp: Result) -> ScoreResult:
@@ -844,7 +979,11 @@ def _do_score(cfg: ScoreConfig, inp: Result) -> ScoreResult:
 def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
                  llm: Callable | None, store_path: str | None):
     from metabo_search.sample_gen import (
-        SampleSentencesStore, load_samples, prepare_samples, submit_samples)
+        SampleSentencesStore,
+        load_samples,
+        prepare_samples,
+        submit_samples,
+    )
     if llm is None:
         raise ValueError("describe() needs the LLM — run(llm=call_llm); "
                          "the library never calls a model itself")
@@ -868,8 +1007,8 @@ def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
 
 def _do_download(cfg: DownloadConfig, insp: InspectResult,
                  files_cache_dir: str | None = None) -> DownloadResult:
-    from metabo_search.downloader import (
-        DownloadConfig as BodyConfig, download_data_files)
+    from metabo_search.downloader import DownloadConfig as BodyConfig
+    from metabo_search.downloader import download_data_files
     all_downloaded: list[str] = []
     all_failed: list[str] = []
     total = 0

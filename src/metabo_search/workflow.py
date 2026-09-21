@@ -18,6 +18,7 @@ def find_datasets(
     query: str = "",
     *,
     profile=None,
+    databases=None,
     max_candidates: int = 100,
     deep_inspect_top: int = 10,
     max_workers: int = 10,
@@ -53,7 +54,7 @@ def find_datasets(
     steps += [inspect(workers=max_workers), score(profile=profile)]
 
     p = pipeline(
-        search(query, profile=profile,
+        search(query, profile=profile, databases=databases,
                page_size=min(max_candidates, 100),
                max_results=max_candidates, **manual),
         *steps,

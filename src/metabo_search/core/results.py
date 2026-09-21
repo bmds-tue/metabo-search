@@ -28,7 +28,6 @@ from metabo_search.models import (
 )
 from metabo_search.sample_gen import SampleDescription
 
-
 # ──────────────────────────────────────────────────────────────
 # Generic dataclass serialization
 # ──────────────────────────────────────────────────────────────
@@ -73,13 +72,13 @@ def _from(ty: Any, data: Any) -> Any:
             return data if isinstance(data, str) else data
         return ty(data)
     args = typing.get_args(ty)
-    if origin in (list, typing.List):
+    if origin in (list, list):
         (item_ty,) = args
         return [_from(item_ty, x) for x in data]
-    if origin in (dict, typing.Dict):
+    if origin in (dict, dict):
         k_ty, v_ty = args
         return {k: _from(v_ty, v) for k, v in data.items()}
-    if origin in (tuple, typing.Tuple):
+    if origin in (tuple, tuple):
         return tuple(_from(a, x) for a, x in zip(args, data))
     if origin is typing.Union:
         for a in args:
@@ -106,6 +105,27 @@ def rebuild(ty: type, data: dict) -> Any:
     return _from(ty, data)
 
 
+def candidates_to_json(cands: list[StudyCandidate]) -> str:
+    """Canonical JSON for a list of ``StudyCandidate`` (cache medium).
+
+    Same rules as ``Result.to_json`` (private fields dropped, keys sorted,
+    compact) so a candidate list stored on disk is byte-identical across
+    fresh/warm runs — the reproducibility guarantee of the per-db cache.
+    """
+    payload = [dataclasses.asdict(c, dict_factory=_plain_factory)
+               for c in cands]
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def candidates_from_json(s: str) -> list[StudyCandidate]:
+    """Inverse of :func:`candidates_to_json`.
+
+    Rebuilds dataclasses (nested OntologyTerm/AssayInfo/… included) via the
+    generic ``rebuild`` path; returns a fresh list by value.
+    """
+    return [rebuild(StudyCandidate, d) for d in json.loads(s)]
+
+
 # ──────────────────────────────────────────────────────────────
 # Result base
 # ──────────────────────────────────────────────────────────────
@@ -122,11 +142,11 @@ class Result:
         return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
 
     @classmethod
-    def rebuild(cls, data: dict) -> "Result":
+    def rebuild(cls, data: dict) -> Result:
         return _from(cls, data)
 
     @classmethod
-    def from_json(cls, s: str) -> "Result":
+    def from_json(cls, s: str) -> Result:
         return cls.rebuild(json.loads(s))
 
     def digest(self) -> str:
@@ -168,7 +188,13 @@ class SearchResult(Result):
     args_used: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     def fmt(self, detail: bool = False) -> str:
-        return _fmt_cands(self.candidates, detail, f"query '{self.query}'")
+        lines = [_fmt_cands(self.candidates, detail, f"query '{self.query}'")]
+        # per-repository notices (workbench vocabulary ambiguity) are the
+        # agent's actionable instructions — always visible.
+        for db, meta in self.args_used.items():
+            if isinstance(meta, dict) and meta.get("notice"):
+                lines.append(f"[{db}] notice: {meta['notice']}")
+        return "\n".join(lines)
 
 
 @dataclasses.dataclass

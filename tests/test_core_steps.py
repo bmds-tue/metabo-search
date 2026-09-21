@@ -261,17 +261,17 @@ def test_cache_replays_warm_steps(monkeypatch, tmp_path):
         return [candidate("M1")]
 
     monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
-    p1 = pipeline(search("urine")).cache(root)
+    p1 = pipeline(search("urine", databases=("metabolights",))).cache(root)
     r1 = p1.run()
     assert body_calls["n"] == 1
 
-    p2 = pipeline(search("urine")).cache(root)
+    p2 = pipeline(search("urine", databases=("metabolights",))).cache(root)
     r2 = p2.run()                       # same config + input → replay
     assert body_calls["n"] == 1
     assert r1["search"].digest() == r2["search"].digest()
     assert (root / "plan.json").exists()
 
-    p3 = pipeline(search("saliva")).cache(root)   # different query → miss
+    p3 = pipeline(search("saliva", databases=("metabolights",))).cache(root)
     p3.run()
     assert body_calls["n"] == 2
 
@@ -285,7 +285,8 @@ def test_cache_ttl_expiry(monkeypatch, tmp_path):
         return [candidate("M1")]
 
     monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
-    step = search("urine", cache=CacheOpts(ttl="0s"))
+    step = search("urine", databases=("metabolights",),
+                   cache=CacheOpts(ttl="0s"))
     pipeline(step).cache(root).run()
     assert n["n"] == 1
     pipeline(step).cache(root).run()    # stale → re-execute
@@ -314,7 +315,7 @@ def test_plan_records_kind_and_config(monkeypatch, tmp_path):
     monkeypatch.setattr("metabo_search.searcher.search_studies",
                         lambda *a, **k: [candidate("M1")])
     root = tmp_path / "c"
-    pipeline(search("urine")).cache(root).run()
+    pipeline(search("urine", databases=("metabolights",))).cache(root).run()
     plan = json.loads((root / "plan.json").read_text())
     assert plan[0]["kind"] == "search"
     assert plan[0]["config"]["query"] == "urine"
@@ -329,12 +330,13 @@ def test_force_refresh_writes_no_junk_key(monkeypatch, tmp_path):
         return [candidate("M1")]
 
     monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
-    p = pipeline(search("urine")).cache(root)
+    p = pipeline(search("urine", databases=("metabolights",))).cache(root)
     p.run()
     p.run(force=True)
     junk = [f for f in (root / "results").iterdir() if f.name.startswith(".")]
-    assert junk == []
-    assert len(list((root / "results").iterdir())) == 1   # one key only
+    assert junk == []                            # no stray dotfile keys
+    keys = [f.name for f in (root / "results").iterdir()]
+    assert all(k.endswith(".json") for k in keys)   # step key + per-db key
 
 
 def test_force_refresh(monkeypatch, tmp_path):
@@ -346,7 +348,7 @@ def test_force_refresh(monkeypatch, tmp_path):
         return [candidate("M1")]
 
     monkeypatch.setattr("metabo_search.searcher.search_studies", counting)
-    p = pipeline(search("urine")).cache(root)
+    p = pipeline(search("urine", databases=("metabolights",))).cache(root)
     p.run()
     assert n["n"] == 1
     p.run()                              # replay
@@ -374,7 +376,7 @@ def test_results_cross_steps_by_value(monkeypatch, tmp_path):
                         mutating_inspect)
     root = tmp_path / "c"
     p = pipeline(
-        search("urine"),
+        search("urine", databases=("metabolights",)),
         filter(screen(profile=PROFILE)),
         inspect(),
         score(PROFILE),

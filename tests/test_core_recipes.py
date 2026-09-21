@@ -58,9 +58,10 @@ def test_quick_discovery_matches_find_datasets(monkeypatch):
     # patches above are enough (bodies are imported lazily inside the steps)
 
     old = find_datasets("urine", profile=PROFILE, max_candidates=50,
-                        deep_inspect_top=10, max_workers=2)
-    new = quick_discovery("urine", PROFILE, max_results=50,
-                          min_survivors=10, workers=2).run()
+                        deep_inspect_top=10, max_workers=2,
+                        databases=("metabolights",))
+    new = quick_discovery("urine", PROFILE, databases=("metabolights",),
+                          max_results=50, min_survivors=10, workers=2).run()
 
     assert [s.study_id for s in old.candidates] == \
         [sc.study_id for sc in new.score.ranked]
@@ -75,7 +76,8 @@ def test_staged_flow_reuses_probe(monkeypatch, tmp_path):
     monkeypatch.setattr(metabo_search.inspector, "inspect_studies", fake_inspect)
     root = tmp_path / "c"
 
-    probe = quick_probe("urine", PROFILE).cache(root)
+    probe = quick_probe("urine", PROFILE,
+                        databases=("metabolights",)).cache(root)
     r = probe.run()                                   # stage 1: no inspect
     assert list(r.keys()) == ["search", "filter"]
     assert [c.study_id for c in r.filter.survivors] == ["M1", "M3"]
@@ -99,7 +101,8 @@ def test_full_report_runs_with_llm(monkeypatch, tmp_path):
         calls["n"] += 1
         return "{}"
 
-    r = full_report("urine", PROFILE, top=2, cache_root=tmp_path / "c").run(llm=llm)
+    r = full_report("urine", PROFILE, databases=("metabolights",),
+                    top=2, cache_root=tmp_path / "c").run(llm=llm)
     assert calls["n"] == 2
     assert set(r.describe.by_study) == {"M1", "M3"}
 
@@ -107,7 +110,7 @@ def test_full_report_runs_with_llm(monkeypatch, tmp_path):
 def test_harvest_requires_download_constraint():
     with pytest.raises(ValueError, match="download constraint"):
         harvest("urine", PROFILE)
-    p = harvest("urine", PROFILE,
+    p = harvest("urine", PROFILE, databases=("metabolights",),
                 download_kwargs={"categories": ["raw"], "dest_dir": "/tmp/x"})
     assert p.steps[-2].kind == "download"
     assert p.steps[-1].kind == "export"

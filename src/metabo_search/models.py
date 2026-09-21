@@ -17,6 +17,14 @@ class StudyRequirements:
 
     organisms: list[str] | None = None
     sample_types: list[str] | None = None
+    diseases: list[str] | None = None
+    """Health-state / condition terms (e.g. ``"Alzheimer's disease"``).
+
+    Structured disease matching: repositories that expose a disease
+    vocabulary (Metabolomics Workbench) fill their server-side slot when a
+    confident canonical match exists; the rest screen the terms client-side.
+    Free text drives it only as a fallback when the field is unset.
+    """
     techniques: list[str] | None = None
     ionization_modes: list[str] | None = None
     analysis_types: list[str] | None = None
@@ -122,6 +130,12 @@ class StudyCandidate:
     title: str = ""
     description: str = ""
     status: str = ""
+    repository: str = "metabolights"
+    """Which repository produced this candidate: ``"metabolights"`` or
+    ``"metabolomics_workbench"``.  The search step tags every candidate so
+    downstream steps (inspect, describe, download) can dispatch on it; it is
+    serialized and part of the cache digest, so mixed-repository results
+    stay distinct and reproducible."""
 
     # ── Phase 1: search API information ──
     organisms: list[OntologyTerm] = field(default_factory=list)

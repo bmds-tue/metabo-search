@@ -51,6 +51,14 @@ from metabo_search.models import (
     StudyCandidate,
 )
 
+# ── repositories: register available data sources (populates DISPATCH) ──
+from metabo_search import repositories  # noqa: E402
+from metabo_search.repositories import metabolights  # noqa: E402
+from metabo_search.repositories import workbench  # noqa: E402
+from metabo_search.repositories.base import (  # noqa: E402
+    DEFAULT_DATABASES,
+)
+
 # ── core: typed pipeline (docs/design-pipeline.md) ──
 from metabo_search.core import (  # noqa: E402  (isort: keep above __all__)
     Pipeline, PipelineResult, CacheOpts, PrintOpts,
