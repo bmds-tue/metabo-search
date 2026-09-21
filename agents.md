@@ -11,7 +11,7 @@
 
 ```bash
 ./scripts/install.sh       # from the repo root: creates .venv-local, pip-installs -e ., links skills
-scripts/python -c "import mtbls_agent; print(mtbls_agent.__file__)"
+scripts/python -c "import metabo_search; print(metabo_search.__file__)"
 ```
 
 - Private venv: `.venv-local` (isolates from the shared `.venv` / parallel-test copy)
@@ -43,6 +43,10 @@ metabo-search/
 │   ├── downloader.py      # FILES/ listing + selective downloads
 │   ├── manifest.py        # SampleManifest export
 │   ├── workflow.py        # find_datasets (shim over quick_discovery)
+│   ├── repositories/      # per-repository code (seam: repositories/base.py)
+│   │   ├── base.py        # StudyRepository ABC, DISPATCH, validate_databases
+│   │   ├── metabolights.py# adapter over the top-level MetaboLights modules
+│   │   └── workbench/     # Metabolomics Workbench (corpus/matcher/slots/…)
 │   ├── core/              # typed pipeline (design: docs/design-pipeline.md)
 │   │   ├── __init__.py    # public surface (pipeline, factories, recipes)
 │   │   ├── results.py     # 8 result types: to_json/from_json/digest/fmt
@@ -69,14 +73,25 @@ metabo-search/
 - [x] downloader.py — recursive FILES/ listing + selective downloads
 - [x] manifest.py — SampleManifest export
 - [x] workflow.py — find_datasets() shim over quick_discovery
+- [x] repositories/ — repository seam (base.py: StudyRepository ABC, DISPATCH,
+  database_from_id, validate_databases; DEFAULT_DATABASES = metaboliLights +
+  workbench). Search step dispatches per db, tags candidates, caches per db.
+- [x] workbench/ — Metabolomics Workbench (NIH NMDR) repository: pooled
+  httpx client, whole-index corpus (summary + disease/source/species maps,
+  7 d TTL, 3× retry), vendored vocab snapshots (259/328 disease/source,
+  486 latin/450 common species), rapidfuzz matcher (cutoff 75 + tie-slack 2,
+  alias table, abstain-on-ambiguity), metstat slot assembly (structured
+  fields only — SPECIES/SOURCE/DISEASE), corpus term-match backstop + species
+  screen, parallel deep inspect (factors/analysis/metabolites → assays,
+  sample_metadata, metabolite_count), actionable ambiguity notice in
+  `SearchResult.fmt()`/`args_used`. Live smoke verified (corpus, slots,
+  screening, deep, score). MAF/datatable adapter + describe from factors = next.
 - [x] core/ — typed pipeline: results.py (8 result types, to_json/digest/fmt),
   steps.py (Step/Config/Predicate/Pipeline, validate/run/extend/diff),
   cache.py (plan.json + results/, TTLs, warm replay), recipes.py
-  (quick_probe/quick_discovery/full_report/harvest). 86 tests green,
-  incl. determinism (pipeline == find_datasets), cache warm-replay, process
-  parsing, listing cache, live smoke+zoo verified against the real API
-  (regressions: filter-after-filter chaining; run(force=True) stray
-  results/.json; by-value handoff; diff() shows per-predicate deltas).
+  (quick_probe/quick_discovery/full_report/harvest). 116 tests green
+  (86 pre-existing adapted to databases=("metabolights",) + 30 new workbench/
+  database-option tests, offline via METABO_WORKBENCH_FIXTURES).
 - [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md,
   now pipe-first (typed pipeline), legacy table marked
 
@@ -145,6 +160,21 @@ r = p.run()                       # r["score"], r.score, r.order — typed mappi
 r2 = p.extend(
         describe(top=3)).run(llm=call_llm)   # sentences: 1 LLM call/study, cached
 ```
+
+- **Repositories (`databases=`)**: `search()`/recipes/`find_datasets` default to
+  `databases=("metabolights", "metabolomics_workbench")` — both repositories,
+  searched in order, candidates tagged `candidate.repository`. The search step
+  caches **per database** (db-scoped keys; TTL + `force` honored), so changing
+  ``databases`` never re-runs an unchanged repo. `databases=("metabolights",)`
+  is byte-identical to pre-workbench behavior. The workbench needs a cache
+  root (`pipeline.cache(root)` or `METABO_WORKBENCH_FIXTURES` for tests): its
+  whole-index corpus is fetched once per 7 d and filtered locally afterwards.
+- **Vocabulary matching (workbench)**: rapidfuzz + alias table + confidence
+  gate; on ambiguity the SLOT STAYS EMPTY (never a guess) and an actionable
+  notice lands in `SearchResult.fmt()`/`args_used` telling the agent the next
+  step (refine free text → workbench-only re-run → `pipeline(input=...)`
+  composition). `StudyRequirements.diseases` feeds the DISEASE slot
+  (structured field only — free text is never a slot term).
 
 - Steps are `Config → Result`; step N's output type is step N+1's input type.
 - `pipeline(step..., input=SomeResult)` starts midstream / offline; run() also
@@ -244,7 +274,7 @@ End-to-end: search → screen → inspect → score → summarize.
   "what to decide" list. Gates A–I prose removed.
 - **Parallel-test note**: the user keeps a separate codebase (with its own
   `.venv`) for parallel testing. Do NOT edit it. In THIS repository, `.venv`
-  resolves to this `src/`. If `import mtbls_agent` resolves elsewhere, run
+  resolves to this `src/`. If `import metabo_search` resolves elsewhere, run
   `uv pip install -e .` in THIS directory.
 
 ## Recent fixes (from parallel-agent bug report)
@@ -294,7 +324,7 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (86 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (116 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 

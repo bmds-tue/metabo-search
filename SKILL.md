@@ -1,6 +1,6 @@
 ---
 name: metabo-search
-description: Find and score MetaboLights metabolomics datasets against experimental requirements (organism, tissue, technique, disease, sample count, MAF availability) via a typed, cacheable pipeline — deterministic discovery, warm-cache iteration, per-sample biological sentences, selective downloads, manifest export. Use when a researcher needs datasets matching their experimental setup.
+description: Find and score metabolomics datasets against experimental requirements (organism, tissue, technique, disease, sample count, MAF availability) via a typed, cacheable pipeline over MetaboLights AND Metabolomics Workbench — deterministic discovery, warm-cache iteration, per-sample biological sentences, selective downloads, manifest export. Use when a researcher needs datasets matching their experimental setup.
 compatibility: Python 3.11+; uv optional (falls back to python3 -m venv)
 metadata:
   install: scripts/install.sh
@@ -46,7 +46,9 @@ from metabo_search import (pipeline, search, filter, screen, inspect, score,
 
 # 0) What the researcher needs:
 profile = RequirementProfile(
-    hard=StudyRequirements(organisms=["Homo sapiens"], has_maf=True),
+    hard=StudyRequirements(organisms=["Homo sapiens"],
+                           diseases=["Alzheimer's disease"],  # structured disease
+                           has_maf=True),
     nice_to_have=StudyRequirements(techniques=["LC-MS"]),
 )
 
@@ -72,7 +74,7 @@ print(r2["describe"].fmt(detail=True))
 
 | Step | Input → Output | Defaults / notes |
 |---|---|---|
-| `search(query, profile=…)` | → `SearchResult` | `query` is the one required answer; everything else defaults |
+| `search(query, profile=…, databases=…)` | → `SearchResult` | `query` is the one required answer; `databases` defaults to **all** repositories (MetaboLights + Workbench), candidates tagged `repository=` |
 | `filter(screen(profile, min_survivors))` | SearchResult → `FilterResult` | drop hard-fails on search-index data; rank survivors; no truncation by default |
 | `filter(maf(require, min_metabolites))` | InspectResult → `FilterResult` | drop MAF-poor studies (deep; place after inspect) |
 | `filter(custom(name, **params))` | any → `FilterResult` | registered predicates — the extension point |
@@ -83,6 +85,25 @@ print(r2["describe"].fmt(detail=True))
 | `export(path="manifest.csv")` | InspectResult → `ExportResult` | flat CSV + traceability |
 
 All steps accept `cache=CacheOpts(enabled, ttl)` and `print=PrintOpts(top, detail)`; cache TTLs are generous by default (search 7d, inspect 30d, describe eternal).
+
+### Repositories: which databases to search
+
+`databases=("metabolights", "metabolomics_workbench")` is the default
+(`DEFAULT_DATABASES`). Rules that make this painless:
+- **`databases=("metabolights",)`** reproduces pre-workbench behavior exactly —
+  use it when you only want EMBL-, ISA-based studies.
+- The **workbench needs a cache root** (`pipeline.cache(root)` … `.cache("…")`
+  is in The One Flow): its whole index is fetched once/7 d, then filtered
+  locally. Pipeline/Wheat-free runs without a cache root must restrict
+  `databases`.
+- **Vocabulary ambiguity is an abstention, not a guess.** When a workbench
+  slot term can't be matched confidently, it stays EMPTY and the result prints
+  an actionable notice (top candidates + study counts + the exact next call).
+  Follow it: refine the free text (or `profile.hard.diseases`) and re-run with
+  `databases=("metabolomics_workbench",)`; MetaboLights results are untouched
+  (per-repo cache).
+- `StudyRequirements.diseases` is the structured disease channel (Workbench
+  slot + vocabulary matching); free text is matched against titles client-side.
 
 ### Staged work (cheap first, deep later)
 
@@ -125,7 +146,7 @@ all_done = full_report("urine alzheimer", profile, top=3).run(llm=call_llm)
 
 | Call | Returns | What it does |
 |------|---------|--------------|
-| `find_datasets(query, profile, ...)` | `ComparisonReport` | **deterministic** discovery: API-filter by hard reqs → shallow screen → deep-inspect survivors → score → rank. No LLM needed. |
+| `find_datasets(query, profile, databases=...)` | `ComparisonReport` | **deterministic** discovery: per-repo search → shallow screen → deep-inspect survivors → score → rank. No LLM needed. |
 | `screen_candidates(shallow, profile)` | `ScreeningResult` | deterministic hard-pass on search-index data + shallow rank (drop failures before the slow deep-inspect) |
 | `profile_to_search_args(profile)` | `dict` | maps hard reqs to search API filters (server-side) |
 | `filter_by_maf(deep, require_maf=..., min_metabolites=...)` | `[StudyCandidate]` | post-inspection: keep/exclude studies shipping MAF files |

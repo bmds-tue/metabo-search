@@ -56,7 +56,7 @@ Download ONLY the MAF (metabolite assignment) files for a study. MAF files are t
 
 Post-inspection filter on MAF (metabolite assignment file) presence. Runs on DEEP-inspected candidates (the search index does not expose MAF files — they are only known after :func:`inspect_studies`). Keeps candidates in input order. Parameters ---------- candidates : list[StudyCandidate] Deep-inspected candidates (`maf_files_parsed` populated). require_maf : bool True: keep only studies that…
 
-### `find_datasets(query: 'str' = '', *, profile=None, max_candidates: 'int' = 100, deep_inspect_top: 'int' = 10, max_workers: 'int' = 10, min_survivors: 'int | None' = None, organism=None, technique=None, sample_type=None, min_samples: 'int | None' = None) -> 'ComparisonReport'`
+### `find_datasets(query: 'str' = '', *, profile=None, databases=None, max_candidates: 'int' = 100, deep_inspect_top: 'int' = 10, max_workers: 'int' = 10, min_survivors: 'int | None' = None, organism=None, technique=None, sample_type=None, min_samples: 'int | None' = None) -> 'ComparisonReport'`
 
 End-to-end discovery, deterministic when `profile` is structured. Pipeline (no LLM involved): 1. Push hard requirements into the search API (server-side filter). 2. Screen the shallow results: drop hard-fails, rank survivors. 3. Deep-inspect only the top survivors (bounded by the screen cap). 4. Full deterministic scoring + comparison table. The legacy entry point — equivalent to…
 
@@ -64,11 +64,11 @@ End-to-end discovery, deterministic when `profile` is structured. Pipeline (no L
 
 Count data files by format, from a recursive FILES/ listing. A quick probe for "does this study have mzML / RAW / .d?" without downloading anything. Categories reflect the directory (RAW_FILES vs DERIVED_FILES) when available.
 
-### `full_report(query: 'str', profile=None, *, top: 'int' = 3, revision: 'int' = 0, store: 'str | None' = None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
+### `full_report(query: 'str', profile=None, *, databases=None, top: 'int' = 3, revision: 'int' = 0, store: 'str | None' = None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
 
 Discovery + per-sample sentences (ONE LLM call per study, cached).
 
-### `harvest(query: 'str', profile=None, *, download_kwargs: 'dict[str, Any] | None' = None, export_kwargs: 'dict[str, Any] | None' = None, top: 'int' = 3, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
+### `harvest(query: 'str', profile=None, *, databases=None, download_kwargs: 'dict[str, Any] | None' = None, export_kwargs: 'dict[str, Any] | None' = None, top: 'int' = 3, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
 
 Full report + selective download + manifest export. `download_kwargs` must constrain what is downloaded (categories / file_types / sample_names / max_files / max_size_gb) — harvest never silently downloads everything.
 
@@ -112,11 +112,11 @@ Bundle everything for one study: contexts + the single LLM prompt. `revision` fe
 
 Deterministically map a profile's HARD requirements to search kwargs, so the search API pre-filters (server-side) instead of fetching everything. Only criteria the API/filter can express are mapped: organism, technique, sample_type, min_samples. Everything else is enforced later (shallow or deep screening).
 
-### `quick_discovery(query: 'str', profile=None, *, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
+### `quick_discovery(query: 'str', profile=None, *, databases=None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
 
 Stage 2 (the old find_datasets): probe + deep inspect + scored ranking.
 
-### `quick_probe(query: 'str', profile=None, *, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10) -> 'Pipeline'`
+### `quick_probe(query: 'str', profile=None, *, databases=None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10) -> 'Pipeline'`
 
 Stage 1: narrow the profile cheaply. Search replays warm across edits.
 
@@ -152,7 +152,7 @@ Shallow screening predicate (applies to SearchResult). `min_survivors=None` ⇒ 
 
 Deterministic pre-screen on search-index data (no LLM, no download). Drops candidates that fail shallow-checkable hard constraints, ranks the rest by a shallow soft score, and keeps at least `min_survivors` (or the total that pass) for deep inspection. Deterministic and cheap: only fields already present in the search hit.
 
-### `search(query: 'str', *, profile=None, page_size: 'int' = 100, max_results: 'int' = 200, filters: 'list[dict] | None' = None, ms_filters: 'dict | None' = None, sort_field: 'str | None' = None, sort_direction: 'str' = 'desc', organism=None, technique=None, sample_type=None, min_samples: 'int | None' = None, min_raw_files: 'int | None' = None, name: 'str | None' = None, cache: 'CacheOpts | None' = None, print_opts: 'PrintOpts | None' = None) -> 'Step'`
+### `search(query: 'str', *, profile=None, databases=None, page_size: 'int' = 100, max_results: 'int' = 200, filters: 'list[dict] | None' = None, ms_filters: 'dict | None' = None, sort_field: 'str | None' = None, sort_direction: 'str' = 'desc', organism=None, technique=None, sample_type=None, min_samples: 'int | None' = None, min_raw_files: 'int | None' = None, name: 'str | None' = None, cache: 'CacheOpts | None' = None, print_opts: 'PrintOpts | None' = None) -> 'Step'`
 
 
 
@@ -334,7 +334,7 @@ SearchResult(candidates: 'list[StudyCandidate]', query: 'str' = '', args_used: '
 - `query`: `str`
 - `args_used`: `dict[str, Any]`
 
-### `StudyCandidate(study_id: 'str', title: 'str' = '', description: 'str' = '', status: 'str' = '', organisms: 'list[OntologyTerm]' = <factory>, organism_parts: 'list[OntologyTerm]' = <factory>, assay_techniques: 'list[dict]' = <factory>, design_descriptors: 'list[OntologyTerm]' = <factory>, technology_types: 'list[OntologyTerm]' = <factory>, factors: 'list[OntologyTerm]' = <factory>, sample_count: 'int | None' = None, raw_file_count: 'int | None' = None, derived_file_count: 'int | None' = None, assay_count: 'int | None' = None, size_in_bytes: 'int | None' = None, publications: 'list[PublicationInfo]' = <factory>, contacts: 'list[str]' = <factory>, submitters: 'list[str]' = <factory>, submission_date: 'str' = '', public_release_date: 'str' = '', assays: 'list[AssayInfo]' = <factory>, data_files: 'list[DataFileInfo]' = <factory>, protocols: 'list[ProtocolInfo]' = <factory>, sample_metadata_fields: 'list[str]' = <factory>, sample_metadata: 'list[dict[str, str]]' = <factory>, metabolite_count: 'int | None' = None, metadata_completeness: 'float' = 0.0, investigation_file_parsed: 'bool' = False, assay_files_parsed: 'bool' = False, sample_file_parsed: 'bool' = False, maf_files_parsed: 'bool' = False, sample_file_map: 'dict[str, dict[str, list[str]]]' = <factory>, _raw_api_result: 'dict[str, Any]' = <factory>) -> None`
+### `StudyCandidate(study_id: 'str', title: 'str' = '', description: 'str' = '', status: 'str' = '', repository: 'str' = 'metabolights', organisms: 'list[OntologyTerm]' = <factory>, organism_parts: 'list[OntologyTerm]' = <factory>, assay_techniques: 'list[dict]' = <factory>, design_descriptors: 'list[OntologyTerm]' = <factory>, technology_types: 'list[OntologyTerm]' = <factory>, factors: 'list[OntologyTerm]' = <factory>, sample_count: 'int | None' = None, raw_file_count: 'int | None' = None, derived_file_count: 'int | None' = None, assay_count: 'int | None' = None, size_in_bytes: 'int | None' = None, publications: 'list[PublicationInfo]' = <factory>, contacts: 'list[str]' = <factory>, submitters: 'list[str]' = <factory>, submission_date: 'str' = '', public_release_date: 'str' = '', assays: 'list[AssayInfo]' = <factory>, data_files: 'list[DataFileInfo]' = <factory>, protocols: 'list[ProtocolInfo]' = <factory>, sample_metadata_fields: 'list[str]' = <factory>, sample_metadata: 'list[dict[str, str]]' = <factory>, metabolite_count: 'int | None' = None, metadata_completeness: 'float' = 0.0, investigation_file_parsed: 'bool' = False, assay_files_parsed: 'bool' = False, sample_file_parsed: 'bool' = False, maf_files_parsed: 'bool' = False, sample_file_map: 'dict[str, dict[str, list[str]]]' = <factory>, _raw_api_result: 'dict[str, Any]' = <factory>) -> None`
 
 All known information about a MetaboLights study. Phase 1 (shallow) fields come from the search API. Phase 2 (deep) fields are populated after downloading + parsing ISA files.
 
@@ -342,6 +342,7 @@ All known information about a MetaboLights study. Phase 1 (shallow) fields come 
 - `title`: `str`
 - `description`: `str`
 - `status`: `str`
+- `repository`: `str`
 - `organisms`: `list[OntologyTerm]`
 - `organism_parts`: `list[OntologyTerm]`
 - `assay_techniques`: `list[dict]`
@@ -372,12 +373,13 @@ All known information about a MetaboLights study. Phase 1 (shallow) fields come 
 - `sample_file_map`: `dict[str, dict[str, list[str]]]`
 - `_raw_api_result`: `dict[str, Any]`
 
-### `StudyRequirements(organisms: 'list[str] | None' = None, sample_types: 'list[str] | None' = None, techniques: 'list[str] | None' = None, ionization_modes: 'list[str] | None' = None, analysis_types: 'list[str] | None' = None, instrument_models: 'list[str] | None' = None, data_formats: 'list[str] | None' = None, min_samples: 'int | None' = None, has_raw_data: 'bool | None' = None, has_derived_data: 'bool | None' = None, has_maf: 'bool | None' = None, min_metabolites: 'int | None' = None) -> None`
+### `StudyRequirements(organisms: 'list[str] | None' = None, sample_types: 'list[str] | None' = None, diseases: 'list[str] | None' = None, techniques: 'list[str] | None' = None, ionization_modes: 'list[str] | None' = None, analysis_types: 'list[str] | None' = None, instrument_models: 'list[str] | None' = None, data_formats: 'list[str] | None' = None, min_samples: 'int | None' = None, has_raw_data: 'bool | None' = None, has_derived_data: 'bool | None' = None, has_maf: 'bool | None' = None, min_metabolites: 'int | None' = None) -> None`
 
 A set of requirements (used for both hard and nice-to-have).
 
 - `organisms`: `list[str] | None`
 - `sample_types`: `list[str] | None`
+- `diseases`: `list[str] | None`
 - `techniques`: `list[str] | None`
 - `ionization_modes`: `list[str] | None`
 - `analysis_types`: `list[str] | None`
