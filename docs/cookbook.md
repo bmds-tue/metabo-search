@@ -153,7 +153,9 @@ assert any("MAF" in r for r in reasons)          # the silent hard-drop
 per-sample matrix from MetaboLights MAFs with zero LLM calls. And if a
 pipeline already inspected the study, its MAFs are cached —
 `analyze_maf_files(id, isa_dir=r["inspect"].isa_dirs[id])` is free, no
-`download_maf_files` step needed.)
+`download_maf_files` step needed. `min_metabolites` likewise does NOT
+hard-fail a workbench study whose list the endpoint omitted —
+`metabolite_list_unavailable` marks the count as unknown, not 0)
 
 ---
 

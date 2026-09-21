@@ -70,7 +70,7 @@ Discovery + per-sample sentences (ONE LLM call per study, cached).
 
 ### `harvest(query: 'str', profile=None, *, databases=None, download_kwargs: 'dict[str, Any] | None' = None, export_kwargs: 'dict[str, Any] | None' = None, top: 'int' = 3, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, workers: 'int' = 10, cache_root=None) -> 'Pipeline'`
 
-Full report + selective download + manifest export. `download_kwargs` must constrain what is downloaded (categories / file_types / sample_names / max_files / max_size_gb) — harvest never silently downloads everything.
+Full report + selective download + manifest export. `download_kwargs` must constrain what is downloaded with a REAL constraint (non-empty categories/file_types/sample_names, max_files > 0, max_size_gb > 0) — harvest never silently downloads everything.
 
 ### `inspect(workers: 'int' = 10, tmp_dir: 'str | None' = None, parse_workers: 'int | None' = None, name: 'str | None' = None, cache: 'CacheOpts | None' = None, print_opts: 'PrintOpts | None' = None) -> 'Step'`
 
@@ -98,7 +98,7 @@ MAF (metabolite assignment) predicate (applies to InspectResult).
 
 ### `parse_study_profile(llm_json: 'str') -> 'StudyProfile'`
 
-Parse the LLM's JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks.
+Parse the LLM's JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks. Raises `ValueError` with an actionable message when the response is not a JSON object or lacks a `sentence_template` — a degenerate recipe is never silently applied (and therefore never cached).
 
 ### `pipeline(*steps: 'Step', input: 'Result | None' = None, cache_root=None) -> 'Pipeline'`
 
@@ -116,9 +116,9 @@ Deterministically map a profile's HARD requirements to search kwargs, so the sea
 
 Stage 2 (the old find_datasets): probe + deep inspect + scored ranking.
 
-### `quick_probe(query: 'str', profile=None, *, databases=None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10) -> 'Pipeline'`
+### `quick_probe(query: 'str', profile=None, *, databases=None, page_size: 'int' = 100, max_results: 'int' = 200, min_survivors: 'int' = 10, cache_root=None) -> 'Pipeline'`
 
-Stage 1: narrow the profile cheaply. Search replays warm across edits.
+Stage 1: narrow the profile cheaply. Search replays warm across edits. `cache_root` mirrors :func:`quick_discovery` — when given, the probe (and its warm-prefix replays) live under that root.
 
 ### `register_predicate(name: 'str', applies_to: 'type', fn: 'Callable') -> 'None'`
 
@@ -263,6 +263,14 @@ What one MAF file contains, in answer-ready numbers. The :attr:`summary` propert
 - `examples`: `list[str]`
 - `parse_error`: `str`
 
+### `OntologyTerm(term: 'str', term_source_ref: 'str' = '', term_accession_number: 'str' = '') -> None`
+
+An ontology-annotated term (organism, tissue, …).
+
+- `term`: `str`
+- `term_source_ref`: `str`
+- `term_accession_number`: `str`
+
 ### `Pipeline(*steps: 'Step', input: 'Result | None' = None, cache_root: 'str | Path | None' = None)`
 
 An ordered list of typed steps. Immutable: builders return a new one. - `run(llm=...)` folds the steps; the cache root replays warm steps (each step's cache key covers kind + config + input digest). - `input=` at construction starts midstream from any typed result. - `extend` / slicing give "stop anywhere, continue via warm cache".
@@ -334,7 +342,7 @@ SearchResult(candidates: 'list[StudyCandidate]', query: 'str' = '', args_used: '
 - `query`: `str`
 - `args_used`: `dict[str, Any]`
 
-### `StudyCandidate(study_id: 'str', title: 'str' = '', description: 'str' = '', status: 'str' = '', repository: 'str' = 'metabolights', organisms: 'list[OntologyTerm]' = <factory>, organism_parts: 'list[OntologyTerm]' = <factory>, assay_techniques: 'list[dict]' = <factory>, design_descriptors: 'list[OntologyTerm]' = <factory>, technology_types: 'list[OntologyTerm]' = <factory>, factors: 'list[OntologyTerm]' = <factory>, sample_count: 'int | None' = None, raw_file_count: 'int | None' = None, derived_file_count: 'int | None' = None, assay_count: 'int | None' = None, size_in_bytes: 'int | None' = None, publications: 'list[PublicationInfo]' = <factory>, contacts: 'list[str]' = <factory>, submitters: 'list[str]' = <factory>, submission_date: 'str' = '', public_release_date: 'str' = '', assays: 'list[AssayInfo]' = <factory>, data_files: 'list[DataFileInfo]' = <factory>, protocols: 'list[ProtocolInfo]' = <factory>, sample_metadata_fields: 'list[str]' = <factory>, sample_metadata: 'list[dict[str, str]]' = <factory>, metabolite_count: 'int | None' = None, metadata_completeness: 'float' = 0.0, investigation_file_parsed: 'bool' = False, assay_files_parsed: 'bool' = False, sample_file_parsed: 'bool' = False, maf_files_parsed: 'bool' = False, sample_file_map: 'dict[str, dict[str, list[str]]]' = <factory>, _raw_api_result: 'dict[str, Any]' = <factory>) -> None`
+### `StudyCandidate(study_id: 'str', title: 'str' = '', description: 'str' = '', status: 'str' = '', repository: 'str' = 'metabolights', organisms: 'list[OntologyTerm]' = <factory>, organism_parts: 'list[OntologyTerm]' = <factory>, assay_techniques: 'list[dict]' = <factory>, design_descriptors: 'list[OntologyTerm]' = <factory>, technology_types: 'list[OntologyTerm]' = <factory>, factors: 'list[OntologyTerm]' = <factory>, sample_count: 'int | None' = None, raw_file_count: 'int | None' = None, derived_file_count: 'int | None' = None, assay_count: 'int | None' = None, size_in_bytes: 'int | None' = None, publications: 'list[PublicationInfo]' = <factory>, contacts: 'list[str]' = <factory>, submitters: 'list[str]' = <factory>, submission_date: 'str' = '', public_release_date: 'str' = '', assays: 'list[AssayInfo]' = <factory>, data_files: 'list[DataFileInfo]' = <factory>, protocols: 'list[ProtocolInfo]' = <factory>, sample_metadata_fields: 'list[str]' = <factory>, sample_metadata: 'list[dict[str, str]]' = <factory>, metabolite_count: 'int | None' = None, metabolite_list_unavailable: 'bool' = False, metadata_completeness: 'float' = 0.0, investigation_file_parsed: 'bool' = False, assay_files_parsed: 'bool' = False, sample_file_parsed: 'bool' = False, maf_files_parsed: 'bool' = False, sample_file_map: 'dict[str, dict[str, list[str]]]' = <factory>, _raw_api_result: 'dict[str, Any]' = <factory>) -> None`
 
 All known information about a MetaboLights study. Phase 1 (shallow) fields come from the search API. Phase 2 (deep) fields are populated after downloading + parsing ISA files.
 
@@ -365,6 +373,7 @@ All known information about a MetaboLights study. Phase 1 (shallow) fields come 
 - `sample_metadata_fields`: `list[str]`
 - `sample_metadata`: `list[dict[str, str]]`
 - `metabolite_count`: `int | None`
+- `metabolite_list_unavailable`: `bool`
 - `metadata_completeness`: `float`
 - `investigation_file_parsed`: `bool`
 - `assay_files_parsed`: `bool`

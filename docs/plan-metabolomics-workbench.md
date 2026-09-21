@@ -56,7 +56,7 @@ Constraints (from the user):
 
 ```
 src/metabo_search/
-├── __init__.py         # public surface (63 exports)
+├── __init__.py         # public surface (64 exports)
 ├── models.py           # StudyCandidate, StudyRequirements, RequirementProfile, ScoredCandidate, ComparisonReport...
 ├── client.py           # pooled httpx wrapper for the v2 search API          (MetaboLights-only)
 ├── searcher.py         # search_studies, profile_to_search_args (Solr POST)   (MetaboLights-only)

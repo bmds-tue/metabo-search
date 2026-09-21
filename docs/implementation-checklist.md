@@ -39,7 +39,7 @@ Milestones from `docs/plan-metabolomics-workbench.md`. Each item ships green
 - [ ] `test_workbench_ambiguity.py` — (notice covered in search tests) — pipeline-level notice in fmt
 - [ ] `test_core_workbench_pipeline.py` — end-to-end fixtures, fresh==warm, mixed repos
 
-Status: **164 tests green**; live smoke verified
+Status: **180 tests green**; live smoke verified
 against the real API (corpus 96 s first fetch, then cached; metstat pool 30;
 Human/Blood/Diabetes slots; inspect deep with ion modes; scored table).
 

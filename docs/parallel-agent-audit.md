@@ -14,7 +14,7 @@ to smooth out the misunderstandings — **no code changed as part of this audit
 > Limits bullets, `references/api.md`, and the docstrings listed in C4).
 > Live re-verification: `;;;Human;Blood;Lung cancer;;` → `{"Row1":
 > "ST003989"}` (no crash), `match("cancer")` → `"Cancer"` (not
-> `"Lung cancer"`). Full suite: 164 tests green.
+> `"Lung cancer"`). Full suite: 180 tests green.
 
 Live checks run 2025-09-21 against `https://www.ebi.ac.uk/metabolights/ws3` and
 the metabolomicsworkbench REST API, plus the cached live workbench corpus and

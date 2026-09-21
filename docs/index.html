@@ -197,11 +197,11 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>load_samples</code></td><td>Return cached descriptions for this task, or None if not cached.</td></tr>
       <tr><td><code>load_study_from_isa</code></td><td>Reconstruct a deep-inspected StudyCandidate from LOCAL ISA files. Offline / reuse path: if…</td></tr>
       <tr><td><code>maf</code></td><td>MAF (metabolite assignment) predicate (applies to InspectResult).</td></tr>
-      <tr><td><code>parse_study_profile</code></td><td>Parse the LLM&#x27;s JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code blocks.</td></tr>
+      <tr><td><code>parse_study_profile</code></td><td>Parse the LLM&#x27;s JSON response into a :class:`StudyProfile`. Tolerates fenced/marked code…</td></tr>
       <tr><td><code>prepare_samples</code></td><td>Bundle everything for one study: contexts + the single LLM prompt. `revision` feeds the cache…</td></tr>
       <tr><td><code>profile_to_search_args</code></td><td>Deterministically map a profile&#x27;s HARD requirements to search kwargs, so the search API…</td></tr>
       <tr><td><code>quick_discovery</code></td><td>Stage 2 (the old find_datasets): probe + deep inspect + scored ranking.</td></tr>
-      <tr><td><code>quick_probe</code></td><td>Stage 1: narrow the profile cheaply. Search replays warm across edits.</td></tr>
+      <tr><td><code>quick_probe</code></td><td>Stage 1: narrow the profile cheaply. Search replays warm across edits. `cache_root` mirrors…</td></tr>
       <tr><td><code>register_predicate</code></td><td>Register a custom filter predicate by name (configs stay plain data).</td></tr>
       <tr><td><code>render_maf_summary</code></td><td>Collapse MAF analyses into one paste-ready text block. `&quot;&quot;` when there are no analyses;…</td></tr>
       <tr><td><code>revise_samples</code></td><td>Author a revised wording under the next revision and cache it. Returns the *new* task (already…</td></tr>
@@ -220,6 +220,7 @@ manifest.export_csv("samples.csv")    # flat, ML-ready (sample → sentence → 
       <tr><td><code>InspectResult</code></td><td>InspectResult(candidates: &#x27;list[StudyCandidate]&#x27;, isa_dirs: &#x27;dict[str, str]&#x27; = )</td></tr>
       <tr><td><code>Maf</code></td><td>Maf(require: &#x27;bool&#x27; = True, min_metabolites: &#x27;int | None&#x27; = None, name: &#x27;str&#x27; = &#x27;maf&#x27;)</td></tr>
       <tr><td><code>MafAnalysis</code></td><td>What one MAF file contains, in answer-ready numbers. The :attr:`summary` property renders…</td></tr>
+      <tr><td><code>OntologyTerm</code></td><td>An ontology-annotated term (organism, tissue, …).</td></tr>
       <tr><td><code>Pipeline</code></td><td>An ordered list of typed steps. Immutable: builders return a new one. - `run(llm=...)` folds…</td></tr>
       <tr><td><code>PipelineResult</code></td><td>Ordered, typed mapping of step keys → results (r[&quot;score&quot;], r.score).</td></tr>
       <tr><td><code>PrintOpts</code></td><td>PrintOpts(top: &#x27;int&#x27; = 10, detail: &#x27;bool&#x27; = False)</td></tr>

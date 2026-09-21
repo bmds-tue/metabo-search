@@ -200,7 +200,7 @@ done   = full_report("urine alzheimer", profile, top=3).run(llm=call_llm)
 | `search_studies / inspect_studies / score_studies / build_comparison_table` | — | the pieces, if you want control |
 | `load_study_from_isa(id, dir)` | `StudyCandidate` | offline: rebuild from local ISA files |
 
-You construct: `RequirementProfile`, `StudyRequirements`, `DownloadConfig`.
+You construct: `RequirementProfile`, `StudyRequirements`, `DownloadConfig`, `StudyCandidate`, `OntologyTerm`.
 
 ---
 
