@@ -101,6 +101,20 @@ continue a run midstream via `pipeline(...).run(input=<result>)`:
 `filter(maf(...))` or `score()` next). A wrong `stage` is a **plan-time
 error**, never a silent bug.
 
+### Deep-inspect health (failures, the cache, recovery)
+
+- **Soft failure is by design**: a study that can't be fetched stays
+  **shallow** (`c.inspection_depth != "deep"`) instead of crashing, and the
+  result is still cached. `InspectResult.fmt()` prints the depth per study —
+  check it before trusting samples/metabolite numbers.
+- **A failed deep pass replays for 30d** (cached like any result). Redo with
+  `run(force=True)` (or a fresh input key) — that is the general cache
+  bypass.
+- **Parallelism is server-bound**: `inspect(workers≈8)` per repo; 16+
+  measured-overloads the remote file server (refusals → shallow).
+  `parse_workers=0` forces thread parsing (no spawn/re-import) in ad-hoc
+  scripts. Full recovery loop: cookbook Pattern 6.
+
 ### Repo-specific filters (per-repository composition)
 
 One profile's `screen(profile)` applies to every repository's candidates;

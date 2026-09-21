@@ -51,6 +51,12 @@ Numbers were re-checked on the final clean runs (guarded scripts):
   whole module — seen live as ~1,000 simultaneous requests and garbage timings.
   Mitigations: guard the module, or `MTBLS_PARSE_PROCESSES=0` for ad-hoc
   scripts. pytest is fine.
+- **Server overload leaves shallow candidates — and they are cached.** 16+
+  workers measured-refusals on the file server (≈24-conn host cap); studies
+  come back **shallow** (soft fail, no crash), and that failed deep result is
+  cached for 30d, silently replaying on re-runs. Recovery: per-repo
+  `workers≈8`, thread parsing (`parse_workers=0`), serial `workers=1` retries
+  with backoff + `force=True`. Detection: `inspection_depth != "deep"`.
 ---
 
 ## 4. Where the remaining time goes (projections, not measurements)

@@ -218,3 +218,57 @@ print(r["download"], r["export"].rows)
 
 Recipe details: `describe` caches per study, per `revision`; re-roll wording
 via `revise_samples(task, new_text)` — old wording is preserved for comparison.
+
+---
+
+## Pattern 6 — deep-inspect safely (workers, thread parsing, straggler retry)
+
+Too many workers (~16+) can overload the remote file server: studies come
+back **shallow** (soft-fail, no crash) — and that failed deep pass is **cached
+for 30d**, so re-runs silently replay it. Three habits: moderate per-repo
+workers (`≈8`), thread parsing in ad-hoc scripts (`parse_workers=0` — also
+skips the spawn/re-import foot-gun), and a **serial retry loop for stragglers**
+with `force=True` to bypass any poisoned cache entry.
+
+```python
+# offline: exercised by tests/test_cookbook.py
+# Detecting stragglers is pure logic — works on any InspectResult:
+from metabo_search import InspectResult, StudyCandidate
+
+def stragglers(res: InspectResult):
+    return [c for c in res.candidates if c.inspection_depth != "deep"]
+
+ok   = StudyCandidate(study_id="MTBLS1", investigation_file_parsed=True,
+                      sample_file_parsed=True)   # healthily deep
+lost = StudyCandidate(study_id="MTBLS2")          # failed download: stays shallow
+deep = InspectResult(candidates=[ok, lost], isa_dirs={"MTBLS1": "/x"})
+assert [c.study_id for c in stragglers(deep)] == ["MTBLS2"]
+```
+
+```python
+# The real loop (network; compile-checked).  deep_inspect wraps the step:
+#   pipeline(inspect(workers=…, parse_workers=0)).cache(".metabo_cache") \
+#       .run(input=FilterResult(survivors=…, stage="shallow"), force=…)["inspect"]
+
+ml_deep = deep_inspect(ml_cands, workers=8, force=True)   # moderate, per repo
+wb_deep = deep_inspect(wb_cands, workers=8, force=True)
+deep = InspectResult(
+    candidates=ml_deep.candidates + wb_deep.candidates,
+    isa_dirs={**ml_deep.isa_dirs, **wb_deep.isa_dirs})
+
+bad = stragglers(deep)
+for attempt in range(3):
+    if not bad:
+        break
+    time.sleep(30)                                   # let the server recover
+    retry = deep_inspect(bad, workers=1, force=True)  # serial + cache bypass
+    fixed = {c.study_id: c for c in retry.candidates}
+    deep = InspectResult(
+        candidates=[fixed.get(c.study_id, c) for c in deep.candidates],
+        isa_dirs={**deep.isa_dirs, **retry.isa_dirs})
+    bad = stragglers(deep)
+```
+
+`force=True` on the retry (and on the first pass while recovering from an
+earlier poisoned run) defeats the 30d shallow-result cache; once a clean deep
+pass exists, drop `force` and re-runs replay warm.

@@ -263,6 +263,7 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
 ## What to decide (be fast, don't explore)
 
 - **Discover** → `find_datasets` / `quick_discovery` with query + profile; judge top 2–3 by title/abstract/score.
+- **Shallow leftovers** → `r["inspect"].fmt()` shows depth per study; retry stragglers serially before trusting sample/metabolite numbers (cookbook Pattern 6).
 - **RC/blank samples** → auto-tagged "quality control"; don't treat them as patients.
 - **disease=unresolved** → check `desc.used_sources`; re-prompt the profile with file-name codes or fix linkage. Don't accept silently.
 - **Large studies** → always use a `SampleSentencesStore` (one LLM call, forever free).
@@ -272,7 +273,8 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
 ## Errors & recovery
 - **Datasets ≥8 with process parsing** → wrap the script in `if __name__ == "__main__":` (spawn on macOS re-imports the entry script into parse workers); in a throwaway script `MTBLS_PARSE_PROCESSES=0` forces thread parsing.
 - `import metabo_search` resolves elsewhere → this repo shares a workspace with a parallel-test copy; use the private venv (`.venv-local`) so you import THIS src.
-- Downloads timeout → library retries with backoff+jitter; a failing study stays shallow (don't loop).
+- **Deep inspect soft-fails by design**: a study that can't be fetched stays **shallow** instead of crashing (`c.inspection_depth != "deep"`; depth column in `fmt()`). Server overload (too many workers) is a common cause — keep `inspect(workers=8)` per repo; 16+ measured-refusals → shallow candidates. Retry stragglers serial (`workers=1`) with backoff; recovery loop in cookbook Pattern 6.
+- ⚠️ **A failed deep pass is cached for 30d and silently replays** — an earlier shallow inspect replays unless you redo it with `run(force=True)` (or a fresh input key). Detection first, `force` second.
 - `.venv` broken → `rm -rf .venv && uv venv && uv pip install -e .`
 
 ## Limits to be honest about
@@ -293,3 +295,6 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
 - Transient disconnects / one-match metstat pools are handled: the client
   retries and degrades a failed slot pool to corpus matching with a notice —
   the pool is an optimization, never a hard filter.
+- **Parallelism is server-bound**: `inspect(workers≈8)` is the sweet spot per
+  repo; 16+ overloads the remote file server → refusals → shallow candidates
+  (see Errors & recovery for detection/retry/`force`).

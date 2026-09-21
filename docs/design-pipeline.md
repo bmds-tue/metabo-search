@@ -253,6 +253,11 @@ Restart semantics — exactly your rule:
 - `run()` reads `plan.json`; **each step compares its (kind, config) against the stored entry. Unchanged → skip execution and replay `<key>.json`. Changed → miss → execute + store + rewrite `plan.json`.**
 - The key is automatic: `sha(kind + config_json + input_result.digest())`; a changed input (different prior result) is therefore a miss too — the suffix re-runs, the prefix replays.
 - TTL puts time on the cache (the DB doesn't change often → generous): `search` 7d (index moves), `inspect` 30d (studies publish once), `describe` eternal (revision-keyed; wording rounds free), the rest off. Stale → re-run + refresh.
+- **Failed results are cached like successful ones**: a study that stayed
+  shallow during inspect is stored with the 30d TTL and silently replays on
+  re-runs. Detect stragglers via `candidate.inspection_depth != "deep"` /
+  `InspectResult.fmt()`; redo a poisoned deep pass with `run(force=True)`
+  (or a fresh input key).
 - `p.cache(None)` = all off. `CacheOpts(enabled=None, ttl)` per step overrides (None = inherit).
 
 ## Run — the cache is the continue-point
