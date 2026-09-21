@@ -13,6 +13,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -42,6 +43,22 @@ from metabo_search.repositories.base import (
     DISPATCH,
     validate_databases,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _inspect_cache_healthy(result: Any) -> bool:
+    """An InspectResult is cache-worthy only if every candidate deepened.
+
+    A run with transient failures leaves shallow copies; caching them
+    POISONS the 30d TTL so re-runs silently replay the degraded result.  The
+    pipeline refuses to cache such a result (and logs why), so the next run
+    re-inspects from scratch instead of trusting stale shallow data.
+    """
+    cands = getattr(result, "candidates", ())
+    return all(getattr(c, "inspection_depth", "deep") == "deep"
+               for c in cands)
+
 
 # ──────────────────────────────────────────────────────────────
 # Cross-cutting options
@@ -706,10 +723,23 @@ class Pipeline:
                 result = self._execute(step, chain, results, previous, llm,
                                        force=force)
                 if self._cache and enabled:
-                    self._cache.store(kind, key, result, self._ttl_for(step))
-                    used_plan.append(self._cache.plan_record(
-                        kind, step.name, step.config, key,
-                        self._ttl_for(step)))
+                    if kind == "inspect" and not _inspect_cache_healthy(result):
+                        # poison prevention: a shallow-leftover inspect is
+                        # never cached (re-runs redo work instead of replaying
+                        # degraded data) — see _inspect_cache_healthy.
+                        shallow = sum(
+                            1 for c in getattr(result, "candidates", ())
+                            if getattr(c, "inspection_depth", "deep") != "deep")
+                        logger.warning(
+                            "not caching degraded inspect: %d/%d studies stayed "
+                            "shallow — re-runs will re-inspect; retry with "
+                            "force=True, moderate workers (cookbook Pattern 6)",
+                            shallow, len(getattr(result, "candidates", ())))
+                    else:
+                        self._cache.store(kind, key, result, self._ttl_for(step))
+                        used_plan.append(self._cache.plan_record(
+                            kind, step.name, step.config, key,
+                            self._ttl_for(step)))
 
             snapshot = copy.deepcopy(result)   # pristine copy → results map
             results.append((key_for(step), snapshot))

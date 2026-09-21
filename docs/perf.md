@@ -54,9 +54,10 @@ Numbers were re-checked on the final clean runs (guarded scripts):
 - **Server overload leaves shallow candidates — and they are cached.** 16+
   workers measured-refusals on the file server (≈24-conn host cap); studies
   come back **shallow** (soft fail, no crash), and that failed deep result is
-  cached for 30d, silently replaying on re-runs. Recovery: per-repo
-  `workers≈8`, thread parsing (`parse_workers=0`), serial `workers=1` retries
-  with backoff + `force=True`. Detection: `inspection_depth != "deep"`.
+  the pipeline refuses to cache such a degraded inspect (warn + re-inspect on
+  re-run). Recovery: per-repo `workers≈8`, thread parsing
+  (`parse_workers=0`), serial `workers=1` retries with backoff +
+  `force=True` for older stale entries. Detection: `inspection_depth != "deep"`.
 ---
 
 ## 4. Where the remaining time goes (projections, not measurements)

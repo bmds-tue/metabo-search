@@ -274,7 +274,7 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
 - **Datasets ≥8 with process parsing** → wrap the script in `if __name__ == "__main__":` (spawn on macOS re-imports the entry script into parse workers); in a throwaway script `MTBLS_PARSE_PROCESSES=0` forces thread parsing.
 - `import metabo_search` resolves elsewhere → this repo shares a workspace with a parallel-test copy; use the private venv (`.venv-local`) so you import THIS src.
 - **Deep inspect soft-fails by design**: a study that can't be fetched stays **shallow** instead of crashing (`c.inspection_depth != "deep"`; depth column in `fmt()`). Server overload (too many workers) is a common cause — keep `inspect(workers=8)` per repo; 16+ measured-refusals → shallow candidates. Retry stragglers serial (`workers=1`) with backoff; recovery loop in cookbook Pattern 6.
-- ⚠️ **A failed deep pass is cached for 30d and silently replays** — an earlier shallow inspect replays unless you redo it with `run(force=True)` (or a fresh input key). Detection first, `force` second.
+- ⚠️ **A degraded inspect is never cached**: if any candidate stayed shallow, the pipeline logs a warning and SKIPS the store — re-runs re-inspect instead of replaying stale shallow data. `run(force=True)` remains the bypass for any other stale cache entry; the retry loop (cookbook Pattern 6) is still how you avoid paying for the re-run.
 - `.venv` broken → `rm -rf .venv && uv venv && uv pip install -e .`
 
 ## Limits to be honest about
@@ -291,7 +291,10 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
   the `/metabolites` identified-list length, with no per-sample abundance
   columns (mwTab datatables aren't parsed yet). For a true m×s matrix
   requirement use MetaboLights MAF numbers (`analyze_maf_files`); quote
-  workbench numbers as "ident. metabolite list length".
+  workbench numbers as "ident. metabolite list length". The endpoint
+  **omits the list for the largest studies** (`metabolite_list_unavailable`
+  = True) — treat it as unknown, not 0; `min_metabolites` therefore does not
+  hard-fail those (`criterion_explanations` says "UNAVAILABLE").
 - Transient disconnects / one-match metstat pools are handled: the client
   retries and degrades a failed slot pool to corpus matching with a notice —
   the pool is an optimization, never a hard filter.

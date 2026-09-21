@@ -175,6 +175,10 @@ class StudyCandidate:
     sample_metadata_fields: list[str] = field(default_factory=list)
     sample_metadata: list[dict[str, str]] = field(default_factory=list)
     metabolite_count: int | None = None
+    metabolite_list_unavailable: bool = False
+    """Workbench-only: True when the ``/metabolites`` endpoint returned an
+    empty list (it omits the list for the LARGEST studies) or an unexpected
+    shape — the count is UNKNOWN, not 0.  Scoring must not hard-fail on it."""
     metadata_completeness: float = 0.0
     investigation_file_parsed: bool = False
     assay_files_parsed: bool = False

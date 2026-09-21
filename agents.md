@@ -136,6 +136,13 @@ download phase. Full measurements + justification: **docs/perf.md**.
 - Rejected with measurements (see docs/perf.md): **HTTP/2** (slower), **async** (≈ sync; server caps ≈24 conns), **REST-zip primary** (endpoint 503/404 — HTTP listing+files stays primary, REST stays fallback).
 - Re-runs are already ~0s via the step cache (search 7d / inspect 30d).
 - Repeated bulk querying can trigger temporary blocks from the API (connection-refused/503 until it recovers) — iterate against a warm cache root (TTL'd) when refining.
+- **The cache refuses degraded inspects** (shallow leftovers are logged +
+  never cached; re-runs re-inspect) — keep `inspect(workers≈8)` per repo
+  (16+ overloads the file server → refusals → shallow candidates), detect
+  survivors via `inspection_depth != "deep"`, and recover with the serial
+  straggler retry (cookbook Pattern 6). WB `/metabolites` returns an EMPTY
+  LIST for the largest studies — count unknown (`metabolite_list_unavailable`),
+  never 0.
 - Full measurements: `docs/perf.md`.
 
 ## Network / parallelism — measured round (36 studies, live)

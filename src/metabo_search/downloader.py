@@ -27,11 +27,20 @@ logger = logging.getLogger(__name__)
 
 _SHARED_CLIENT: httpx.Client | None = None
 
+# Same pool cap as the inspector: the EBI file server refuses beyond ~24
+# concurrent per-host connections; a bounded pool throttles (queues) instead
+# of overloading the server into refusals.
+MAX_CONNECTIONS = 16
+
 
 def _http_client() -> httpx.Client:
     global _SHARED_CLIENT
     if _SHARED_CLIENT is None:
-        _SHARED_CLIENT = httpx.Client(timeout=30.0, follow_redirects=True)
+        _SHARED_CLIENT = httpx.Client(
+            timeout=30.0, follow_redirects=True,
+            limits=httpx.Limits(max_connections=MAX_CONNECTIONS,
+                                max_keepalive_connections=MAX_CONNECTIONS),
+        )
     return _SHARED_CLIENT
 
 

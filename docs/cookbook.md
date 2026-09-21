@@ -224,11 +224,12 @@ via `revise_samples(task, new_text)` — old wording is preserved for comparison
 ## Pattern 6 — deep-inspect safely (workers, thread parsing, straggler retry)
 
 Too many workers (~16+) can overload the remote file server: studies come
-back **shallow** (soft-fail, no crash) — and that failed deep pass is **cached
-for 30d**, so re-runs silently replay it. Three habits: moderate per-repo
+back **shallow** (soft-fail, no crash — the pipeline refuses to cache such a
+degraded inspect, so re-runs re-inspect rather than replay stale data, but
+the re-run itself costs time you can avoid). Three habits: moderate per-repo
 workers (`≈8`), thread parsing in ad-hoc scripts (`parse_workers=0` — also
-skips the spawn/re-import foot-gun), and a **serial retry loop for stragglers**
-with `force=True` to bypass any poisoned cache entry.
+skips the spawn/re-import foot-gun), and a **serial retry loop for
+stragglers** that heals THIS run before you trust any of its numbers.
 
 ```python
 # offline: exercised by tests/test_cookbook.py
@@ -269,6 +270,6 @@ for attempt in range(3):
     bad = stragglers(deep)
 ```
 
-`force=True` on the retry (and on the first pass while recovering from an
-earlier poisoned run) defeats the 30d shallow-result cache; once a clean deep
-pass exists, drop `force` and re-runs replay warm.
+`force=True` on the retry defeats any stale cache entry during recovery; the
+pipeline already refuses to cache a degraded inspect, so a clean deep pass
+replays warm and a failed one re-inspects on the next run.

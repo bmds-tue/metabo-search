@@ -13,10 +13,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from metabo_search.models import AssayInfo, StudyCandidate
 
-PayloadLoader = Callable[[str, str], dict]
+PayloadLoader = Callable[[str, str], Any]
 
 
 def _fetch_study(c: StudyCandidate, load: PayloadLoader) -> None:
@@ -40,7 +41,8 @@ def _fetch_study(c: StudyCandidate, load: PayloadLoader) -> None:
         # for workbench studies, but the samples themselves do.
         c.sample_file_parsed = True
     c.assays = _analysis_rows(analysis)
-    c.metabolite_count = _metabolite_count(metabolites)
+    c.metabolite_count, c.metabolite_list_unavailable = \
+        _metabolite_count(metabolites)
     # deep marker (drives inspection_depth); no ISA files by definition
     c.investigation_file_parsed = True
 
@@ -55,6 +57,8 @@ def _factors_rows(factors: dict) -> list[dict[str, str]]:
     resolve names and factors without special-casing the repository.
     """
     rows = []
+    if not isinstance(factors, dict):   # unexpected shape → zero rows, no crash
+        return rows
     for row in factors.values():
         if not isinstance(row, dict):
             continue
@@ -116,21 +120,38 @@ def _analysis_rows(analysis) -> list[AssayInfo]:
     return out
 
 
-def _metabolite_count(metabolites: dict) -> int | None:
-    """Identified-metabolite LIST length from /metabolites.
+def _metabolite_count(metabolites: Any) -> tuple[int | None, bool]:
+    """(count, list_unavailable) from the /metabolites payload.
 
-    PROXY ONLY — the payload rows are ``(study_id, analysis_id,
-    analysis_summary, metabolite_name, refmet_name)`` with NO per-sample
-    abundance columns, so this is not a signal-matrix dimension.  The m×s
-    matrix lives in mwTab datatables (``metabolite_table`` is a stub until
-    the MAF-adapter milestone); quote this number as list length, and prefer
-    MetaboLights MAF counts when the matrix dimension itself matters.
+    The endpoint has THREE live shapes: the usual table (dict keyed by row
+    index), an EMPTY LIST for the largest studies (ST004975, ST001408, … —
+    the API simply omits the list; those are the richest datasets), and
+    transient disconnects.  A count cannot be derived from the list form,
+    so it maps to ``(None, True)`` — the count is UNKNOWN, not 0, and
+    scoring must not hard-fail on it.
+
+    PROXY ONLY — the rows are ``(study_id, analysis_id, analysis_summary,
+    metabolite_name, refmet_name)`` with NO per-sample abundance columns, so
+    this is not a signal-matrix dimension.  The m×s matrix lives in mwTab
+    datatables (``metabolite_table`` is a stub until the MAF-adapter
+    milestone); quote this number as list length, and prefer MetaboLights
+    MAF counts when the matrix dimension itself matters.
     """
+    unavailable = True           # only the table form yields a trusted count
+    if isinstance(metabolites, dict):
+        rows = metabolites.values()
+        unavailable = False
+    elif isinstance(metabolites, list):
+        rows = metabolites      # observed shape: empty list (list omitted)
+    else:
+        rows = []
     n = 0
-    for row in metabolites.values():
+    for row in rows:
         if isinstance(row, dict) and row.get("metabolite_name"):
             n += 1
-    return n or None
+    if n == 0:
+        return None, unavailable
+    return n, False
 
 
 def deep_metadata(candidates: list[StudyCandidate], *, workers: int,

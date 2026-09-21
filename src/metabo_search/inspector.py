@@ -41,11 +41,21 @@ logger = logging.getLogger(__name__)
 
 _SHARED_CLIENT: httpx.Client | None = None
 
+# The EBI file server refuses beyond ~24 concurrent connections per host.
+# Cap the shared pool so high worker counts THROTTLE (queue) instead of
+# overloading the server into refusals → shallow candidates.  Requests queue
+# on the pool, so nothing is lost — just paced.
+MAX_CONNECTIONS = 16
+
 
 def _http_client() -> httpx.Client:
     global _SHARED_CLIENT
     if _SHARED_CLIENT is None:
-        _SHARED_CLIENT = httpx.Client(timeout=30.0, follow_redirects=True)
+        _SHARED_CLIENT = httpx.Client(
+            timeout=30.0, follow_redirects=True,
+            limits=httpx.Limits(max_connections=MAX_CONNECTIONS,
+                                max_keepalive_connections=MAX_CONNECTIONS),
+        )
     return _SHARED_CLIENT
 
 
@@ -317,45 +327,67 @@ def _parse_one(study_id: str, study_path: str) -> dict[str, Any]:
     return enrichment
 
 
+def _download_isa_via_http(study_id: str, study_url: str,
+                           target_dir: Path, long: bool = False) -> None:
+    """Fetch ISA files over FTP-HTTPS (listing + parallel files).
+
+    Raises on failure (the caller decides the fallback ladder). ``long`` scales
+    timeouts for the final re-attempt after a transient overload.
+    """
+    listing_timeout = 90 if long else 30
+    file_timeout = 120 if long else 60
+    file_retries = 6 if long else 4
+    resp = _http_get_with_retry(study_url, timeout=listing_timeout)
+    resp.raise_for_status()
+
+    isa_files = re.findall(
+        r'href="([^"]+(?:\.txt|\.tsv))"', resp.text
+    )
+    isa_files = [
+        f for f in isa_files
+        if f.startswith(("i_", "s_", "a_", "m_")) and not f.startswith(".")
+    ]
+    if not isa_files:
+        raise RuntimeError(f"No ISA files found for {study_id}")
+
+    def _dl(name: str) -> tuple[str, int]:
+        r = _http_get_with_retry(study_url + name, timeout=file_timeout,
+                                 retries=file_retries)
+        r.raise_for_status()
+        (target_dir / name).write_bytes(r.content)
+        return name, len(r.content)
+
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futs = {ex.submit(_dl, f): f for f in isa_files}
+        for fut in as_completed(futs):
+            fut.result()  # re-raise if any failed
+    logger.debug("Downloaded %d ISA files for %s via HTTP", len(isa_files),
+                 study_id)
+
+
 def _download_isa_files(study_id: str, dest: str) -> None:
     """Download ISA metadata files via HTTP (much faster than FTP).
 
-    Files are saved to ``{dest}/{study_id}/``.
+    Files are saved to ``{dest}/{study_id}/``.  Ladder: FTP-HTTPS → REST-zip
+    → a final longer FTP-HTTPS attempt (REST 400s by design for many studies
+    and must never be treated as terminal).
     """
     study_url = f"{HTTP_STUDY_BASE}/{study_id}/"
     target_dir = Path(dest) / study_id
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Step 1: Get directory listing via HTTP to find ISA file names
-        resp = _http_get_with_retry(study_url, timeout=30)
-        resp.raise_for_status()
-
-        isa_files = re.findall(
-            r'href="([^"]+(?:\.txt|\.tsv))"', resp.text
-        )
-        isa_files = [
-            f for f in isa_files
-            if f.startswith(("i_", "s_", "a_", "m_")) and not f.startswith(".")
-        ]
-        if not isa_files:
-            raise RuntimeError(f"No ISA files found for {study_id}")
-
-        # Step 2: Download all ISA files in parallel
-        def _dl(name: str) -> tuple[str, int]:
-            r = _http_get_with_retry(study_url + name, timeout=60, retries=4)
-            r.raise_for_status()
-            (target_dir / name).write_bytes(r.content)
-            return name, len(r.content)
-
-        with ThreadPoolExecutor(max_workers=8) as ex:
-            futs = {ex.submit(_dl, f): f for f in isa_files}
-            for fut in as_completed(futs):
-                fut.result()  # re-raise if any failed
-        logger.debug("Downloaded %d ISA files for %s via HTTP", len(isa_files), study_id)
+        _download_isa_via_http(study_id, study_url, target_dir)
     except Exception as e:
         logger.debug("HTTP download for %s failed (%s), trying REST fallback ...", study_id, e)
-        _download_via_rest(study_id, dest)
+        if _download_via_rest(study_id, target_dir):
+            return
+        # REST (``ws/studies/{id}/download/isa``) 400s BY DESIGN for a large
+        # class of studies — it is not proof the study is unreachable.  The
+        # FTP-HTTPS path is the reliable one; give it one final, longer shot
+        # (transient overload was the usual cause of the first failure).
+        logger.warning("REST fallback failed for %s; final HTTP retry", study_id)
+        _download_isa_via_http(study_id, study_url, target_dir, long=True)
 
 
 def download_maf_files(
@@ -426,10 +458,14 @@ def _http_get_with_retry(
     raise last_err or RuntimeError(f"Failed after {retries} retries: {url}")
 
 
-def _download_via_rest(study_id: str, dest: str) -> None:
-    """Fallback: download ISA metadata as ZIP via MetaboLights REST API."""
+def _download_via_rest(study_id: str, target_dir: Path) -> bool:
+    """Fallback: download ISA metadata as ZIP via the MetaboLights REST API.
+
+    Returns True on success, False on failure (never raises — the endpoint
+    404s/400s by design for many studies, so failure here is NOT terminal;
+    callers continue the fallback ladder).
+    """
     url = f"https://www.ebi.ac.uk/metabolights/ws/studies/{study_id}/download/isa"
-    target_dir = Path(dest) / study_id
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -439,9 +475,10 @@ def _download_via_rest(study_id: str, dest: str) -> None:
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             zf.extractall(target_dir)
         logger.debug("REST download succeeded for %s", study_id)
+        return True
     except Exception as e:
-        logger.warning("REST download for %s failed: %s", study_id, e)
-        raise
+        logger.debug("REST download for %s failed: %s", study_id, e)
+        return False
 
 
 def _parse_investigation(study_id: str, study_path: Path) -> dict[str, Any]:

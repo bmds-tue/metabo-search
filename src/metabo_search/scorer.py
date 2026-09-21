@@ -271,12 +271,24 @@ def _score_one(
 
     if hard.min_metabolites is not None:
         actual = candidate.metabolite_count or 0
-        if actual < hard.min_metabolites:
-            hard_fails.append(
-                f"min metabolites: needs ≥{hard.min_metabolites}, got {actual}"
-            )
-        per_criterion["min_metabolites (hard)"] = 1.0 if actual >= hard.min_metabolites else 0.0
-        explanations["min_metabolites (hard)"] = f"{actual} metabolites (need ≥{hard.min_metabolites})"
+        if candidate.metabolite_list_unavailable and \
+                actual < hard.min_metabolites:
+            # The count is UNKNOWN, not 0: the workbench /metabolites
+            # endpoint OMITS the list for the largest studies (see
+            # _metabolite_count).  Hard-failing those is wrong — surface the
+            # caveat instead and let the agent decide.
+            per_criterion["min_metabolites (hard)"] = 0.0
+            explanations["min_metabolites (hard)"] = (
+                f"metabolite list UNAVAILABLE (endpoint omitted it) — "
+                f"count unknown, not 0; proxy numbers unavailable for "
+                f"{candidate.study_id}")
+        else:
+            if actual < hard.min_metabolites:
+                hard_fails.append(
+                    f"min metabolites: needs ≥{hard.min_metabolites}, got {actual}"
+                )
+            per_criterion["min_metabolites (hard)"] = 1.0 if actual >= hard.min_metabolites else 0.0
+            explanations["min_metabolites (hard)"] = f"{actual} metabolites (need ≥{hard.min_metabolites})"
 
     score.hard_fail_reasons = hard_fails
     score.hard_passed = len(hard_fails) == 0

@@ -57,12 +57,27 @@ def get(path: str, **params: str) -> Any:
     Any
         Parsed JSON response (dict / list / str).
     """
-    resp = _http_client().get(f"{REST_BASE}{path}", params=params or None)
-    resp.raise_for_status()
-    try:
-        return resp.json()
-    except json.JSONDecodeError:
-        return resp.text
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            resp = _http_client().get(f"{REST_BASE}{path}", params=params or None)
+            resp.raise_for_status()
+            try:
+                return resp.json()
+            except json.JSONDecodeError:
+                return resp.text
+        except httpx.HTTPStatusError as e:
+            # 4xx is terminal (the endpoint 404s/400s by design for some
+            # studies) — no point wasting backoff sleeps; 5xx is retried.
+            if e.response.status_code < 500 or attempt == 2:
+                raise
+            last_err = e
+        except httpx.TransportError as e:
+            # server disconnects mid-response on narrow/large calls
+            # (RemoteProtocolError / ConnectError / ReadTimeout)
+            last_err = e
+        time.sleep(2 * (attempt + 1))
+    raise last_err
 
 
 # ── endpoint helpers ──────────────────────────────────────────────
@@ -83,8 +98,12 @@ def study_analysis(study_id: str) -> dict[str, Any]:
     return get(f"/study/study_id/{study_id}/analysis")
 
 
-def study_metabolites(study_id: str) -> dict[str, Any]:
-    """Per-study identified metabolites (``.../<id>/metabolites``)."""
+def study_metabolites(study_id: str) -> Any:
+    """Per-study identified metabolites (``.../<id>/metabolites``).
+
+    Table-shaped (dict keyed by row index) for most studies, but an EMPTY
+    LIST for the largest ones — callers must tolerate both shapes.
+    """
     return get(f"/study/study_id/{study_id}/metabolites")
 
 
