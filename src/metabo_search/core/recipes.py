@@ -21,13 +21,18 @@ from metabo_search.core.steps import (
 
 def quick_probe(query: str, profile=None, *, databases=None,
                 page_size: int = 100, max_results: int = 200,
-                min_survivors: int = 10) -> Pipeline:
-    """Stage 1: narrow the profile cheaply. Search replays warm across edits."""
-    return pipeline_(
+                min_survivors: int = 10, cache_root=None) -> Pipeline:
+    """Stage 1: narrow the profile cheaply. Search replays warm across edits.
+
+    ``cache_root`` mirrors :func:`quick_discovery` — when given, the probe
+    (and its warm-prefix replays) live under that root.
+    """
+    p = pipeline_(
         search(query, profile=profile, databases=databases,
                page_size=page_size, max_results=max_results),
         filter(screen(profile=profile, min_survivors=min_survivors)),
     )
+    return p.cache(cache_root) if cache_root else p
 
 
 def quick_discovery(query: str, profile=None, *, databases=None,
@@ -63,15 +68,19 @@ def harvest(query: str, profile=None, *, databases=None,
             cache_root=None) -> Pipeline:
     """Full report + selective download + manifest export.
 
-    ``download_kwargs`` must constrain what is downloaded (categories /
-    file_types / sample_names / max_files / max_size_gb) — harvest never
-    silently downloads everything.
+    ``download_kwargs`` must constrain what is downloaded with a REAL
+    constraint (non-empty categories/file_types/sample_names, max_files > 0,
+    max_size_gb > 0) — harvest never silently downloads everything.
     """
+    from metabo_search.core.steps import _is_real_constraint
     dl = download_kwargs or {}
-    if not any(k in dl for k in ("categories", "file_types", "sample_names",
-                                 "max_files", "max_size_gb")):
+    if not any(_is_real_constraint(dl.get(k))
+               for k in ("categories", "file_types", "sample_names",
+                         "max_files", "max_size_gb")):
         raise ValueError(
-            "harvest() needs a download constraint — e.g. "
+            "harvest() needs a real download constraint (non-empty "
+            "categories/file_types/sample_names; max_files > 0; "
+            "max_size_gb > 0) — e.g. "
             "download_kwargs={'categories': ['raw'], 'dest_dir': './data'}")
     p = full_report(query, profile, databases=databases,
                     top=top, page_size=page_size,

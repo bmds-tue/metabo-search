@@ -28,6 +28,7 @@ def deep_candidate(sid):
     c.metabolite_count = 200
     c.maf_files_parsed = True
     c.investigation_file_parsed = True
+    c.sample_file_parsed = True           # real deep candidates carry this
     c.sample_metadata = [{"Sample Name": f"{sid}_s1"}]
     c.assays = [AssayInfo(technique_name="LC-MS")]
     return c
@@ -99,7 +100,7 @@ def test_full_report_runs_with_llm(monkeypatch, tmp_path):
 
     def llm(prompt):
         calls["n"] += 1
-        return "{}"
+        return '{"codes": {}, "sentence_template": "A sample", "slot_sources": {}}'
 
     r = full_report("urine", PROFILE, databases=("metabolights",),
                     top=2, cache_root=tmp_path / "c").run(llm=llm)

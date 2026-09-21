@@ -93,7 +93,7 @@ def test_validate_maf_on_shallow():
 
 def test_validate_download_needs_constraint():
     p = pipeline(download(dest_dir="."), input=InspectResult([deep_candidate()]))
-    with pytest.raises(ValueError, match="no constraint"):
+    with pytest.raises(ValueError, match="no real constraint"):
         p.validate()
 
 
@@ -179,7 +179,7 @@ def test_run_full_chain_offline(monkeypatch):
 
     def llm(prompt):
         calls["llm"] += 1
-        return "{}"
+        return '{"codes": {}, "sentence_template": "A sample", "slot_sources": {}}'
 
     r = pipeline(
         filter(screen(profile=PROFILE)),
@@ -226,7 +226,7 @@ def test_run_describe_store_reuse(monkeypatch, tmp_path):
 
     def llm(prompt):
         calls["llm"] += 1
-        return "{}"
+        return '{"codes": {}, "sentence_template": "A sample", "slot_sources": {}}'
 
     p = pipeline(
         filter(screen(profile=PROFILE)),

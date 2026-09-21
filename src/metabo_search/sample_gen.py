@@ -246,18 +246,56 @@ def build_study_profile_prompt(candidate: StudyCandidate) -> str:
 def parse_study_profile(llm_json: str) -> StudyProfile:
     """Parse the LLM's JSON response into a :class:`StudyProfile`.
 
-    Tolerates fenced/marked code blocks.
+    Tolerates fenced/marked code blocks.  Raises ``ValueError`` with an
+    actionable message when the response is not a JSON object or lacks a
+    ``sentence_template`` — a degenerate recipe is never silently applied
+    (and therefore never cached).
     """
-    text = llm_json.strip()
-    text = re.sub(r"^```(?:json)?", "", text).strip()
-    text = re.sub(r"```$", "", text).strip()
-    data = json.loads(text)
+    text = (llm_json or "").strip()
+    # strip one fenced block (leading ```json / ``` and trailing ```), not
+    # random surrounding prose — the LLM is asked for STRICT JSON.
+    text = re.sub(r"^```(?:json|JSON)?\s*", "", text).strip()
+    text = re.sub(r"```\s*$", "", text).strip()
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            "recipe must be valid JSON — the profile prompt asks for a "
+            "STRICT JSON object; fix the LLM output "
+            f"(parse error at char {e.pos}: {e.msg})") from e
+    if not isinstance(data, dict):
+        raise ValueError(
+            f"recipe must be a JSON object, got {type(data).__name__} — the "
+            "profile prompt asks for ONE object with keys codes / "
+            "sentence_template / slot_sources / qc_string / study_context")
+    template = data.get("sentence_template")
+    if not isinstance(template, str) or not template.strip():
+        raise ValueError(
+            'recipe is missing a non-empty "sentence_template" — every '
+            "sample's sentence comes from it; re-run the LLM against the "
+            "profile prompt")
+    codes = data.get("codes") or {}
+    if not isinstance(codes, dict):
+        raise ValueError(
+            'recipe "codes" must be an object mapping abbreviations to '
+            "their biological meanings")
+    slot_sources = data.get("slot_sources") or {}
+    if not isinstance(slot_sources, dict):
+        raise ValueError(
+            '"slot_sources" must be an object mapping each slot to '
+            '{"type": ..., "field": ...}')
+    qc_string = data.get("qc_string")
+    if not isinstance(qc_string, str) or not qc_string.strip():
+        qc_string = "quality control sample"
+    study_context = data.get("study_context")
+    if not isinstance(study_context, str):
+        study_context = ""
     return StudyProfile(
-        codes=data.get("codes", {}) or {},
-        sentence_template=data.get("sentence_template", ""),
-        slot_sources=data.get("slot_sources", {}) or {},
-        qc_string=data.get("qc_string", "quality control sample") or "quality control sample",
-        study_context=data.get("study_context", ""),
+        codes=codes,
+        sentence_template=template.strip(),
+        slot_sources=slot_sources,
+        qc_string=qc_string,
+        study_context=study_context,
     )
 
 
@@ -584,9 +622,18 @@ def _first_term(terms: list[Any]) -> str:
 
 
 def _get_char(row: dict[str, str], key: str) -> str:
+    """Value of the ``Characteristics[{key}]`` column (exact label match).
+
+    ``key`` matches the WHOLE bracketed label, never a substring: with both
+    ``Characteristics[Organism]`` and ``Characteristics[Organism part]``
+    present, requesting "Organism" gets the organism, never the tissue.  A
+    little whitespace inside the bracket (``Characteristics[Organism ]``) is
+    tolerated, but labels still compare exactly after stripping.
+    """
     for col, val in row.items():
-        if key in col and "Characteristics[" in col:
-            if val and val.strip():
+        if col.startswith("Characteristics[") and col.endswith("]"):
+            label = col[len("Characteristics["):-1].strip()
+            if label == key and val and val.strip():
                 return val.strip()
     return ""
 

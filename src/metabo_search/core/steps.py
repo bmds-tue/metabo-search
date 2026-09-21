@@ -181,6 +181,22 @@ def _predicate_name(p: Any) -> str:
     return p.name if hasattr(p, "name") else type(p).__name__
 
 
+def _is_real_constraint(v: Any) -> bool:
+    """Does this value actually BOUND what gets downloaded?
+
+    ``categories=[]`` / ``file_types=[]`` / ``max_files=0`` / ``max_size_gb=0.0``
+    bound NOTHING — the downloader treats empty buckets and falsy numbers as
+    "no filter" — so they must never satisfy the refuse-everything gate.
+    """
+    if v is None:
+        return False
+    if isinstance(v, (list, tuple, str)):
+        return len(v) > 0
+    if isinstance(v, (int, float)):
+        return v > 0
+    return bool(v)
+
+
 # ──────────────────────────────────────────────────────────────
 # Step
 # ──────────────────────────────────────────────────────────────
@@ -398,22 +414,26 @@ class Pipeline:
 
     # ── plan-time validation ────────────────────────────────────────
 
-    def _errors(self) -> list[str]:
+    def _errors(self, input: Result | None = None) -> list[str]:
         errs: list[str] = []
         # ``chain`` = the last produced result type; ``stage`` = the original
         # carrier class the chain currently operates on (SearchResult for the
         # shallow stage, InspectResult for the deep stage, ScoreResult after
         # scoring).  filter() keeps the current stage; inspect() moves to deep.
-        chain: type | None = type(self.input) if self.input else None
+        # ``input`` param: the EFFECTIVE input (run-time ``run(input=...)``
+        # overrides the construction-time one); validation must judge the
+        # chain that will actually fold.
+        eff = self.input if input is None else input
+        chain: type | None = type(eff) if eff else None
         stage: type | None = None
-        if isinstance(self.input, FilterResult):
-            stage = InspectResult if getattr(self.input, "stage", "") == "deep" \
+        if isinstance(eff, FilterResult):
+            stage = InspectResult if getattr(eff, "stage", "") == "deep" \
                 else SearchResult
-        elif isinstance(self.input, SearchResult):
+        elif isinstance(eff, SearchResult):
             stage = SearchResult
-        elif isinstance(self.input, InspectResult):
+        elif isinstance(eff, InspectResult):
             stage = InspectResult
-        elif isinstance(self.input, ScoreResult):
+        elif isinstance(eff, ScoreResult):
             stage = ScoreResult
         seen: set[type] = set()
         if chain:
@@ -449,6 +469,17 @@ class Pipeline:
                             f"{where}: predicate {_predicate_name(p)!r} applies "
                             f"to {need.__name__}, but this filter runs at the "
                             f"{lbl} stage — move it to its stage")
+                    if isinstance(p, Screen) and p.min_survivors is not None \
+                            and p.min_survivors < 1:
+                        errs.append(
+                            f"{where}: min_survivors must be ≥ 1 "
+                            f"(got {p.min_survivors}) — 0 or negative would "
+                            f"drop every surviving study")
+                    if isinstance(p, Maf) and p.min_metabolites is not None \
+                            and p.min_metabolites < 1:
+                        errs.append(
+                            f"{where}: min_metabolites must be ≥ 1 "
+                            f"(got {p.min_metabolites})")
                 if not cfg.predicates:
                     errs.append(f"{where}: filter() needs ≥1 predicate")
                 chain = FilterResult          # stage unchanged
@@ -460,6 +491,8 @@ class Pipeline:
                 elif stage is not SearchResult:
                     errs.append(f"{where}: inspect() needs shallow candidates — "
                                 f"the chain is already deep")
+                if cfg.workers < 1:
+                    errs.append(f"{where}: workers must be ≥ 1 (got {cfg.workers})")
                 chain, stage = InspectResult, InspectResult
 
             elif k == "score":
@@ -472,18 +505,23 @@ class Pipeline:
                 if ScoreResult not in seen and chain is not ScoreResult:
                     errs.append(f"{where}: describe() reads the latest "
                                 f"score — add score() before it")
+                if cfg.top < 0:
+                    errs.append(f"{where}: top must be ≥ 0 (got {cfg.top}) — "
+                                f"a negative top would silently skip studies")
             elif k == "download":
                 if InspectResult not in seen and chain is not InspectResult:
                     errs.append(f"{where}: download() needs inspected "
                                 f"candidates — add inspect() before it")
-                n = sum(1 for x in (
-                    cfg.categories, cfg.file_types, cfg.sample_names,
-                    cfg.max_files, cfg.max_size_gb) if x is not None)
-                if n == 0:
-                    errs.append(f"{where}: download() with no constraint "
-                                f"(categories/file_types/sample_names/"
-                                f"max_files/max_size_gb) would fetch "
-                                f"everything — refuse")
+                real = [x for x in (cfg.categories, cfg.file_types,
+                                     cfg.sample_names, cfg.max_files,
+                                     cfg.max_size_gb)
+                        if _is_real_constraint(x)]
+                if not real:
+                    errs.append(
+                        f"{where}: download() with no real constraint "
+                        f"(non-empty categories/file_types/sample_names, "
+                        f"max_files > 0, max_size_gb > 0) would fetch "
+                        f"everything — refuse")
             elif k == "export":
                 if InspectResult not in seen and chain is not InspectResult:
                     errs.append(f"{where}: export() needs inspected "
@@ -492,8 +530,13 @@ class Pipeline:
             seen.add(chain) if chain else None
         return errs
 
-    def validate(self) -> None:
-        errs = self._errors()
+    def validate(self, input: Result | None = None) -> None:
+        """Plan-time validation.
+
+        ``input`` (when given, e.g. from ``run(input=...)``) is the effective
+        chain input and overrides the construction-time one for the checks.
+        """
+        errs = self._errors(input)
         if errs:
             raise ValueError("pipeline validation failed:\n  - " +
                              "\n  - ".join(errs))
@@ -617,7 +660,7 @@ class Pipeline:
                 raise TypeError(
                     f"run(input=...) for search() must be a SearchResult, "
                     f"got {type(init).__name__}")
-        self.validate()
+        self.validate(init)
 
         # Results cross step boundaries BY VALUE: downstream steps (notably
         # inspect) merge enrichment into their input candidates in place, so
@@ -984,16 +1027,24 @@ def _do_describe(cfg: DescribeConfig, score_res: ScoreResult,
         prepare_samples,
         submit_samples,
     )
+    store = SampleSentencesStore(store_path) if store_path else None
+    top_cands = score_res.ranked[: cfg.top]
+    if not top_cands:
+        # top=0 (or an empty ranking) describes nothing — an LLM is not
+        # required to do no work
+        return DescribeResult(by_study={}, revision=cfg.revision, reused={})
     if llm is None:
         raise ValueError("describe() needs the LLM — run(llm=call_llm); "
                          "the library never calls a model itself")
-    store = SampleSentencesStore(store_path) if store_path else None
-    top_cands = score_res.ranked[: cfg.top]
     by_study: dict[str, list] = {}
     reused: dict[str, bool] = {}
     for sc in top_cands:
         sid = sc.study_id
         task = prepare_samples(sc.candidate, store, revision=cfg.revision)
+        if not task.contexts:
+            # nothing to describe → skip; never waste an LLM call or pretend
+            # a study was described
+            continue
         descs = load_samples(task)
         if descs is None:
             descs = submit_samples(task, llm(task.profile_prompt))
@@ -1009,20 +1060,48 @@ def _do_download(cfg: DownloadConfig, insp: InspectResult,
                  files_cache_dir: str | None = None) -> DownloadResult:
     from metabo_search.downloader import DownloadConfig as BodyConfig
     from metabo_search.downloader import download_data_files
+    from metabo_search.repositories.base import DISPATCH
+
+    # Group by repository: MetaboLights uses the HTTP downloader; other
+    # repositories dispatch to their seam implementation.  A repository that
+    # does not implement downloads yet raises LOUDLY — never a silent "0
+    # files" from pointing a workbench id at the MetaboLights FTP host.
+    by_repo: dict[str, list[StudyCandidate]] = {}
+    for c in insp.candidates:
+        by_repo.setdefault(c.repository, []).append(c)
+
     all_downloaded: list[str] = []
     all_failed: list[str] = []
     total = 0
-    for c in insp.candidates:
-        body = BodyConfig(
-            categories=cfg.categories, file_types=cfg.file_types,
-            sample_names=cfg.sample_names, dest_dir=cfg.dest_dir,
-            max_files=cfg.max_files, max_size_gb=cfg.max_size_gb,
-            parallel_downloads=cfg.parallel,
-            files_cache_dir=files_cache_dir or None)
-        res = download_data_files(c, body)
-        all_downloaded += [f.relative_path for f in res.downloaded]
-        all_failed += list(res.failed)
-        total += res.total_bytes
+    unsupported: list[str] = []
+    for repo_name, group in by_repo.items():
+        if repo_name == "metabolights":
+            for c in group:
+                body = BodyConfig(
+                    categories=cfg.categories, file_types=cfg.file_types,
+                    sample_names=cfg.sample_names, dest_dir=cfg.dest_dir,
+                    max_files=cfg.max_files, max_size_gb=cfg.max_size_gb,
+                    parallel_downloads=cfg.parallel,
+                    files_cache_dir=files_cache_dir or None)
+                res = download_data_files(c, body)
+                all_downloaded += [f.relative_path for f in res.downloaded]
+                all_failed += list(res.failed)
+                total += res.total_bytes
+            continue
+        repo = DISPATCH.get(repo_name)
+        try:
+            if repo is None:
+                raise NotImplementedError(
+                    f"no repository registered for {repo_name!r}")
+            repo.download(group, dest_dir=cfg.dest_dir,
+                          files_cache_dir=files_cache_dir)
+        except NotImplementedError as e:
+            unsupported.append(
+                f"{repo_name} ({', '.join(c.study_id for c in group)}): {e}")
+    if unsupported:
+        raise NotImplementedError(
+            "download() cannot fetch these repositories yet:\n  - " +
+            "\n  - ".join(unsupported))
     return DownloadResult(dest_dir=cfg.dest_dir, downloaded=all_downloaded,
                           total_bytes=total, failed=all_failed)
 

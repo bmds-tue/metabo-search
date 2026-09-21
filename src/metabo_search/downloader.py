@@ -273,17 +273,27 @@ def format_summary(candidate: StudyCandidate) -> dict[str, int]:
 def _apply_filters(
     files: list[DataFileRef], config: DownloadConfig
 ) -> list[DataFileRef]:
+    """Apply the config's filters.
+
+    Defense-in-depth: any PRESENT constraint is applied even when empty or
+    zero — ``categories=[]`` selects nothing, ``max_files=0`` downloads
+    nothing.  (The pipeline gate already rejects these as "not a real
+    constraint"; this keeps direct legacy calls safe too.)  ``None`` is the
+    one value that means "no filter" (default).
+    """
     selected = list(files)
-    if config.categories:
+    if config.categories is not None:
         selected = [f for f in selected if f.category in config.categories]
-    if config.file_types:
+    if config.file_types is not None:
         selected = [f for f in selected if f.file_type in config.file_types]
-    if config.sample_names:
-        selected = [f for f in selected if f.sample_name in config.sample_names]
-    if config.max_files:
+    if config.sample_names is not None:
+        selected = [f for f in selected
+                    if f.sample_name in config.sample_names]
+    if config.max_files is not None:
         selected = selected[:config.max_files]
-    if config.max_size_gb:
-        selected = [f for f in selected if f.size_bytes <= config.max_size_gb * 1024**3]
+    if config.max_size_gb is not None:
+        selected = [f for f in selected
+                    if f.size_bytes <= config.max_size_gb * 1024**3]
     return selected
 
 

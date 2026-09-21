@@ -16,7 +16,17 @@ class StudyRequirements:
     """A set of requirements (used for both hard and nice-to-have)."""
 
     organisms: list[str] | None = None
+    """Organism terms.  Vocabulary per repository: MetaboLights facets match
+    the search index's ``organisms.term``; Workbench candidates carry the
+    LATIN name (`"Homo sapiens"`) — NOT the metstat common name
+    (`"Human"`), which would drop every candidate in the shared screen."""
     sample_types: list[str] | None = None
+    """Sample-type terms.  For MetaboLights these are the search index's
+    ``organismParts.term`` FACET values, case and wording matter: use
+    ``"blood plasma"`` / ``"blood serum"`` (≈202/≈128 human studies) —
+    ``"Serum"``/``"Plasma"`` hit only residual variants (~19/5).  For
+    Workbench the SOURCE vocabulary has only ``"Blood"`` for biofluids;
+    serum-vs-plasma must be verified per-sample from factors after inspect."""
     diseases: list[str] | None = None
     """Health-state / condition terms (e.g. ``"Alzheimer's disease"``).
 
@@ -180,8 +190,16 @@ class StudyCandidate:
 
     @property
     def inspection_depth(self) -> str:
-        """'shallow' if only Phase 1 data, 'deep' if ISA files were inspected."""
-        return "deep" if self.investigation_file_parsed else "shallow"
+        """'shallow' vs 'deep' inspection evidence.
+
+        Deep means the investigation file was parsed AND at least a sample or
+        assay sheet is known — an Investigation-only ISA dir (or a fetched
+        summary with no samples) is shallow, not deep.
+        """
+        if not self.investigation_file_parsed:
+            return "shallow"
+        return ("deep" if (self.sample_file_parsed or self.assay_files_parsed)
+                else "shallow")
 
 
 # ──────────────────────────────────────────────
