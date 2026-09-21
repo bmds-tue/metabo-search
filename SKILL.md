@@ -221,7 +221,11 @@ Each study ships ISA-Tab metadata + data on
 `filter_by_maf(...)` / `download_maf_files(...)` filter/fetch them. For counts
 + a `named | identified | mz_only` verdict with zero LLM calls, call
 `analyze_maf_files(id, isa_dir=...)` and paste `render_maf_summary(...)`.
-Metadata never exposes MS level — confirm from a downloaded file or the paper.
+**After any cached run the ISA dirs (incl. MAFs) are already local**:
+`analyze_maf_files(id, isa_dir=r["inspect"].isa_dirs[id])` — or rebuild the
+deep candidate with `load_study_from_isa(id, same_dir)` — costs nothing, no
+`download_maf_files` needed. Metadata never exposes MS level — confirm from
+a downloaded file or the paper.
 
 > ⚠️ MAF is MetaboLights-only — `has_maf=True` in a mixed profile silently
 > kills Workbench candidates (see Repositories).
@@ -262,7 +266,7 @@ values** (OGTT/OLTT/PAT/SLD) are decoded too: the recipe's `code` slot accepts
 - **RC/blank samples** → auto-tagged "quality control"; don't treat them as patients.
 - **disease=unresolved** → check `desc.used_sources`; re-prompt the profile with file-name codes or fix linkage. Don't accept silently.
 - **Large studies** → always use a `SampleSentencesStore` (one LLM call, forever free).
-- **Reuse metadata** → `load_study_from_isa` if ISA files are already on disk.
+- **Reuse metadata** → `load_study_from_isa(id, r["inspect"].isa_dirs[id])` — every cached run already keeps the ISA files on disk.
 - **User error / API edge case** → note it and move on; don't loop.
 
 ## Errors & recovery

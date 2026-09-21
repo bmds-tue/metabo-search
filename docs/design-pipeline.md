@@ -241,6 +241,13 @@ Layout (cache root owns everything):
 └── sentences.json       # describe's LLM store (revision-keyed, eternal)
 ```
 
+The persistent `isa/` dirs are a **reuse point, not just cache**:
+`InspectResult.isa_dirs[study_id]` points at `<root>/isa/<id>/<id>/` —
+files live there verbatim, so `analyze_maf_files(id, isa_dir=<that dir>)`
+(reads `m_*.tsv`) and `load_study_from_isa(id, <same dir>)` (rebuilds the deep
+candidate) both run with zero network. Point the analyzer at the cached dir
+instead of re-downloading.
+
 Restart semantics — exactly your rule:
 
 - `run()` reads `plan.json`; **each step compares its (kind, config) against the stored entry. Unchanged → skip execution and replay `<key>.json`. Changed → miss → execute + store + rewrite `plan.json`.**

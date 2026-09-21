@@ -150,7 +150,10 @@ assert any("MAF" in r for r in reasons)          # the silent hard-drop
 ```
 
 (If you only need a count, `analyze_maf_files(id, isa_dir=...)` reads the real
-per-sample matrix from MetaboLights MAFs with zero LLM calls.)
+per-sample matrix from MetaboLights MAFs with zero LLM calls. And if a
+pipeline already inspected the study, its MAFs are cached —
+`analyze_maf_files(id, isa_dir=r["inspect"].isa_dirs[id])` is free, no
+`download_maf_files` step needed.)
 
 ---
 

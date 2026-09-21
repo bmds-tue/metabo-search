@@ -90,7 +90,7 @@ continue a run midstream via `pipeline(...).run(input=<result>)`:
 |---|---|
 | `SearchResult` | `candidates`, `query`, `args_used` (bears per-repo notices) |
 | `FilterResult` | `survivors`, `dropped` ([(candidate, reason)]), `order` (study_id → soft score), **`stage`** ("shallow" \| "deep") |
-| `InspectResult` | `candidates`, `isa_dirs` (study_id → local ISA dir) |
+| `InspectResult` | `candidates`, `isa_dirs` (study_id → local ISA dir on disk — reuse as `analyze_maf_files(..., isa_dir=...)` / `load_study_from_isa(...)` root: zero network) |
 | `ScoreResult` | `ranked`, `table` — **no `.dropped`**; per-candidate reasons at `sc.score.hard_fail_reasons` (+ `per_criterion`, `criterion_explanations`) |
 | `DescribeResult` | `by_study`, `revision`, `reused` |
 | `DownloadResult` | `dest_dir`, `downloaded`, `total_bytes`, `failed` |
@@ -161,8 +161,16 @@ Deep inspection surfaces them as `candidate.metabolite_count` and
 fetches just the `m_*.tsv` files.
 
 ```python
-from metabo_search import filter_by_maf, download_maf_files, \
-    analyze_maf_files, render_maf_summary
+from metabo_search import (filter_by_maf, download_maf_files,
+    analyze_maf_files, render_maf_summary, pipeline, inspect)
+
+# ALREADY inspected a cached pipeline?  The MAFs are on disk — skip the
+# download entirely (every inspected MetaboLights candidate has isa_dirs):
+deep = pipeline(inspect()).cache(".metabo_cache").run()["inspect"]
+analyses = analyze_maf_files("MTBLS1375",
+                             isa_dir=deep.isa_dirs["MTBLS1375"])
+
+# Standalone (no pipeline): download first, then analyze
 kept = filter_by_maf(deep_candidates, require_maf=True, min_metabolites=100)
 paths = download_maf_files("MTBLS1375", "./mafs")   # -> [./mafs/MTBLS1375/m_*.tsv]
 analyses = analyze_maf_files("MTBLS1375", isa_dir="./mafs")
