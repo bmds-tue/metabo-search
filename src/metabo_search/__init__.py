@@ -49,6 +49,7 @@ from metabo_search.models import (
     RequirementProfile,
     StudyRequirements,
     StudyCandidate,
+    OntologyTerm,
 )
 
 # ── repositories: register available data sources (populates DISPATCH) ──
@@ -108,6 +109,7 @@ __all__ = [
     "RequirementProfile",
     "StudyRequirements",
     "StudyCandidate",
+    "OntologyTerm",  # nested in candidates (organism/organism_parts)
     # core: typed pipeline
     "Pipeline", "PipelineResult", "CacheOpts", "PrintOpts",
     "Screen", "Maf", "Custom",

@@ -71,6 +71,88 @@ cancer"`) and the matcher prefers an exact canonical over a fuzzy subtype.
 Workbench `metabolite_count` is the identified-metabolite list length (no
 sample columns); only MetaboLights MAF files give a true m×s matrix.
 
+> ⚠️ **`has_maf=True` / `min_metabolites` in a mixed-repo profile hard-fails
+> every Workbench candidate silently** — Workbench never ships `m_*.tsv` MAF
+> files (`maf_files_parsed` stays False; its `metabolite_count` is a
+> `/metabolites` list length). Restrict `databases=("metabolights",)` or make
+> MAF `nice_to_have` (scored, not fatal).
+
+## Pipeline results & composition (the typed core)
+
+Run-tested, copy-paste versions of the recipes in this section (plus a
+offline lint that executes them in the test suite): [docs/cookbook.md](../docs/cookbook.md).
+
+Every step output is a **plain dataclass** with `fmt(detail=...)`, `to_json()` /
+`from_json()`, `digest()`. You may construct any of them **by hand** to
+continue a run midstream via `pipeline(...).run(input=<result>)`:
+
+| Result | Fields (construct by hand) |
+|---|---|
+| `SearchResult` | `candidates`, `query`, `args_used` (bears per-repo notices) |
+| `FilterResult` | `survivors`, `dropped` ([(candidate, reason)]), `order` (study_id → soft score), **`stage`** ("shallow" \| "deep") |
+| `InspectResult` | `candidates`, `isa_dirs` (study_id → local ISA dir) |
+| `ScoreResult` | `ranked`, `table` — **no `.dropped`**; per-candidate reasons at `sc.score.hard_fail_reasons` (+ `per_criterion`, `criterion_explanations`) |
+| `DescribeResult` | `by_study`, `revision`, `reused` |
+| `DownloadResult` | `dest_dir`, `downloaded`, `total_bytes`, `failed` |
+| `ExportResult` | `path`, `rows`, `columns` |
+
+`stage` is the one semantic field: `"shallow"` = pre-inspect (feed
+`filter(screen(...))` or `inspect()` next), `"deep"` = post-inspect (feed
+`filter(maf(...))` or `score()` next). A wrong `stage` is a **plan-time
+error**, never a silent bug.
+
+### Repo-specific filters (per-repository composition)
+
+One profile's `screen(profile)` applies to every repository's candidates;
+incommensurable requirements (serum/plasma: ML facets `"blood serum"` /
+`"blood plasma"` vs Workbench SOURCE `"Blood"` only) need per-repo slicing.
+The recipe: slice survivors by `candidate.repository`, build a `FilterResult`
+by hand, continue with `run(input=…)`:
+
+```python
+from metabo_search import FilterResult, inspect, pipeline, score
+
+r0 = quick_discovery("human serum metabolomics", profile).run()["filter"]
+ml = [c for c in r0.survivors if c.repository == "metabolights"]
+wb = [c for c in r0.survivors if c.repository != "metabolights"]
+
+# MetaboLights: serum/plasma is a shallow search-facet value:
+ml = [c for c in ml if any(
+        t in ("blood serum", "blood plasma")
+        for o in c.organism_parts
+        for t in (o.term if hasattr(o, "term") else str(o)))]
+dropped = [(c, "no serum/plasma facet") for c in r0.survivors
+           if c.repository == "metabolights" and c not in ml]
+
+# Workbench: serum/plasma is per-sample, deep only — inspect, then slice:
+deep = pipeline(inspect()).run(input=FilterResult(
+    survivors=ml + wb, dropped=dropped, order={}, stage="shallow"))
+
+keep = [c for c in deep.candidates
+        if c.repository == "metabolights"
+        or any(r.get("sample_source", "").lower().count("plasma")
+               for r in c.sample_metadata)]
+final = FilterResult(survivors=keep,
+                     dropped=[(c, "no plasma") for c in deep.candidates if c not in keep],
+                     order={c.study_id: i for i, c in enumerate(keep)},
+                     stage="deep")
+r2 = pipeline(score(profile)).run(input=final)
+```
+
+Refer to the *Per-sample evidence* shapes below for the per-repo row keys.
+
+### Per-sample evidence (`candidate.sample_metadata` after inspect)
+
+- **MetaboLights** rows mirror ISA sample-sheet columns: `Sample Name`,
+  `Source Name`, `Characteristics[Organism]`, **`Characteristics[Organism part]`**
+  (the tissue — per-sample serum/plasma), `Factor Value[<label>]`, …
+- **Workbench** rows carry lowercase native keys `sample_name`,
+  `sample_source` (e.g. `"Blood (plasma)"`), `factors`, `mb_sample_id` — plus
+  ISA aliases `Sample Name` / `Source Name` / `Factor Value[<label>]`.
+
+Serum vs plasma per sample: ML → `row["Characteristics[Organism part]"]`;
+WB → `row["sample_source"]`.
+
 ### MAF (metabolite assignment) files
 `m_*.tsv` ISA-Tab files carry one row per identified metabolite (name,
 formula, m/z, retention time, database, per-sample abundance columns).

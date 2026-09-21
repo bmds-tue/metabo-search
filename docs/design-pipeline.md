@@ -95,6 +95,12 @@ class FilterResult:
     survivors: list[StudyCandidate]           # ordered (screen) or input order (maf)
     dropped: list[tuple[StudyCandidate, str]] # (candidate, reason)
     order: dict[str, float]                   # soft scores behind the ordering
+    stage: str = ""                           # "shallow" | "deep" — the carrier
+                                              # this filter ran on; SEMANTIC for
+                                              # hand-built results fed to
+                                              # run(input=...) (validation uses
+                                              # it to know whether the chain is
+                                              # pre- or post-inspect)
 ```
 
 ### inspect — enrich shallow → deep

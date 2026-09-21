@@ -89,7 +89,7 @@ metabo-search/
 - [x] core/ — typed pipeline: results.py (8 result types, to_json/digest/fmt),
   steps.py (Step/Config/Predicate/Pipeline, validate/run/extend/diff),
   cache.py (plan.json + results/, TTLs, warm replay), recipes.py
-  (quick_probe/quick_discovery/full_report/harvest). 116 tests green
+  (quick_probe/quick_discovery/full_report/harvest). 164 tests green
   (86 pre-existing adapted to databases=("metabolights",) + 30 new workbench/
   database-option tests, offline via METABO_WORKBENCH_FIXTURES).
 - [x] SKILL.md — portable Pi/Claude/opencode skill + references/api.md,
@@ -324,7 +324,7 @@ Coverage:
   "1.d" glued) -> strip ALL Path suffixes before tokenizing.
 
 ## Run tests
-`.venv-local/bin/python -m pytest tests/ -q`  (116 passed currently)
+`.venv-local/bin/python -m pytest tests/ -q`  (164 passed currently)
 NOTE: manifest.py was corrupted by a bad sed once - rebuilt cleanly; keep the
 single-module invariant (grep -c "def _sample_matches" manifest.py == 1).
 
