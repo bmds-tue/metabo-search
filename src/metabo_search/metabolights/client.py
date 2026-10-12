@@ -10,13 +10,22 @@ Every method is offline-testable via an injected ``httpx`` transport.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from pathlib import Path
 from types import TracebackType
 from typing import Literal
 
 import httpx
 
 from metabo_search.errors import APIError, NotFound
-from metabo_search.metabolights.models import SearchPage, SearchResponse, StudyHit
+from metabo_search.metabolights.files import download as _download
+from metabo_search.metabolights.files import list_files
+from metabo_search.metabolights.models import (
+    DownloadReport,
+    SearchPage,
+    SearchResponse,
+    StudyFile,
+    StudyHit,
+)
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
 
@@ -163,6 +172,53 @@ class MetaboLights:
             if len(found) >= len(ids):
                 break
         return Results(found[sid] for sid in ids if sid in found)
+
+    def files(self, study_id: str, *, recursive: bool = True) -> Results[StudyFile]:
+        """List a study's data files from its ``FILES/`` tree.
+
+        Args:
+            study_id: MetaboLights accession.
+            recursive: Descend into subdirectories (default) or list only the
+                top level of ``FILES/``.
+
+        Returns:
+            The files found, in listing order.
+        """
+        return list_files(self._http, study_id, recursive=recursive)
+
+    def download(
+        self,
+        study_id: str,
+        selection: str | Sequence[StudyFile] = "all",
+        *,
+        dest: str | Path = ".",
+        max_files: int | None = None,
+        max_bytes: int | None = None,
+        workers: int = 4,
+    ) -> DownloadReport:
+        """Download a selection of a study's files.
+
+        Args:
+            study_id: MetaboLights accession.
+            selection: ``"all"``, a category (``"raw"``/``"derived"``/
+                ``"other"``), or an explicit sequence of :class:`StudyFile`.
+            dest: Root destination; files land under ``dest/study_id/``.
+            max_files: Keep at most this many files.
+            max_bytes: Stop before the cumulative listed size exceeds this.
+            workers: Parallel download threads.
+
+        Returns:
+            A report with the files downloaded, failures, and total bytes.
+        """
+        return _download(
+            self._http,
+            study_id,
+            selection,
+            dest=dest,
+            max_files=max_files,
+            max_bytes=max_bytes,
+            workers=workers,
+        )
 
     def close(self) -> None:
         """Close the underlying connection pool."""

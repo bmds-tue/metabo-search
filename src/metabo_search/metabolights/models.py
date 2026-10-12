@@ -277,6 +277,15 @@ class StudyDetail(MetaboLightsModel):
     files: list[StudyFile] = []
 
 
+class DownloadReport(MetaboLightsModel):
+    """Outcome of a selective download."""
+
+    dest_dir: Str = ""
+    downloaded: list[StudyFile] = []
+    failed: list[str] = []
+    total_bytes: int = 0
+
+
 class FacetBucket(MetaboLightsModel):
     """One value in a facet response."""
 

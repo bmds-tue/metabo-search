@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 import httpx
 import pytest
@@ -177,3 +178,23 @@ def test_rate_limit_throttles_requests() -> None:
         client.get_json("x", model=_Body)
     # 3 requests, burst 1, 20/s => ~2 gaps of 50 ms.
     assert time.monotonic() - started >= 0.08
+
+
+def test_absolute_url_passes_through() -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        return httpx.Response(200, json={"value": 1})
+
+    _client(handler).get_json("https://other.test/x", model=_Body)
+    assert seen["url"] == "https://other.test/x"
+
+
+def test_download_writes_file(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"hello")
+
+    written = _client(handler).download("file.bin", tmp_path / "out.bin")
+    assert written == 5
+    assert (tmp_path / "out.bin").read_bytes() == b"hello"

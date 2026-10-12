@@ -14,6 +14,7 @@ import threading
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from types import TracebackType
 from typing import TypeVar
 
@@ -201,7 +202,7 @@ class HttpClient:
             TransientError: The server returned 5xx, or the network failed,
                 after every attempt.
         """
-        url = self._base_url + path.lstrip("/")
+        url = self._url(path)
         for attempt in range(1, self._retry.max_attempts + 1):
             self._acquire()
             started = time.monotonic()
@@ -272,6 +273,39 @@ class HttpClient:
         """GET ``path`` and return the response body as text."""
         return self.request("GET", path, params=params).text
 
+    def download(self, path: str, dest: str | Path) -> int:
+        """Stream a GET response to ``dest``, returning the bytes written.
+
+        Retries transient failures. The destination directory is created if
+        needed; a partial file is overwritten on retry.
+
+        Raises:
+            NotFound: The server returned 404.
+            ClientError: The server returned another non-retryable 4xx.
+            TransientError: The transfer failed after every attempt.
+        """
+        url = self._url(path)
+        dest_path = Path(dest)
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+        last_exc: Exception | None = None
+        for attempt in range(1, self._retry.max_attempts + 1):
+            self._acquire()
+            try:
+                with self._client.stream("GET", url) as response:
+                    self._raise_for_status(response)
+                    written = 0
+                    with dest_path.open("wb") as handle:
+                        for chunk in response.iter_bytes():
+                            handle.write(chunk)
+                            written += len(chunk)
+                    return written
+            except (TransientError, httpx.TimeoutException, httpx.TransportError) as exc:
+                last_exc = exc
+                if attempt >= self._retry.max_attempts:
+                    break
+                self._sleep(attempt, None)
+        raise TransientError(f"GET {url} failed: {last_exc}") from last_exc
+
     def close(self) -> None:
         """Close the underlying connection pool."""
         self._client.close()
@@ -288,6 +322,12 @@ class HttpClient:
         self.close()
 
     # -- internals -------------------------------------------------------
+
+    def _url(self, path: str) -> str:
+        """Resolve ``path`` against the base URL (absolute URLs pass through)."""
+        if path.startswith(("http://", "https://")):
+            return path
+        return self._base_url + path.lstrip("/")
 
     def _acquire(self) -> None:
         if self._bucket is not None:
