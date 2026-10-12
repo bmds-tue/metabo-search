@@ -65,6 +65,9 @@ def _listing_handler(request: httpx.Request) -> httpx.Response:
 def test_parse_size() -> None:
     assert parse_size("2.1M") == int(2.1 * 1024**2)
     assert parse_size("512K") == 512 * 1024
+    assert parse_size("1.5KB") == int(1.5 * 1024)
+    assert parse_size("2.1MB") == int(2.1 * 1024**2)
+    assert parse_size("1.5 KB") == int(1.5 * 1024)
     assert parse_size("") == 0
     assert parse_size("junk") == 0
 
@@ -77,6 +80,7 @@ def test_detect_extension_keeps_compound_suffix() -> None:
 
 def test_categorize_directory_beats_extension() -> None:
     assert categorize(".mzml", "FILES/RAW_FILES/x.mzML") == "raw"
+    assert categorize(".mzml", "FILES/DRAWINGS/x.mzML") == "derived"
     assert categorize(".mzml", "FILES/DERIVED_FILES/x.mzML") == "derived"
     assert categorize(".mzml", "FILES/x.mzML") == "derived"
     assert categorize(".raw", "FILES/x.raw") == "raw"

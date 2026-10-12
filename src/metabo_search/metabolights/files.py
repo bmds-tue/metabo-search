@@ -58,18 +58,20 @@ def parse_size(text: str) -> int:
     Returns:
         The size in bytes, or ``0`` when it cannot be parsed.
     """
-    value = text.strip().upper()
+    value = text.strip().upper().removesuffix("B")
     if not value:
         return 0
     suffix = value[-1]
     if suffix in _SIZE_UNITS:
-        number = value[:-1].rstrip("B")
+        number = value[:-1].strip()
+        if not number:
+            return 0
         try:
             return int(float(number) * _SIZE_UNITS[suffix])
         except ValueError:
             return 0
     try:
-        return int(float(value.rstrip("B")))
+        return int(float(value))
     except ValueError:
         return 0
 
@@ -90,10 +92,12 @@ def categorize(extension: str, relative_path: str = "") -> str:
     Directory hints win over the extension: an ``.mzML`` under ``RAW_FILES/``
     is instrument output, so it is raw.
     """
-    upper = relative_path.upper()
-    if "DERIVED" in upper or "PROCESSED" in upper:
+    # Match directory *segments*, not substrings: "FILES/DRAWINGS/x" must not
+    # be treated as raw just because "DRAWINGS" contains "RAW".
+    segments = relative_path.upper().split("/")
+    if any(segment.startswith(("DERIVED", "PROCESSED")) for segment in segments):
         return "derived"
-    if "RAW" in upper:
+    if any(segment.startswith("RAW") for segment in segments):
         return "raw"
     if extension in RAW_EXTS or extension in RAW_COMPRESSED:
         return "raw"
