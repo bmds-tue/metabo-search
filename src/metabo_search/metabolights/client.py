@@ -106,7 +106,9 @@ class MetaboLights:
             limit: Maximum number of hits to return.
 
         Returns:
-            The matching study documents, in API order.
+            The matching study documents. Without an explicit ``sort`` they are
+            ordered by study id (stable pagination); pass ``sort`` to order by
+            another field.
 
         Raises:
             APIError: The API returned an error envelope.
@@ -303,10 +305,20 @@ class MetaboLights:
         sort: str | None,
         sort_direction: SortDirection = "desc",
     ) -> Iterator[StudyHit]:
-        """Yield every hit across pages until the index is exhausted."""
+        """Yield every hit across pages until the index is exhausted.
+
+        Pagination needs a total order or rows can be dropped/repeated at page
+        boundaries. When the caller gives no sort, sort by ``studyId``
+        ascending; a caller-provided sort is used as-is (and should be unique
+        to stay deterministic across pages).
+        """
+        effective_sort = sort or "studyId"
+        effective_direction: SortDirection = sort_direction if sort else "asc"
         page = 1
         while True:
-            body = _search_body(query, filters, page, page_size, sort, sort_direction)
+            body = _search_body(
+                query, filters, page, page_size, effective_sort, effective_direction
+            )
             result = self._post_search(body)
             yield from result.results
             if not result.results or page * page_size >= result.total_results:

@@ -199,3 +199,16 @@ def test_inspect_flags_missing_isa_metadata() -> None:
     details = _client(handler).inspect(["MTBLS14005"])
     assert details[0].samples == []
     assert "ISA" in details[0].error
+
+
+def test_search_defaults_to_stable_sort() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.read())
+        return httpx.Response(200, json=_envelope([], 0))
+
+    _client(handler).search("q")
+    body = captured["body"]
+    assert isinstance(body, dict)
+    assert body["sort"] == {"field": "studyId", "direction": "asc"}
