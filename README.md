@@ -7,10 +7,9 @@ and [Metabolomics Workbench](https://www.metabolomicsworkbench.org) — through
 two **independent, strictly typed clients**. They are not unified: the two
 repositories have different APIs, vocabularies, and data models.
 
-> **Status: rebuild in progress.** This branch (`refactor/clients`) delivers the
-> two clients. The next branch adds a local DuckDB working set: search the web
-> APIs, ingest only the results you care about, analyse, and fetch more on
-> demand. See [`docs/api-design.md`](docs/api-design.md) and
+> Search the web APIs, ingest only the results you care about into a local
+> DuckDB file, analyse with SQL, and fetch more on demand. The repositories are
+> never mirrored. See [`docs/api-design.md`](docs/api-design.md) and
 > [`docs/rebuild-plan.md`](docs/rebuild-plan.md).
 
 ## Why the rebuild
@@ -85,10 +84,45 @@ metabolites = wb.metabolites("ST000001")   # empty means "not listed"
 detail = wb.inspect(results[:5], include_analyses=False, include_metabolites=False)[0]
 ```
 
+## Working set (DuckDB)
+
+A `Workspace` is a local DuckDB file. Ingest the results you care about, then
+query them with SQL. Per-source tables (`ml_*` / `wb_*`) are never merged.
+
+```python
+from metabo_search import MetaboLights, Workbench, Workspace
+
+ws = Workspace("project.duckdb")            # default: ./metabo.duckdb
+
+ml = MetaboLights()
+hits = ml.search("human blood plasma lipidomics", organisms=["Homo sapiens"], limit=100)
+ml.ingest(hits, ws)                          # study-level tables (ml_study, …)
+ml.ingest(ml.inspect(hits[:10]), ws)         # deep: samples + MAF metabolites
+
+wb = Workbench()
+wb.ingest(wb.search("diabetes", limit=50), ws)   # wb_study, …
+
+ws.sql("select facet, count(*) n from ml_study_term group by 1 order by n desc")
+ws.tables()
+ws.schema()
+```
+
+Ingestion is **idempotent** (upsert on natural keys): re-ingesting the same
+object changes nothing, and a `StudyDetail` after a `StudyHit` adds the deeper
+rows without duplicating the shallow ones. Every call returns an
+`IngestReport` (table → row count) and appends an `ml_ingest_run` /
+`wb_ingest_run` audit row. `ml.ingest` / `wb.ingest` delegate to
+`metabolights.ingest.write` / `workbench.ingest.write`.
+
+`ws.sql()` returns DuckDB's own relation, so `.fetchall()`, `.pl()`, `.df()`
+work as usual — the dataframe backends are optional, not dependencies.
+
 ## Documentation
 
 - [`docs/api-design.md`](docs/api-design.md) — the target public API.
 - [`docs/rebuild-plan.md`](docs/rebuild-plan.md) — architecture and plan.
+- [`docs/duckdb-ingestion-plan.md`](docs/duckdb-ingestion-plan.md) — the
+  ingestion schema and steps.
 
 ## Disclaimer
 

@@ -1,17 +1,15 @@
 # metabo-search — maintenance notes
 
 Search two metabolomics repositories from Python: **MetaboLights** and
-**Metabolomics Workbench**. Two independent, strictly typed clients, plus (next)
-a local DuckDB working set built from search results. The repositories are
+**Metabolomics Workbench**. Two independent, strictly typed clients, plus a
+local DuckDB working set built from search results. The repositories are
 **never unified** — not in clients, models, or tables.
 
 ## Branches
 
-- `refactor/clients` — the two clients. Done, under review.
-- `feature/duckdb-ingestion` — DuckDB workspace + per-source ingestion.
-  Plan: `docs/duckdb-ingestion-plan.md` (rebase onto `main` after the clients
-  branch merges).
-- `main` — old pipeline; being replaced.
+- `feature/duckdb-ingestion` — DuckDB workspace + per-source ingestion. Done;
+  plan in `docs/duckdb-ingestion-plan.md`.
+- `main` — old pipeline; being replaced (merge the clients + ingestion work).
 
 ## Layout
 
@@ -20,8 +18,9 @@ src/metabo_search/
 ├── transport.py    HttpClient: pooling, retries, Retry-After, rate limit
 ├── results.py      Results[T] (a list subclass) with .ids()/.records()/.fmt()
 ├── errors.py       MetaboSearchError hierarchy (incl. ParseError)
-├── metabolights/   client.py · models.py · parse.py · files.py
-└── workbench/      client.py · models.py · parse.py
+├── workspace.py    Workspace: DuckDB handle, IngestBatch/TableRows/IngestReport
+├── metabolights/   client.py · models.py · parse.py · files.py · ingest.py
+└── workbench/      client.py · models.py · parse.py · ingest.py
 ```
 
 ## Commands
@@ -48,6 +47,16 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
   abort-on-first-failure.
 - **No repository mirroring.** Search the web APIs, ingest only the hits you
   care about, analyse, fetch more on demand.
+- **Ingestion schema is generated from one spec.** Each `ingest.py` declares
+  `_TABLES` (column → type, natural key); `DDL` is built from it, so tables and
+  primary keys cannot drift. `batch()` is pure (no DB/network); `write()` is the
+  only DB-touching part. `INSERT OR REPLACE` on the natural key makes re-ingest
+  a no-op.
+- **Completeness is enforced** by `tests/test_ingest_completeness.py`: every
+  model field must be a column or declared in `_EXPANDED`, so a new upstream
+  field fails the test instead of being silently dropped.
+- **`ws.sql()` returns DuckDB's relation unwrapped** — no `Table`/Arrow layer.
+  Dataframe backends (polars/pandas/pyarrow) are optional, not dependencies.
 - **Workbench corpus** (`/ST/summary`) takes ~90 s; fetched once per client
   instance and filtered locally (the API has no free-text search).
 - **Docs are deliberately lean** — prefer docstrings over new Markdown.
@@ -58,4 +67,4 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - `SKILL.md` — the agent-facing skill (pi/Claude/opencode).
 - `docs/api-design.md` — target public API.
 - `docs/rebuild-plan.md` — architecture and the client branch plan.
-- `docs/duckdb-ingestion-plan.md` — the next branch.
+- `docs/duckdb-ingestion-plan.md` — the ingestion branch schema and steps.

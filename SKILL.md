@@ -1,6 +1,6 @@
 ---
 name: metabo-search
-description: Search MetaboLights and Metabolomics Workbench for metabolomics datasets from Python. Two independent, strictly typed clients — study search, point lookups, deep ISA/MAF inspection (MetaboLights), factors/analysis/metabolites (Workbench), and selective downloads. Use when a researcher needs datasets matching an experimental setup, or wants to pull and analyse study data.
+description: Search MetaboLights and Metabolomics Workbench for metabolomics datasets from Python. Two independent, strictly typed clients — study search, point lookups, deep ISA/MAF inspection (MetaboLights), factors/analysis/metabolites (Workbench), selective downloads — plus a local DuckDB working set (search → ingest → SQL). Use when a researcher needs datasets matching an experimental setup, or wants to pull, ingest, and analyse study data.
 compatibility: Python 3.11+; uv optional (falls back to python3 -m venv)
 metadata:
   install: scripts/install.sh
@@ -95,9 +95,41 @@ Workbench SOURCE vocabulary has only `Blood` for biofluids, so serum vs plasma
 must be checked per sample from the factor rows — and a bare `"plasma"` match
 also catches `Seminal plasma`.
 
+## Working set (DuckDB)
+
+Search returns typed records; a `Workspace` is a local DuckDB file you ingest
+only the ones you care about into, then query with SQL. The two repositories
+are never merged — tables are prefixed `ml_*` / `wb_*`.
+
+```python
+from metabo_search import MetaboLights, Workbench, Workspace
+
+ws = Workspace("project.duckdb")            # default: ./metabo.duckdb
+
+ml = MetaboLights()
+hits = ml.search("human blood plasma lipidomics", organisms=["Homo sapiens"], limit=100)
+ml.ingest(hits, ws)                          # ml_study, ml_study_term, …
+ml.ingest(ml.inspect(hits[:10]), ws)         # ml_sample, ml_metabolite, …
+
+wb = Workbench()
+wb.ingest(wb.search("diabetes", limit=50), ws)   # wb_study, …
+
+ws.sql("select facet, count(*) n from ml_study_term group by 1 order by n desc")
+ws.tables(); ws.schema()
+```
+
+- Ingestion is **idempotent** (upsert on natural keys): re-ingesting changes
+  nothing; a `StudyDetail` after a `StudyHit` adds deeper rows, no duplicates.
+- Every call returns an `IngestReport` (table → row count) and writes an
+  `ml_ingest_run` / `wb_ingest_run` audit row. `ml.ingest` / `wb.ingest`
+  delegate to `metabolights.ingest.write` / `workbench.ingest.write`.
+- Errored `StudyDetail`s (best-effort inspect) are skipped, not written, and
+  reported in `IngestReport.skipped`.
+- `ws.sql()` returns DuckDB's own relation: `.fetchall()`, `.pl()`, `.df()`
+  work; dataframe backends are optional, not dependencies.
+
 ## Notes
 
 - **Offline by default in tests**: pass an `httpx` transport to either client.
 - **Strictly typed**: pydantic models; `pyright` strict; `py.typed` shipped.
-- The DuckDB working-set layer (search → ingest → analyse) is the next branch;
-  see `docs/api-design.md`.
+- Ingestion schema and steps: `docs/duckdb-ingestion-plan.md`.
