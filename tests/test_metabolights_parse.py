@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import pytest
+
+from metabo_search.errors import ParseError
 from metabo_search.metabolights.parse import (
     is_metadata_column,
     parse_assay_file,
@@ -52,6 +55,24 @@ def test_parse_tsv_blank_input() -> None:
     table = parse_tsv("\n\n")
     assert table.columns == []
     assert table.rows == []
+
+
+def test_parse_tsv_handles_bare_carriage_return() -> None:
+    # Real MAFs contain bare \r bytes (e.g. MTBLS8954 positive mode).
+    table = parse_tsv("a\tb\n1\t2\r3\n")
+    assert table.columns == ["a", "b"]
+    assert table.rows[0]["a"] == "1"
+
+
+def test_parse_tsv_wraps_csv_errors() -> None:
+    with pytest.raises(ParseError):
+        parse_tsv("a\tb\n1\t" + "x" * 200_000 + "\n")
+
+
+def test_parse_study_detail_propagates_parse_error() -> None:
+    isa = {"m_MTBLS1_maf.tsv": "a\tb\n1\t" + "x" * 200_000 + "\n"}
+    with pytest.raises(ParseError):
+        parse_study_detail("MTBLS1", isa)
 
 
 def test_parse_sample_file_organism_is_not_tissue() -> None:

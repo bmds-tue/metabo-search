@@ -64,3 +64,12 @@ class APIError(MetaboSearchError):
 
 class ResponseValidationError(MetaboSearchError):
     """A 2xx response body did not match the expected typed model."""
+
+
+class ParseError(MetaboSearchError):
+    """A data file (ISA-Tab or MAF) could not be parsed.
+
+    Raised by the parsers so that a malformed file is reported as a normal
+    library error and can be collected per study by ``inspect()`` instead of
+    sinking a whole batch.
+    """

@@ -14,6 +14,7 @@ import io
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from metabo_search.errors import ParseError
 from metabo_search.metabolights.models import Metabolite, Sample, StudyDetail, StudyFile
 
 
@@ -42,11 +43,16 @@ def parse_tsv(text: str) -> Table:
     Returns:
         The parsed table; empty columns/rows for blank input.
     """
-    lines = [
-        line
-        for line in csv.reader(io.StringIO(text), delimiter="\t")
-        if any(cell.strip() for cell in line)
-    ]
+    # ``newline=""`` lets csv handle bare ``\r`` bytes, which real MAFs contain
+    # (e.g. MTBLS8954's positive-mode file); without it csv raises.
+    try:
+        lines = [
+            line
+            for line in csv.reader(io.StringIO(text, newline=""), delimiter="\t")
+            if any(cell.strip() for cell in line)
+        ]
+    except csv.Error as exc:
+        raise ParseError(f"malformed tab-separated table: {exc}") from exc
     if not lines:
         return Table(columns=[], rows=[])
     columns = [cell.strip() for cell in lines[0]]
