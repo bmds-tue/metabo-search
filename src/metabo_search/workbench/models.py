@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 
 def _null_to_empty_str(value: object) -> object:
@@ -80,7 +80,7 @@ class AnalysisRecord(WorkbenchModel):
     analysis_id: Str = ""
     analysis_summary: Str = ""
     analysis_type: Str = ""
-    chromatography_system: Str = ""
+    chromatography_system: Str = Field(default="", alias="chromatography system")
     column_name: Str = ""
     chromatography_type: Str = ""
     ms_instrument_name: Str = ""
