@@ -41,4 +41,6 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 include = ["src"]
 typeCheckingMode = "strict"
 pythonVersion = "3.11"
+venvPath = "."
+venv = ".venv-local"
 reportMissingTypeStubs = false
