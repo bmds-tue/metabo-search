@@ -54,6 +54,9 @@ detail = ml.inspect(["MTBLS1"])[0]
 detail.samples[0].organism          # "Homo sapiens"
 detail.samples[0].organism_part     # "urine"
 detail.metabolites[0].metabolite_identification
+# inspect is best-effort: a study that failed after retries comes back with
+# .error set (and empty data) instead of aborting the batch. Pass
+# on_error="raise" to abort on the first failure.
 
 ml.files("MTBLS1")                                   # recursive FILES/ listing
 ml.download("MTBLS1", "derived", dest="data/", max_files=10)

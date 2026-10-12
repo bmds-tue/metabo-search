@@ -173,7 +173,8 @@ ml.search(query="", *, organisms=None, sample_types=None, techniques=None,
           limit=25) -> Results[StudyHit]
 ml.study(study_id) -> StudyHit
 ml.studies(study_ids) -> Results[StudyHit]
-ml.inspect(study_ids, *, workers=8) -> Results[StudyDetail]   # ISA + MAF, parsed
+ml.inspect(study_ids, *, workers=8, include_files=False,
+           on_error="collect") -> Results[StudyDetail]   # ISA + MAF, parsed
 ml.files(study_id, *, recursive=True) -> Results[StudyFile]
 ml.download(study_id, selection="all", *, dest=".", max_files=None,
             max_bytes=None) -> DownloadReport
@@ -187,12 +188,20 @@ wb.study(study_id) -> StudySummary
 wb.samples(study_id) -> Results[SampleRow]
 wb.analyses(study_id) -> Results[AnalysisRecord]
 wb.metabolites(study_id) -> Results[MetaboliteRow] | MetaboliteList
-wb.inspect(study_ids, *, workers=8) -> Results[StudyDetail]
+wb.inspect(study_ids, *, workers=8, on_error="collect") -> Results[StudyDetail]
 ```
 
 `wb.search` uses the workbench's whole-index summary as its search index (there
 is no server-side free-text search); only matching studies are returned and
 ingested. The corpus itself is never ingested.
+
+### Best-effort inspection
+
+`inspect()` is best-effort by default: a study that still fails after the
+transport's retries is returned as a `StudyDetail` whose `error` field holds
+the message (and whose data is empty). A long batch therefore always yields one
+result per input, and failures are visible per study rather than lost. Pass
+`on_error="raise"` to abort on the first failure instead.
 
 ## 7. Tables written by ingest
 

@@ -12,10 +12,11 @@ import re
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from types import TracebackType
+from typing import Literal
 
 import httpx
 
-from metabo_search.errors import NotFound
+from metabo_search.errors import MetaboSearchError, NotFound
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
 from metabo_search.workbench.models import (
@@ -145,13 +146,24 @@ class Workbench:
         return Results(parse_metabolites(self._get(f"study/study_id/{study_id}/metabolites")))
 
     def inspect(
-        self, study_ids: Sequence[str | StudySummary], *, workers: int = 8
+        self,
+        study_ids: Sequence[str | StudySummary],
+        *,
+        workers: int = 8,
+        on_error: Literal["collect", "raise"] = "collect",
     ) -> Results[StudyDetail]:
         """Fetch deep per-study data (factors, analyses, metabolites).
+
+        Best-effort by default: a study that fails after retries is returned as
+        a :class:`StudyDetail` with an ``error`` message and empty data, so a
+        long batch always yields one result per input. Pass
+        ``on_error="raise"`` to abort on the first failure instead.
 
         Args:
             study_ids: Accessions, or summaries to read accessions from.
             workers: Parallel study fetches.
+            on_error: ``"collect"`` (default) records per-study errors;
+                ``"raise"`` propagates the first failure.
 
         Returns:
             One :class:`StudyDetail` per input, in input order.
@@ -161,13 +173,18 @@ class Workbench:
             return Results()
 
         def _run(study_id: str) -> StudyDetail:
-            return StudyDetail(
-                study_id=study_id,
-                summary=self.study(study_id),
-                samples=list(self.samples(study_id)),
-                analyses=list(self.analyses(study_id)),
-                metabolites=list(self.metabolites(study_id)),
-            )
+            try:
+                return StudyDetail(
+                    study_id=study_id,
+                    summary=self.study(study_id),
+                    samples=list(self.samples(study_id)),
+                    analyses=list(self.analyses(study_id)),
+                    metabolites=list(self.metabolites(study_id)),
+                )
+            except MetaboSearchError as exc:
+                if on_error == "raise":
+                    raise
+                return StudyDetail(study_id=study_id, error=str(exc))
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             return Results(pool.map(_run, ids))

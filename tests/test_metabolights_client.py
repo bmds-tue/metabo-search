@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from metabo_search.errors import APIError, NotFound
+from metabo_search.errors import APIError, MetaboSearchError, NotFound
 from metabo_search.metabolights.client import MetaboLights
 from metabo_search.transport import RetryPolicy
 
@@ -163,3 +163,28 @@ def test_inspect_downloads_and_parses_isa() -> None:
     details = _client(handler).inspect(["MTBLS1"])
     assert details[0].study_id == "MTBLS1"
     assert details[0].samples[0].raw_files == ["FILES/RAW_FILES/DCR00004_U.raw"]
+
+
+def test_inspect_collects_per_study_errors() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(200, text='<a href="s_MTBLS1.txt">s</a>')
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        return httpx.Response(404)  # MTBLS2 listing fails
+
+    details = _client(handler).inspect(["MTBLS1", "MTBLS2"])
+    assert details[0].error == ""
+    assert details[0].samples
+    assert details[1].study_id == "MTBLS2"
+    assert details[1].error != ""
+    assert details[1].samples == []
+
+
+def test_inspect_raises_when_asked() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404)
+
+    with pytest.raises(MetaboSearchError):
+        _client(handler).inspect(["MTBLS1"], on_error="raise")

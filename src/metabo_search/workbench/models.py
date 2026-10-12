@@ -105,10 +105,16 @@ class MetaboliteRow(WorkbenchModel):
 
 
 class StudyDetail(WorkbenchModel):
-    """Deep, parsed study data: factors, analyses, and identified metabolites."""
+    """Deep, parsed study data: factors, analyses, and identified metabolites.
+
+    ``error`` is non-empty when inspection failed after retries; the other
+    fields are then empty. A failed study is still returned, so a batch
+    inspection always has one result per input.
+    """
 
     study_id: Str = ""
     summary: StudySummary | None = None
     samples: list[SampleRow] = []
     analyses: list[AnalysisRecord] = []
     metabolites: list[MetaboliteRow] = []
+    error: Str = ""

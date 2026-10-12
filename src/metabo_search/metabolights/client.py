@@ -17,7 +17,7 @@ from typing import Literal
 
 import httpx
 
-from metabo_search.errors import APIError, NotFound
+from metabo_search.errors import APIError, MetaboSearchError, NotFound
 from metabo_search.metabolights.files import download as _download
 from metabo_search.metabolights.files import isa_files, list_files
 from metabo_search.metabolights.models import (
@@ -229,13 +229,21 @@ class MetaboLights:
         *,
         workers: int = 8,
         include_files: bool = False,
+        on_error: Literal["collect", "raise"] = "collect",
     ) -> Results[StudyDetail]:
         """Download and parse deep per-study data (ISA samples + MAF metabolites).
+
+        Best-effort by default: a study that fails after retries is returned as
+        a :class:`StudyDetail` with an ``error`` message and empty data, so a
+        long batch always yields one result per input. Pass
+        ``on_error="raise"`` to abort on the first failure instead.
 
         Args:
             study_ids: Accessions, or study documents to read accessions from.
             workers: Parallel study downloads.
             include_files: Also list each study's ``FILES/`` tree (slower).
+            on_error: ``"collect"`` (default) records per-study errors;
+                ``"raise"`` propagates the first failure.
 
         Returns:
             One :class:`StudyDetail` per input, in input order.
@@ -245,7 +253,12 @@ class MetaboLights:
             return Results()
 
         def _run(study_id: str) -> StudyDetail:
-            return self._inspect_one(study_id, include_files)
+            try:
+                return self._inspect_one(study_id, include_files)
+            except MetaboSearchError as exc:
+                if on_error == "raise":
+                    raise
+                return StudyDetail(study_id=study_id, error=str(exc))
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             details = list(pool.map(_run, ids))

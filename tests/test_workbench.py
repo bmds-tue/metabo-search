@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from metabo_search.errors import NotFound
+from metabo_search.errors import MetaboSearchError, NotFound
 from metabo_search.transport import RetryPolicy
 from metabo_search.workbench.client import Workbench
 from metabo_search.workbench.parse import normalize_rows, parse_factor_string
@@ -123,3 +123,17 @@ def test_inspect_bundles_detail() -> None:
     assert detail.samples
     assert detail.analyses
     assert detail.metabolites
+
+
+def test_inspect_collects_per_study_errors() -> None:
+    details = _client().inspect(["ST000001", "ST999999"])
+    assert details[0].error == ""
+    assert details[0].samples
+    assert details[1].study_id == "ST999999"
+    assert details[1].error != ""
+    assert details[1].samples == []
+
+
+def test_inspect_raises_when_asked() -> None:
+    with pytest.raises(MetaboSearchError):
+        _client().inspect(["ST999999"], on_error="raise")

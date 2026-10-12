@@ -269,12 +269,18 @@ class StudyFile(MetaboLightsModel):
 
 
 class StudyDetail(MetaboLightsModel):
-    """Deep, parsed study data: ISA samples plus MAF metabolites and files."""
+    """Deep, parsed study data: ISA samples plus MAF metabolites and files.
+
+    ``error`` is non-empty when inspection failed after retries; the other
+    fields are then empty. A failed study is still returned, so a batch
+    inspection always has one result per input.
+    """
 
     study_id: Str = ""
     samples: list[Sample] = []
     metabolites: list[Metabolite] = []
     files: list[StudyFile] = []
+    error: Str = ""
 
 
 class DownloadReport(MetaboLightsModel):
