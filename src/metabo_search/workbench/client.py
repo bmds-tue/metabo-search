@@ -16,7 +16,7 @@ from typing import Literal
 
 import httpx
 
-from metabo_search.errors import MetaboSearchError, NotFound
+from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
 from metabo_search.workbench.models import (
@@ -207,7 +207,13 @@ class Workbench:
     # -- internals -------------------------------------------------------
 
     def _get(self, path: str) -> object:
-        return self._http.request("GET", path).json()
+        response = self._http.request("GET", path)
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise ResponseValidationError(
+                f"{response.request.url} returned non-JSON"
+            ) from exc
 
 
 def _tokens(text: str) -> set[str]:

@@ -9,7 +9,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from metabo_search.errors import MetaboSearchError, NotFound
+from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.transport import RetryPolicy
 from metabo_search.workbench.client import Workbench
 from metabo_search.workbench.parse import normalize_rows, parse_factor_string
@@ -137,3 +137,12 @@ def test_inspect_collects_per_study_errors() -> None:
 def test_inspect_raises_when_asked() -> None:
     with pytest.raises(MetaboSearchError):
         _client().inspect(["ST999999"], on_error="raise")
+
+
+def test_non_json_body_raises_response_validation_error() -> None:
+    wb = Workbench(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, text="<html>oops</html>")),
+        retry=RetryPolicy(max_attempts=1),
+    )
+    with pytest.raises(ResponseValidationError):
+        wb.study("ST000001")
