@@ -6,7 +6,6 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28",
     "pydantic>=2.0",
-    "metabolights-utils>=1.4.35",  # ISA-Tab parsing
 ]
 
 [project.optional-dependencies]
