@@ -1,9 +1,6 @@
-"""MetaboLights source package.
+"""MetaboLights source package: the client and its typed models."""
 
-The public client is added in a later step; this package currently exposes the
-typed models for the public study index.
-"""
-
+from metabo_search.metabolights.client import MetaboLights
 from metabo_search.metabolights.models import (
     APIResponse,
     Assay,
@@ -26,6 +23,7 @@ from metabo_search.metabolights.models import (
 )
 
 __all__ = [
+    "MetaboLights",
     "APIResponse",
     "Assay",
     "AssayTechnique",
