@@ -84,7 +84,10 @@ wb.inspect(["ST000001"])     # bundles summary + samples + analyses + metabolite
 ```
 
 Workbench vocabulary differs: `species` (Latin name), `source` (e.g. `Blood`),
-`analysis_type`. It is not translated to the MetaboLights vocabulary.
+`analysis_type`. It is not translated to the MetaboLights vocabulary. The
+Workbench SOURCE vocabulary has only `Blood` for biofluids, so serum vs plasma
+must be checked per sample from the factor rows — and a bare `"plasma"` match
+also catches `Seminal plasma`.
 
 ## Notes
 

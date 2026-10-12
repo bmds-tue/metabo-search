@@ -13,17 +13,24 @@ SKILL_NAME="metabo-search"
 echo "==> Repo: $REPO"
 
 # ── 1) Python env ─────────────────────────────────────────────────────────────
-if command -v uv >/dev/null 2>&1; then
-    if [ ! -x "$REPO/.venv-local/bin/python" ]; then
-        echo "==> uv venv .venv-local"
+VENV_PY="$REPO/.venv-local/bin/python"
+# ``-x`` is not enough: a venv whose interpreter cannot load (e.g. a missing
+# libpython) still passes. Probe it for real and recreate if it is broken.
+if [ ! -x "$VENV_PY" ] || ! "$VENV_PY" -c "import sys" >/dev/null 2>&1; then
+    echo "==> (re)creating .venv-local"
+    rm -rf "$REPO/.venv-local"
+    if command -v uv >/dev/null 2>&1; then
         uv venv "$REPO/.venv-local"
+    else
+        python3 -m venv "$REPO/.venv-local"
     fi
-    echo "==> uv pip install -e ."
-    uv pip install --python "$REPO/.venv-local/bin/python" -e "$REPO"
+fi
+
+echo "==> install package + dev extras"
+if command -v uv >/dev/null 2>&1; then
+    uv pip install --python "$VENV_PY" -e "$REPO[dev]"
 else
-    echo "==> uv not found; using python3 -m venv"
-    python3 -m venv "$REPO/.venv-local"
-    "$REPO/.venv-local/bin/pip" install -e "$REPO"
+    "$VENV_PY" -m pip install -e "$REPO[dev]"
 fi
 
 # ── 2) Link the skill into agent skills dirs ──────────────────────────────────
