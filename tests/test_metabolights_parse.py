@@ -135,3 +135,10 @@ def test_parse_study_detail_links_samples_to_files() -> None:
     assert detail.samples[0].raw_files == ["FILES/RAW_FILES/DCR00004_U.raw"]
     assert detail.samples[0].derived_files == ["FILES/DERIVED_FILES/DCR00004_U.mzML"]
     assert len(detail.metabolites) == 2
+
+
+def test_parse_sample_file_falls_back_to_source_name() -> None:
+    sheet = "Source Name\tCharacteristics[Organism]\nS1\tHomo sapiens\n"
+    samples = parse_sample_file(sheet)
+    assert [s.sample_name for s in samples] == ["S1"]
+    assert samples[0].source_name == "S1"

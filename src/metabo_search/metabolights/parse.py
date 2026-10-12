@@ -83,10 +83,12 @@ def parse_sample_file(text: str) -> list[Sample]:
     if not table.columns:
         return []
     lookup = {column.lower(): column for column in table.columns}
-    name_col = lookup.get("sample name")
+    source_col = lookup.get("source name")
+    # Some sheets have no Sample Name column; fall back to Source Name rather
+    # than silently returning nothing.
+    name_col = lookup.get("sample name") or source_col
     if name_col is None:
         return []
-    source_col = lookup.get("source name")
     organism_col = lookup.get("characteristics[organism]")
     part_col = lookup.get("characteristics[organism part]")
     type_col = lookup.get("characteristics[sample type]")
