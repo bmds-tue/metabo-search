@@ -1,0 +1,796 @@
+{
+ "status": "success",
+ "successMessage": null,
+ "errorMessage": null,
+ "errors": [],
+ "content": {
+  "mappings": {
+   "properties": {
+    "annotations": {
+     "type": "text",
+     "fields": {
+      "keyword": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "assayCount": {
+     "type": "long"
+    },
+    "assayTechniques": {
+     "properties": {
+      "main": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "name": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "sub": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "technique": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "assays": {
+     "properties": {
+      "assignmentFiles": {
+       "type": "keyword",
+       "index": false
+      },
+      "filePath": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "measurementType": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "technique": {
+       "properties": {
+        "main": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "name": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "sub": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "technique": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "technologyPlatform": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "technologyType": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      }
+     }
+    },
+    "contacts": {
+     "properties": {
+      "address": {
+       "type": "text"
+      },
+      "affiliation": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "email": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       },
+       "analyzer": "rebuilt_whitespace"
+      },
+      "firstName": {
+       "type": "text"
+      },
+      "lastName": {
+       "type": "text"
+      },
+      "midInitials": {
+       "type": "text"
+      },
+      "orcid": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "roles": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      }
+     }
+    },
+    "curationRequest": {
+     "type": "keyword",
+     "ignore_above": 256,
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "curatorAnnotations": {
+     "type": "text",
+     "fields": {
+      "keyword": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "derivedFileCount": {
+     "type": "long"
+    },
+    "derivedFileExtensions": {
+     "type": "keyword",
+     "ignore_above": 256,
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "description": {
+     "type": "text"
+    },
+    "designDescriptors": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "factorPairs": {
+     "type": "nested",
+     "properties": {
+      "name": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "value": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      }
+     }
+    },
+    "factors": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      }
+     }
+    },
+    "fundings": {
+     "properties": {
+      "fundRefId": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "funder": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "grantIdentifier": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      }
+     }
+    },
+    "investigationFilePath": {
+     "type": "keyword",
+     "index": false
+    },
+    "modifiedTime": {
+     "type": "date"
+    },
+    "organismLineage": {
+     "properties": {
+      "class": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "domain": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "family": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "genus": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "kingdom": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "order": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "phylum": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "species": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "organismParts": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "organisms": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "parseErrors": {
+     "properties": {
+      "error": {
+       "type": "text"
+      },
+      "source": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "protocols": {
+     "properties": {
+      "components": {
+       "properties": {
+        "name": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "type": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "description": {
+       "type": "text"
+      },
+      "name": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "parameters": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "protocolType": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "uri": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "version": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "publicReleaseDate": {
+     "type": "date"
+    },
+    "publications": {
+     "properties": {
+      "authorList": {
+       "type": "text"
+      },
+      "doi": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       },
+       "analyzer": "rebuilt_whitespace"
+      },
+      "pubMedId": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       },
+       "analyzer": "rebuilt_whitespace"
+      },
+      "status": {
+       "properties": {
+        "term": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termAccessionNumber": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "termSourceRef": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "title": {
+       "type": "text",
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      }
+     }
+    },
+    "rawFileCount": {
+     "type": "long"
+    },
+    "rawFileExtensions": {
+     "type": "keyword",
+     "ignore_above": 256,
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "sampleCount": {
+     "type": "long"
+    },
+    "sampleFilePath": {
+     "type": "keyword",
+     "index": false
+    },
+    "sampleTypes": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "sizeInBytes": {
+     "type": "long"
+    },
+    "sizeInText": {
+     "type": "keyword",
+     "ignore_above": 256
+    },
+    "status": {
+     "type": "keyword",
+     "ignore_above": 256,
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "studyCategory": {
+     "type": "keyword",
+     "ignore_above": 256
+    },
+    "studyId": {
+     "type": "keyword",
+     "ignore_above": 256,
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "submissionDate": {
+     "type": "date"
+    },
+    "submitters": {
+     "properties": {
+      "address": {
+       "type": "text"
+      },
+      "affiliation": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "country": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        },
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 8191,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "email": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       },
+       "analyzer": "rebuilt_whitespace"
+      },
+      "fullname": {
+       "type": "text",
+       "fields": {
+        "keyword": {
+         "type": "keyword",
+         "ignore_above": 256
+        }
+       }
+      },
+      "orcid": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "roles": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "technologyTypes": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    },
+    "title": {
+     "type": "text",
+     "fields": {
+      "normalized": {
+       "type": "keyword",
+       "ignore_above": 8191,
+       "normalizer": "lowercase_normalizer"
+      }
+     }
+    },
+    "variants": {
+     "properties": {
+      "term": {
+       "type": "keyword",
+       "ignore_above": 256,
+       "fields": {
+        "normalized": {
+         "type": "keyword",
+         "ignore_above": 256,
+         "normalizer": "lowercase_normalizer"
+        }
+       }
+      },
+      "termAccessionNumber": {
+       "type": "keyword",
+       "ignore_above": 256
+      },
+      "termSourceRef": {
+       "type": "keyword",
+       "ignore_above": 256
+      }
+     }
+    }
+   }
+  }
+ }
+}
