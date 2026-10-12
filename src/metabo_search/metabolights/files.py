@@ -109,16 +109,21 @@ def categorize(extension: str, relative_path: str = "") -> str:
     return "other"
 
 
-def isa_files(http: HttpClient, study_id: str) -> dict[str, str]:
+def isa_files(
+    http: HttpClient, study_id: str, *, include_metabolites: bool = True
+) -> dict[str, str]:
     """Download a study's ISA-Tab files as ``{file_name: text}``.
 
     Lists the study root (not ``FILES/``) and fetches every ``s_*.txt``,
-    ``a_*.txt``, and ``m_*.tsv``. The investigation file is not fetched: its
-    study-level content is already in the search index.
+    ``a_*.txt``, and ``m_*.tsv``. Set ``include_metabolites=False`` to skip
+    MAFs entirely — they are the bulk of the data and are not needed when only
+    samples are wanted. The investigation file is not fetched: its study-level
+    content is already in the search index.
 
     Args:
         http: The transport to use.
         study_id: MetaboLights accession.
+        include_metabolites: Fetch ``m_*.tsv`` MAF files (default).
 
     Returns:
         File name to file contents, in listing order.
@@ -126,6 +131,8 @@ def isa_files(http: HttpClient, study_id: str) -> dict[str, str]:
     assert study_id, "study_id must be non-empty"
     html = http.get_text(f"{MIRROR_BASE}/{study_id}/")
     names = [link for link, _label in _LINKS.findall(html) if _ISA_NAME.match(link)]
+    if not include_metabolites:
+        names = [name for name in names if not name.lower().startswith("m_")]
     return {name: http.get_text(f"{MIRROR_BASE}/{study_id}/{name}") for name in names}
 
 

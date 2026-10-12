@@ -233,6 +233,7 @@ class MetaboLights:
         *,
         workers: int = 8,
         include_files: bool = False,
+        include_metabolites: bool = True,
         on_error: Literal["collect", "raise"] = "collect",
     ) -> Results[StudyDetail]:
         """Download and parse deep per-study data (ISA samples + MAF metabolites).
@@ -246,6 +247,9 @@ class MetaboLights:
             study_ids: Accessions, or study documents to read accessions from.
             workers: Parallel study downloads.
             include_files: Also list each study's ``FILES/`` tree (slower).
+            include_metabolites: Fetch and parse MAF files (default). Pass
+                ``False`` for samples only — MAFs are the bulk of the data and
+                are skipped before download, not just after parsing.
             on_error: ``"collect"`` (default) records per-study errors;
                 ``"raise"`` propagates the first failure.
 
@@ -258,7 +262,7 @@ class MetaboLights:
 
         def _run(study_id: str) -> StudyDetail:
             try:
-                return self._inspect_one(study_id, include_files)
+                return self._inspect_one(study_id, include_files, include_metabolites)
             except MetaboSearchError as exc:
                 if on_error == "raise":
                     raise
@@ -268,8 +272,10 @@ class MetaboLights:
             details = list(pool.map(_run, ids))
         return Results(details)
 
-    def _inspect_one(self, study_id: str, include_files: bool) -> StudyDetail:
-        isa = isa_files(self._http, study_id)
+    def _inspect_one(
+        self, study_id: str, include_files: bool, include_metabolites: bool
+    ) -> StudyDetail:
+        isa = isa_files(self._http, study_id, include_metabolites=include_metabolites)
         if not isa:
             # Some studies (e.g. MTBLS14005, MTBLS8113) publish only FILES/ on
             # the mirror — no ISA files anywhere, not even under

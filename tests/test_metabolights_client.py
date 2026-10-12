@@ -165,6 +165,35 @@ def test_inspect_downloads_and_parses_isa() -> None:
     assert details[0].samples[0].raw_files == ["FILES/RAW_FILES/DCR00004_U.raw"]
 
 
+def test_inspect_samples_only_never_requests_maf() -> None:
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        requested.append(url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(
+                200,
+                text=(
+                    '<a href="s_MTBLS1.txt">s</a>'
+                    '<a href="a_MTBLS1.txt">a</a>'
+                    '<a href="m_MTBLS1_v2_maf.tsv">m</a>'
+                ),
+            )
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        if url.endswith("a_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_ASSAY)
+        if url.endswith("m_MTBLS1_v2_maf.tsv"):
+            return httpx.Response(200, text="metabolite_identification\nglucose\n")
+        return httpx.Response(404)
+
+    detail = _client(handler).inspect(["MTBLS1"], include_metabolites=False)[0]
+    assert detail.samples
+    assert detail.metabolites == []
+    assert not any("m_MTBLS1" in url for url in requested)
+
+
 def test_inspect_collects_per_study_errors() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
