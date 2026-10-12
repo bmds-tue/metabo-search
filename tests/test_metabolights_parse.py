@@ -7,6 +7,7 @@ from metabo_search.metabolights.parse import (
     parse_assay_file,
     parse_maf,
     parse_sample_file,
+    parse_study_detail,
     parse_tsv,
 )
 
@@ -99,3 +100,17 @@ def test_parse_maf_prefers_identification_name() -> None:
 def test_parse_maf_abundances_exclude_metadata() -> None:
     first = parse_maf("MTBLS1", "m_MTBLS1_maf.tsv", MAF)[0]
     assert first.abundances == {"5_NIST_A-1": 1234.5, "6_NIST_A-2": 2345.6}
+
+
+def test_parse_study_detail_links_samples_to_files() -> None:
+    isa = {
+        "s_MTBLS1.txt": SAMPLE_SHEET,
+        "a_MTBLS1.txt": ASSAY_FILE,
+        "m_MTBLS1_maf.tsv": MAF,
+    }
+    detail = parse_study_detail("MTBLS1", isa)
+    assert detail.study_id == "MTBLS1"
+    assert [s.sample_name for s in detail.samples] == ["DCR00004_U", "DCR00005_U"]
+    assert detail.samples[0].raw_files == ["FILES/RAW_FILES/DCR00004_U.raw"]
+    assert detail.samples[0].derived_files == ["FILES/DERIVED_FILES/DCR00004_U.mzML"]
+    assert len(detail.metabolites) == 2

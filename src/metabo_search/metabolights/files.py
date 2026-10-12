@@ -46,6 +46,8 @@ _SIZE_AFTER = re.compile(
 )
 _SIZE_UNITS = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4, "P": 1024**5, "E": 1024**6}
 
+_ISA_NAME = re.compile(r"^[isam]_[^/]+\.(txt|tsv)$", re.IGNORECASE)
+
 
 def parse_size(text: str) -> int:
     """Parse a human-readable size like ``"2.1M"`` into bytes.
@@ -98,6 +100,25 @@ def categorize(extension: str, relative_path: str = "") -> str:
     if extension in DERIVED_EXTS:
         return "derived"
     return "other"
+
+
+def isa_files(http: HttpClient, study_id: str) -> dict[str, str]:
+    """Download a study's ISA-Tab files as ``{file_name: text}``.
+
+    Lists the study root (not ``FILES/``) and fetches every ``i_*.txt``,
+    ``s_*.txt``, ``a_*.txt``, and ``m_*.tsv``.
+
+    Args:
+        http: The transport to use.
+        study_id: MetaboLights accession.
+
+    Returns:
+        File name to file contents, in listing order.
+    """
+    assert study_id, "study_id must be non-empty"
+    html = http.get_text(f"{MIRROR_BASE}/{study_id}/")
+    names = [link for link, _label in _LINKS.findall(html) if _ISA_NAME.match(link)]
+    return {name: http.get_text(f"{MIRROR_BASE}/{study_id}/{name}") for name in names}
 
 
 def list_files(

@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import csv
 import io
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from metabo_search.metabolights.models import Metabolite, Sample
+from metabo_search.metabolights.models import Metabolite, Sample, StudyDetail, StudyFile
 
 
 @dataclass(frozen=True)
@@ -259,3 +260,56 @@ def _to_float(value: str) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+# -- study detail assembly --------------------------------------------
+
+
+def parse_study_detail(
+    study_id: str,
+    isa_files: Mapping[str, str],
+    *,
+    files: Sequence[StudyFile] = (),
+) -> StudyDetail:
+    """Assemble a :class:`StudyDetail` from a study's ISA-Tab files.
+
+    Parses every sample sheet (``s_*.txt``), assay file (``a_*.txt``), and MAF
+    (``m_*.tsv``). Each sample's ``raw_files``/``derived_files`` come from the
+    assay files' sample-to-file columns.
+
+    Args:
+        study_id: Owning study accession.
+        isa_files: File name to contents, as returned by the client.
+        files: Optional pre-listed ``FILES/`` records to attach.
+
+    Returns:
+        The assembled study detail.
+    """
+    file_map: dict[str, dict[str, list[str]]] = {}
+    samples: list[Sample] = []
+    metabolites: list[Metabolite] = []
+
+    for name, text in isa_files.items():
+        prefix = name[:2].lower()
+        if prefix == "s_":
+            samples.extend(parse_sample_file(text))
+        elif prefix == "a_":
+            for sample_name, entry in parse_assay_file(text).items():
+                target = file_map.setdefault(sample_name, {"raw": [], "derived": []})
+                target["raw"].extend(entry["raw"])
+                target["derived"].extend(entry["derived"])
+        elif prefix == "m_":
+            metabolites.extend(parse_maf(study_id, name, text))
+
+    linked = [
+        sample.model_copy(
+            update={
+                "raw_files": file_map.get(sample.sample_name, {}).get("raw", []),
+                "derived_files": file_map.get(sample.sample_name, {}).get("derived", []),
+            }
+        )
+        for sample in samples
+    ]
+    return StudyDetail(
+        study_id=study_id, samples=linked, metabolites=metabolites, files=list(files)
+    )

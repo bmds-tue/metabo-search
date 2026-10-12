@@ -10,6 +10,7 @@ Every method is offline-testable via an injected ``httpx`` transport.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import TracebackType
 from typing import Literal
@@ -18,14 +19,16 @@ import httpx
 
 from metabo_search.errors import APIError, NotFound
 from metabo_search.metabolights.files import download as _download
-from metabo_search.metabolights.files import list_files
+from metabo_search.metabolights.files import isa_files, list_files
 from metabo_search.metabolights.models import (
     DownloadReport,
     SearchPage,
     SearchResponse,
+    StudyDetail,
     StudyFile,
     StudyHit,
 )
+from metabo_search.metabolights.parse import parse_study_detail
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
 
@@ -219,6 +222,39 @@ class MetaboLights:
             max_bytes=max_bytes,
             workers=workers,
         )
+
+    def inspect(
+        self,
+        study_ids: Sequence[str | StudyHit],
+        *,
+        workers: int = 8,
+        include_files: bool = False,
+    ) -> Results[StudyDetail]:
+        """Download and parse deep per-study data (ISA samples + MAF metabolites).
+
+        Args:
+            study_ids: Accessions, or study documents to read accessions from.
+            workers: Parallel study downloads.
+            include_files: Also list each study's ``FILES/`` tree (slower).
+
+        Returns:
+            One :class:`StudyDetail` per input, in input order.
+        """
+        ids = [item if isinstance(item, str) else item.study_id for item in study_ids]
+        if not ids:
+            return Results()
+
+        def _run(study_id: str) -> StudyDetail:
+            return self._inspect_one(study_id, include_files)
+
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            details = list(pool.map(_run, ids))
+        return Results(details)
+
+    def _inspect_one(self, study_id: str, include_files: bool) -> StudyDetail:
+        isa = isa_files(self._http, study_id)
+        files: list[StudyFile] = list(self.files(study_id)) if include_files else []
+        return parse_study_detail(study_id, isa, files=files)
 
     def close(self) -> None:
         """Close the underlying connection pool."""

@@ -133,3 +133,33 @@ def test_studies_preserves_input_order() -> None:
 
     result = _client(handler).studies(["MTBLS2", "MTBLS1"])
     assert result.ids() == ["MTBLS2", "MTBLS1"]
+
+
+ISA_SAMPLES = (
+    "Sample Name\tSource Name\tCharacteristics[Organism]\t"
+    "Characteristics[Organism part]\n"
+    "DCR00004_U\tHuman1\tHomo sapiens\turine\n"
+)
+ISA_ASSAY = (
+    "Sample Name\tRaw Spectral Data File\n"
+    "DCR00004_U\tFILES/RAW_FILES/DCR00004_U.raw\n"
+)
+
+
+def test_inspect_downloads_and_parses_isa() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(
+                200,
+                text='<a href="s_MTBLS1.txt">s</a><a href="a_MTBLS1.txt">a</a>',
+            )
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        if url.endswith("a_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_ASSAY)
+        return httpx.Response(404)
+
+    details = _client(handler).inspect(["MTBLS1"])
+    assert details[0].study_id == "MTBLS1"
+    assert details[0].samples[0].raw_files == ["FILES/RAW_FILES/DCR00004_U.raw"]
