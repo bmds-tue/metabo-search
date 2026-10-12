@@ -17,6 +17,7 @@ from typing import Literal
 
 import httpx
 
+import metabo_search.metabolights.ingest as _ingest
 from metabo_search.errors import APIError, MetaboSearchError, NotFound
 from metabo_search.metabolights.files import download as _download
 from metabo_search.metabolights.files import isa_files, list_files
@@ -31,6 +32,7 @@ from metabo_search.metabolights.models import (
 from metabo_search.metabolights.parse import parse_study_detail
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
+from metabo_search.workspace import IngestReport, Workspace
 
 BASE_URL = "https://www.ebi.ac.uk/metabolights/ws3"
 SEARCH_PATH = "public/v2/public-study-index/search"
@@ -278,6 +280,21 @@ class MetaboLights:
             )
         files: list[StudyFile] = list(self.files(study_id)) if include_files else []
         return parse_study_detail(study_id, isa, files=files)
+
+    def ingest(self, obj: object, ws: Workspace) -> IngestReport:
+        """Write search results, study details, or files into a workspace.
+
+        Args:
+            obj: Models or a ``Results`` sequence accepted by
+                :func:`metabo_search.metabolights.ingest.batch` —
+                :class:`StudyHit`, :class:`StudyDetail`, or :class:`StudyFile`.
+            ws: The workspace to write to.
+
+        Returns:
+            Per-table row counts, plus the ids of any errored ``StudyDetail``
+            items that were skipped.
+        """
+        return _ingest.write(ws, obj)
 
     def close(self) -> None:
         """Close the underlying connection pool."""

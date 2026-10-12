@@ -19,6 +19,7 @@ from typing import Literal
 
 import httpx
 
+import metabo_search.workbench.ingest as _ingest
 from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
@@ -31,6 +32,7 @@ from metabo_search.workbench.models import (
     StudySummary,
 )
 from metabo_search.workbench.parse import normalize_rows, parse_metabolites, parse_samples
+from metabo_search.workspace import IngestReport, Workspace
 
 BASE_URL = "https://www.metabolomicsworkbench.org/rest"
 CORPUS_TIMEOUT = 180.0
@@ -269,6 +271,21 @@ class Workbench:
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             return Results(pool.map(_run, targets))
+
+    def ingest(self, obj: object, ws: Workspace) -> IngestReport:
+        """Write study summaries or inspected details into a workspace.
+
+        Args:
+            obj: Models or a ``Results`` sequence accepted by
+                :func:`metabo_search.workbench.ingest.batch` —
+                :class:`StudySummary` or :class:`StudyDetail`.
+            ws: The workspace to write to.
+
+        Returns:
+            Per-table row counts, plus the ids of any errored ``StudyDetail``
+            items that were skipped.
+        """
+        return _ingest.write(ws, obj)
 
     def close(self) -> None:
         """Close the underlying connection pool."""
