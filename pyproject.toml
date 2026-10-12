@@ -1,20 +1,21 @@
 [project]
 name = "metabo-search"
 version = "0.1.0"
-description = "AI-native search engine for MetaboLights datasets — find, score, and compare studies by experimental requirements"
+description = "Search metabolomics datasets, ingest the results into DuckDB, and analyse them"
 requires-python = ">=3.11"
 dependencies = [
-    "metabolights-utils>=1.4.35",
     "httpx>=0.28",
     "pydantic>=2.0",
+    "metabolights-utils>=1.4.35",  # ISA-Tab parsing
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+    "pyright>=1.1.380",
+]
 
 [build-system]
 requires = ["setuptools"]
@@ -22,3 +23,22 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+metabo_search = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+include = ["src"]
+typeCheckingMode = "strict"
+pythonVersion = "3.11"
+reportMissingTypeStubs = false
