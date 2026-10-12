@@ -1,0 +1,1553 @@
+{
+ "status": "success",
+ "successMessage": null,
+ "errorMessage": null,
+ "errors": [],
+ "content": {
+  "results": [
+   {
+    "modifiedTime": "2026-07-17T15:20:03.480273Z",
+    "assayCount": 1,
+    "sizeInBytes": 260128768,
+    "curatorAnnotations": [
+     "NMR"
+    ],
+    "derivedFileExtensions": [
+     "nmrml"
+    ],
+    "annotations": [
+     "assay.measurementType::untargeted analysis,MS,http://purl.obolibrary.org/obo/MS_1003904",
+     "assay.protocol::Data transformation",
+     "assay.protocol::Extraction",
+     "assay.protocol::Metabolite identification",
+     "assay.protocol::NMR assay",
+     "assay.protocol::NMR sample",
+     "assay.protocol::NMR spectroscopy",
+     "assay.protocol::Sample collection",
+     "assay.technique.main::NMR",
+     "assay.technique.name::NMR",
+     "assay.technique.sub::Nuclear magnetic resonance",
+     "assay.technique::NMR",
+     "assay.technologyPlatform::Nuclear Magnetic Resonance (NMR) - - - Bruker",
+     "study.characteristic.organism.class::Mammalia",
+     "study.characteristic.organism.domain::Eukaryota",
+     "study.characteristic.organism.family::Hominidae",
+     "study.characteristic.organism.genus::Homo",
+     "study.characteristic.organism.kingdom::Metazoa",
+     "study.characteristic.organism.order::Primates",
+     "study.characteristic.organism.phylum::Chordata",
+     "study.characteristic.organism.species::Homo sapiens",
+     "study.characteristic.organism.tax_id::9606",
+     "study.factor.gender::Female,,",
+     "study.factor.gender::Male,,",
+     "study.factor.metabolicSyndrome::Control Group,,",
+     "study.factor.metabolicSyndrome::diabetes mellitus,,",
+     "study.factor::Gender",
+     "study.factor::Metabolic syndrome",
+     "study.type::NMR"
+    ],
+    "description": "Type 2 diabetes mellitus is the result of a combination of impaired insulin secretion with reduced insulin sensitivity of target tissues. There are an estimated 150 million affected individuals worldwide, of whom a large proportion remains undiagnosed because of a lack of specific symptoms early in this disorder and inadequate diagnostics. In this study, NMR-based metabolomic analysis in conjunction with uni- and multivariate statistics was applied to examine the urinary metabolic changes in Human type 2 diabetes mellitus patients compared to the control group. The human population were un medicated diabetic patients who have good daily dietary control over their blood glucose concentrations by following the guidelines on diet issued by the American Diabetes Association. Note: This is part of a larger study, please refer to the original paper below.",
+    "assays": [
+     {
+      "technologyPlatform": "Nuclear Magnetic Resonance (NMR) - - - Bruker",
+      "filePath": "a_MTBLS1_NMR_metabolite_profiling_NMR_spectroscopy.txt",
+      "measurementType": {
+       "termSourceRef": "MS",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MS_1003904",
+       "term": "untargeted analysis"
+      },
+      "technologyType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+       "term": "NMR spectroscopy assay"
+      },
+      "technique": {
+       "sub": "Nuclear magnetic resonance",
+       "name": "NMR",
+       "technique": "NMR",
+       "main": "NMR"
+      },
+      "assignmentFiles": [
+       "m_MTBLS1_metabolite_profiling_NMR_spectroscopy_v2_maf.tsv"
+      ]
+     }
+    ],
+    "variants": [],
+    "title": "A metabolomic study of urinary changes in type 2 diabetes in human compared to the control group",
+    "assayTechniques": [
+     {
+      "sub": "Nuclear magnetic resonance",
+      "name": "NMR",
+      "technique": "NMR",
+      "main": "NMR"
+     }
+    ],
+    "fundings": [],
+    "submitters": [
+     {
+      "country": "France",
+      "address": "",
+      "affiliation": "International Agency for Research on Cancer",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "0000-0001-8604-1732",
+      "fullname": "Reza Salek",
+      "email": "r7salek@gmail.com"
+     },
+     {
+      "country": "United Kingdom",
+      "address": "",
+      "affiliation": "Imperial College London",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "",
+      "fullname": "Jules Griffin",
+      "email": "jlg40@cam.ac.uk"
+     }
+    ],
+    "curationRequest": "MANUAL_CURATION",
+    "sampleCount": 132,
+    "investigationFilePath": "i_Investigation.txt",
+    "rawFileExtensions": [],
+    "technologyTypes": [
+     {
+      "termSourceRef": "OBI",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+      "term": "NMR spectroscopy assay"
+     }
+    ],
+    "protocols": [
+     {
+      "components": [],
+      "name": "Sample collection",
+      "description": "For the human studies, midstream urine (~15 ml) samples were collected and frozen from each volunteer. In total, 84 samples were collected from 12 healthy volunteers (7 time points, 8 males and 4 females) and 50 samples from 30 T2DM patients (1-3 time points, 17 males and 13 females) with well-controlled blood glucose maintained at normal concentrations by diet, following the guidelines issued by the American Diabetes Association, rather than medication. T2DM patients agreed to stop treatment with oral anti-diabetic agents during the study. Subjects went through a washout period of 4 wk before sample collection and abstained from alcohol during the study; diet was controlled throughout the study.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001100",
+       "term": "Sample collection"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Extraction",
+      "description": "For the human studies, midstream urine (\u223c15 ml) samples were collected and frozen from each volunteer. In total, 84 samples were collected from 12 healthy volunteers (7 time points, 8 males and 4 females) and 50 samples from 30 T2DM patients (1\u20133 time points, 17 males and 13 females) with well-controlled blood glucose maintained at normal concentrations by diet, following the guidelines issued by the American Diabetes Association, rather than medication. The healthy subjects were aged 18\u201355 yr, had a body mass index (BMI) \u226519 and \u226430 kg/m2 and a body mass \u226550 kg and \u2264113 kg, and were free from any major disease or pregnancy. The T2DM patients were aged 30\u201365 yr (mean 56 \u00b1 9 yr), had a BMI >25 and <40 kg/m2, weighed between 65 and 140 kg (mean 95 \u00b1 19 kg), and were taking at most one oral anti-diabetic drug. T2DM patients agreed to stop treatment with oral anti-diabetic agents during the study. Subjects went through a washout period of 4 wk before sample collection and abstained from alcohol during the study; diet was controlled throughout the study.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001105",
+       "term": "Extraction"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Extraction Method"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR sample",
+      "description": "Aliquots of 400 \u00b5l urine samples were made up to 600 \u00b5l with phosphate buffer (0.2 M, pH 7.4) and any precipitate removed by centrifugation. In total, 500 \u00b5l of supernatant were transferred to 5-mm NMR tubes with 100 \u00b5l of sodium 3-trimethylsilyl-(2,2,3,3-2H4)-1-propionate (TSP)/D2O/sodium azide solution (0.05% wt/vol TSP in D2O and 1% wt/vol sodium azide).",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001110",
+       "term": "NMR sample"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR tube type"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Solvent"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Sample pH"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Temperature"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR spectroscopy",
+      "description": "The spectra of human urine samples were acquired on a Bruker DRX700 NMR spectrometer using a 5 mm TXI ATMA probe at a proton frequency of 700.1 MHz and ambient temperature of 27 \u00b0C.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001111",
+       "term": "NMR spectroscopy"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Instrument"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR Probe"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Number of transients"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Pulse sequence name"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Magnetic field strength"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR assay",
+      "description": "A 1D NOESY presaturation pulse sequence was used to analyze the urine samples. For each sample 128 transients were collected into 64k data points using a spectral width of 14.005 kHz (20 ppm) and an acquisition time of 2.34 s per FID.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001112",
+       "term": "NMR assay"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Data transformation",
+      "description": "Spectra were processed using ACD/1D NMR Manager 8.0 with Intelligent Bucketing Integration (Advanced Chemistry Development, Toronto, ON, Canada). Spectra were integrated 0.20-9.30 ppm excluding water (4.24-5.04 ppm), glucose (3.19-3.99 ppm, 5.21-5.27 ppm), and urea (5.04-6.00 ppm). Intelligent bucketing ensures that bucket edges do not coincide with peak maxima, preventing resonances from being split across separate integral regions; a 0.04 ppm bucket width and a 50% looseness factor were used. All spectra were normalized to total area excluding the water, urea, and glucose regions.",
+      "protocolType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0200000",
+       "term": "data transformation"
+      },
+      "uri": "http://www.acdlabs.com/products/adh/nmr/1d_man/",
+      "version": "ACD nmr manager 8.0",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Metabolite identification",
+      "description": "Assignments were confirmed by two dimensional spectroscopy including homonuclear 1H-1H Correlation Spectroscopy (COSY), 1H-13C Heteronuclear Signal Quantum Coherence (HSQC) and 1H-13C Heteronuclear Multiple Bond Correlation (HMBC) Spectroscopy.",
+      "protocolType": {
+       "termSourceRef": "MI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MI_2131",
+       "term": "metabolite identification"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     }
+    ],
+    "derivedFileCount": 132,
+    "designDescriptors": [
+     {
+      "termSourceRef": "NCIT",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C70665",
+      "term": "Human Study Subject"
+     },
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "Urine global profiling"
+     },
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0000400",
+      "term": "diabetes mellitus"
+     },
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0000195",
+      "term": "metabolic syndrome"
+     },
+     {
+      "termSourceRef": "CHMO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/CHMO_0000591",
+      "term": "nuclear magnetic resonance spectroscopy"
+     },
+     {
+      "termSourceRef": "MTBLS",
+      "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_000279",
+      "term": "untargeted metabolites"
+     }
+    ],
+    "organismParts": [
+     {
+      "termSourceRef": "BTO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/BTO_0001419",
+      "term": "urine"
+     }
+    ],
+    "sampleTypes": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "experimental blank"
+     }
+    ],
+    "sizeInText": "248.08MB",
+    "factorPairs": [
+     {
+      "name": "Gender",
+      "value": "Female"
+     },
+     {
+      "name": "Gender",
+      "value": "Male"
+     },
+     {
+      "name": "Metabolic syndrome",
+      "value": "Control Group"
+     },
+     {
+      "name": "Metabolic syndrome",
+      "value": "diabetes mellitus"
+     }
+    ],
+    "submissionDate": "2012-02-14T00:00:00",
+    "organismLineage": {
+     "phylum": [
+      "Chordata"
+     ],
+     "genus": [
+      "Homo"
+     ],
+     "species": [
+      "Homo sapiens"
+     ],
+     "domain": [
+      "Eukaryota"
+     ],
+     "family": [
+      "Hominidae"
+     ],
+     "kingdom": [
+      "Metazoa"
+     ],
+     "class": [
+      "Mammalia"
+     ],
+     "order": [
+      "Primates"
+     ]
+    },
+    "factors": [
+     {
+      "termSourceRef": "NCIT",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C17357",
+      "term": "Gender"
+     },
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0000195",
+      "term": "metabolic syndrome"
+     }
+    ],
+    "organisms": [
+     {
+      "termSourceRef": "NCBITaxon",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/NCBITaxon_9606",
+      "term": "Homo sapiens"
+     }
+    ],
+    "publicReleaseDate": "2012-02-14T00:00:00",
+    "studyId": "MTBLS1",
+    "rawFileCount": 0,
+    "sampleFilePath": "s_MTBLS1.txt",
+    "contacts": [
+     {
+      "lastName": "Salek",
+      "firstName": "Reza",
+      "address": "The Department of Biochemistry, The Sanger Building, 80 Tennis Court Road, Cambridge, CB2 1GA, UK.",
+      "affiliation": "University of Cambridge",
+      "roles": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "principal investigator role"
+       }
+      ],
+      "midInitials": "M",
+      "orcid": "",
+      "email": "rms72@cam.ac.uk"
+     },
+     {
+      "lastName": "Griffin",
+      "firstName": "Jules",
+      "address": "The Department of Biochemistry, The Sanger Building, 80 Tennis Court Road, Cambridge, CB2 1GA, UK.",
+      "affiliation": "University of Cambridge",
+      "roles": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "principal investigator role"
+       }
+      ],
+      "midInitials": "L.",
+      "orcid": "",
+      "email": "jlg40@cam.ac.uk"
+     }
+    ],
+    "publications": [
+     {
+      "authorList": "Salek RM,Maguire ML,Bentley E,Rubtsov DV,Hough T,Cheeseman M,Nunez D,Sweatman BC,Haselden JN,Cox RD,Connor SC,Griffin JL",
+      "title": "A metabolomic comparison of urinary changes in type 2 diabetes in mouse, rat, and human.",
+      "pubMedId": "17190852",
+      "doi": "10.1152/physiolgenomics.00194.2006",
+      "status": {
+       "termSourceRef": "EFO",
+       "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0001796",
+       "term": "published"
+      }
+     }
+    ],
+    "status": "PUBLIC",
+    "id": "MTBLS1"
+   },
+   {
+    "modifiedTime": "2026-07-01T14:45:25.874727Z",
+    "assayCount": 1,
+    "sizeInBytes": 259244032,
+    "curatorAnnotations": [
+     "NMR"
+    ],
+    "derivedFileExtensions": [
+     "1_500_66",
+     "1_500_67",
+     "2_500_67",
+     "2_500_68",
+     "3_500_66",
+     "3_500_68"
+    ],
+    "annotations": [
+     "assay.measurementType::untargeted analysis,MS,http://purl.obolibrary.org/obo/MS_1003904",
+     "assay.protocol::Data transformation",
+     "assay.protocol::Extraction",
+     "assay.protocol::Metabolite identification",
+     "assay.protocol::NMR assay",
+     "assay.protocol::NMR sample",
+     "assay.protocol::NMR spectroscopy",
+     "assay.protocol::Sample Collection",
+     "assay.technique.main::NMR",
+     "assay.technique.name::NMR",
+     "assay.technique.sub::Nuclear magnetic resonance",
+     "assay.technique::NMR",
+     "assay.technologyPlatform::Nuclear Magnetic Resonance (NMR) - - - Bruker",
+     "study.characteristic.organism.class::Magnoliopsida",
+     "study.characteristic.organism.domain::Eukaryota",
+     "study.characteristic.organism.family::Solanaceae",
+     "study.characteristic.organism.genus::Solanum",
+     "study.characteristic.organism.kingdom::Viridiplantae",
+     "study.characteristic.organism.order::Solanales",
+     "study.characteristic.organism.phylum::Streptophyta",
+     "study.characteristic.organism.species::Solanum lycopersicum",
+     "study.characteristic.organism.tax_id::4081",
+     "study.factor.developmentStage::21,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::34,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::55,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::8,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.trussNumber::5,,",
+     "study.factor.trussNumber::6,,",
+     "study.factor.trussNumber::7,,",
+     "study.factor::Development stage",
+     "study.factor::Truss number",
+     "study.type::NMR"
+    ],
+    "description": "<p>Quantitative NMR metabolomics is a powerful tool to have access to valuable information on metabolism. Unfortunately, the quantitative analysis of metabolic samples is often hampered by peak overlap. Two-dimensional (2D) spectroscopy offers a promising alternative and quantitative results can be obtained provided that a calibration approach is employed. However, the duration of 2D NMR experiments is barely compatible with the metabolomic study of a large number of samples. This drawback can be circumvented by relying on \u201cultrafast\u201d experiments capable of recording 2D spectra in a single-scan. While such experiments are not sensitive enough to match the concentrations of metabolic samples, a compromise can be reached by hybrid strategies capable of recording 2D NMR spectra of extracts in a few minutes only. The purpose of this study is to demonstrate that these multi-scan single-shot experiments can be successfully applied to the absolute quantification of major metabolites in plant extracts. Fast COSY experiments are recorded in 5 min on tomato fruit pericarp extracts at different stages of development. The concentration of eight major metabolites is determined with a trueness better than 10 % and a technical repeatability of a few percent. The experiments performed at two magnetic fields lead to similar quantitative results, in coherence with the metabolism of tomato fruit. The results show that fast 2D NMR methods form a promising tool for fast targeted metabolomics, and open promising perspective towards the automated and high-throughput quantitative analysis of large groups of plant and other samples for metabolomics and for the modelling of metabolism.</p><p><br></p><p><strong>Tomato 500 MHz samples</strong> protocols and data are reported in the current study <a href='https://www.ebi.ac.uk/metabolights/MTBLS131' rel='noopener noreferrer' target='_blank'><strong>MTBLS131</strong></a>.</p><p><strong>Tomato 700 MHz samples</strong> protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS132' rel='noopener noreferrer' target='_blank'><strong>MTBLS132</strong></a>.</p><p><strong>Calibration Standard 500 MHz</strong> samples protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS133' rel='noopener noreferrer' target='_blank'><strong>MTBLS133</strong></a>.</p><p><strong>Calibration Standard 700 MHz</strong> samples protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS134' rel='noopener noreferrer' target='_blank'><strong>MTBLS134</strong></a>.</p>",
+    "assays": [
+     {
+      "technologyPlatform": "Nuclear Magnetic Resonance (NMR) - - - Bruker",
+      "filePath": "a_MTBLS131_NMR_uf500_tomato_2dnmr_metabolite_profiling_NMR_spectroscopy.txt",
+      "measurementType": {
+       "termSourceRef": "MS",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MS_1003904",
+       "term": "untargeted analysis"
+      },
+      "technologyType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+       "term": "NMR spectroscopy assay"
+      },
+      "technique": {
+       "sub": "Nuclear magnetic resonance",
+       "name": "NMR",
+       "technique": "NMR",
+       "main": "NMR"
+      },
+      "assignmentFiles": [
+       "m_MTBLS131_UF500_Tomato_2DNMR_metabolite_profiling_NMR_spectroscopy.tsv"
+      ]
+     }
+    ],
+    "variants": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "Solanum lycopersicum cv. Moneymaker"
+     }
+    ],
+    "title": "Absolute quantification of metabolites in tomato fruit extracts by fast 2D NMR (Tomato 500 MHz samples)",
+    "assayTechniques": [
+     {
+      "sub": "Nuclear magnetic resonance",
+      "name": "NMR",
+      "technique": "NMR",
+      "main": "NMR"
+     }
+    ],
+    "fundings": [],
+    "submitters": [
+     {
+      "country": "France",
+      "address": "",
+      "affiliation": "INRA Bordeaux",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "",
+      "fullname": "Daniel Jacob",
+      "email": "djacob65@gmail.com"
+     },
+     {
+      "country": "France",
+      "address": "",
+      "affiliation": "INRAE/University of Bordeaux/CNRS",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "",
+      "fullname": "Bordeaux Metabolome",
+      "email": "mtbls-MTH-Bordeaux@inrae.fr"
+     }
+    ],
+    "curationRequest": "MANUAL_CURATION",
+    "sampleCount": 36,
+    "investigationFilePath": "i_Investigation.txt",
+    "rawFileExtensions": [],
+    "technologyTypes": [
+     {
+      "termSourceRef": "OBI",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+      "term": "NMR spectroscopy assay"
+     }
+    ],
+    "protocols": [
+     {
+      "components": [],
+      "name": "Sample Collection",
+      "description": "Tomatoes (Solanum lycopersicum L. cv Moneymaker) were grown in a glass greenhouse in South-West of France in optimal commercial conditions as described previously [1]. The fruit were harvested at four different stages of development: 8, 21, 34 and 55 days post anthesis (DPA) on three different trusses (truss 5, 6, and 7). Eight DPA corresponds to the cell division stage, 21 DPA to the cell expansion stage, 34 DPA to the transition between cell expansion and ripening and 55 DPA to red-ripe fruit. Each biological replicate was made up of 4\u20135 fruits harvested on different plants. Three biological replicates, corresponding to the three different trusses, were used for each stage of the development. A quarter of the fruit pericarp from the equatorial zone was immediately frozen in liquid nitrogen. Fruit pericarp samples were ground in liquid nitrogen and stored at -80 \u00b0C until freeze-drying. An aliquot of fresh frozen powder was lyophilized and used for NMR analyses. </p> Ref:</br> [1] Biais, B., B\u00e9nard, C., Beauvoit, B., Colombi\u00e9, S., Prodhomme, D., M\u00e9nard, G., et al. (2014). Remarkable reproducibility of enzyme activity profiles in tomato fruits grown under contrasting environments provides a roadmap for studies of fruit metabolism. Plant Physiology, 164, 1204\u20131221. doi: 10.1104/pp.113.231241. PMID:24474652</br>",
+      "protocolType": {
+       "termSourceRef": "",
+       "termAccessionNumber": "",
+       "term": "Sample Collection"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Extraction",
+      "description": "Each extract was prepared from 40 mg (2 aliquots of 20 mg each) of lyophilized powder using a robotised Starlet platform (Hamilton, Villebon sur Yvette, France). The metabolic extraction was performed in four steps. After weighing 20 mg, 300 \u00b5l of EtOH/water (80/20, v/v) solution were added to each sample in a 1.1 ml Micronics tube, then the mixture was checked and put in a hot water bath at 80 \u00b0C during 10 min and finally placed in a centrifuge at 4,000 x g during 5 min. The supernatant was transferred into a 1.4 ml Micronics tube. The 1.1 ml Micronics tube containing the pellet was submitted to three other extraction steps: same solvent mixture, then EtOH/water (50/50, v/v), and pure Milli-Q water for the last step. The supernatants from the two aliquots and four steps were combined and evaporated to dryness using a vacuum evaporator (SpeedVac Savant, Asheville, USA). The dried extracts were titrated with KOD to pH 6 using a titration unit BTpH (Bruker Biospin, Rheinstetten, Germany) in 200 mM potassium phosphate buffer solution in D2O containing 2 mM EDTA. Then, trimethylsilyl [2,2,3,3-2H4] propionate sodium salt (TSP, 0.01% final concentration for chemical shift calibration) was added. Titrated extracts were frozen in liquid nitrogen and lyophilized during 12 h.",
+      "protocolType": {
+       "termSourceRef": "",
+       "termAccessionNumber": "",
+       "term": "Extraction"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Extraction Method"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR sample",
+      "description": "Just before the NMR acquisition, 600 \u00b5l of deuterium oxide (D2O; 99.90%D, Eurisotop, Saint Aubin, France) containing sodium azide (NaN3, 3.85 mM final concentration, in order to avoid bacterial contamination) were added to the dried titrated extracts, and the solubilized titrated extract was transferred into a 5 mm NMR Wilmad LabGlass tube of 7 inches (Wilmad, Vineland, USA).",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001110",
+       "term": "NMR sample"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR tube type"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Solvent"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Sample pH"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Temperature"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR spectroscopy",
+      "description": "All the NMR spectra of the tomato fruit extract samples were recorded three times at 298 K on a Bruker Avance III 500 spectrometer, operating at a frequency of 500.13 MHz with a dual 5 mm cryogenically cooled 1H-13C probe.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001111",
+       "term": "NMR spectroscopy"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Instrument"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR Probe"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Number of transients"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Pulse sequence name"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Magnetic field strength"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR assay",
+      "description": "For each experiment, the 90\u00b0 pulse width was carefully calibrated and the water signal at 4.7 ppm was presaturated by continuous irradiation during the recovery delay. All experiments by ultrafast NMR were performed under partial saturation conditions, with TR = 5 s. All the ultrafast COSY experiments were recorded using the pulse sequence described previously [1], including the possibility to perform interleaved acquisitions. The final spectral width was 4.5 ppm in both dimensions at 500 MHz. The experiment duration is given by Ta = NS\u2022N1 where NS is the number of scans and N1 the number of interleaved acquisitions. For the experiments performed at 500 MHz, the following parameters were used: NS = 64 and N1 = 1, as interleaving was not needed to sample the relevant spectral width. All the experiments were eventually performed with a ca. 5 min overall duration. For all the experiments, the spatial encoding was performed with two successive smoothed chirp pulses (60 kHz, 15 ms) applied together with 8.3 G/cm bipolar spatial encoding gradients. The mixing period included opposite coherence-selection gradients (sin shape; 58.5 G/cm, 0.8 ms). For the acquisition, 128 acquisition gradient pairs were applied, with the following amplitude and duration: 58.5 G/cm and 256 \u00b5s. The amplitude and duration of the pre-acquisition gradient were adapted to center the chemical shift range of interest in the middle of the detection window in the spatially encoded dimension. </p> Ref:</br> [1] Rouger, L., Charrier, B., Pathan, M., Akoka, S., & Giraudeau, P. (2014). Processing strategies to obtain clean interleaved ultrafast 2D NMR spectra. Journal of Magnetic Resonance, 238, 87\u201393. doi: 10.1016/j.jmr.2013.11.008. PMID:24322368</br>",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001112",
+       "term": "NMR assay"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Data transformation",
+      "description": "Before Fourier Transformation, 2D FIDs were weighed with apodization functions leading to the optimum sensitivity for the relevant peaks. A sinebell function was applied in the conventional dimension of all the experiments. In the ultrafast dimension, an apodization was performed in the spatial dimension with optimized gaussian apodization functions designed according to a recently described procedure [1]. The conventional spectra were zero-filled in both dimensions and the ultrafast spectra were zero-filled in the conventional dimension. </p> All the spectra were processed in the magnitude mode. Finally, a second order automatic baseline correction was applied in the two dimensions of the 2D spectra. The specific processing for the ultrafast spectra (as described in [2]) was performed using a home-written routine in TopSpin (Bruker Biospin, Rheinstetten, Germany. All the pulse sequences and processing programs described in this paper are available on request. </p> Ref:</br> [1] Giraudeau, P., S. Akoka (2011). Sensitivity and lineshape improvement in ultrafast 2D NMR by optimized apodization in the spatially encoded dimension. Magn Reson Chem 49, 307-313. doi: 10.1021/ac200007p. PMID:21417426</br> [2] Frydman, L., A. Lupulescu, T. Scherf (2003). Principles and features of single-scan two-dimensional NMR spectroscopy. J Am Chem Soc 125, 9204-9217. PMID:15369377</br>",
+      "protocolType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0200000",
+       "term": "data transformation"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Metabolite identification",
+      "description": "Eight major polar compounds of tomato flesh, belonging to several metabolite families and implicated in fruit growth and quality, were selected for quantification. After annotation, the most isolated peak was selected for each compound. The peak volumes were measured using the 2D integration tool in TopSpin 3.1 (Bruker Biospin, Rheinstetten, Germany). The integration region limits were optimized for each peak of interest on the highest concentrated mixture. Integration regions were centered on the peak of interest and their size was chosen as large as possible to integrate the whole peak but small enough to avoid overlap with neighbouring peaks. Identical integration regions were used for all the samples. </p> To evaluate the repeatability of the NMR quantification procedure, each spectrum (calibration and biological extracts) was acquired three successive times, and average values were calculated for each peak volume. Calibration curves were then fitted by the linear regression equation: V = a\u2022[m] + b, where V represents the 2D peak volume (arbitrary unit, a.u.) and [m] is the concentration (in millimoles per litre) of the given metabolite in the calibration sample. </p> To determine the unknown concentration of the eight metabolites in the twelve tomato pericarp extracts, the volume of each target peak was measured with the same integration file as for the calibration samples, and the concentration was determined using the linear regression equation of the corresponding metabolite. (Calibration Standards available at MTBLS133).",
+      "protocolType": {
+       "termSourceRef": "MI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MI_2131",
+       "term": "metabolite identification"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     }
+    ],
+    "derivedFileCount": 36,
+    "designDescriptors": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "COSY"
+     },
+     {
+      "termSourceRef": "ror",
+      "termAccessionNumber": "https://ror.org/039gscz82",
+      "term": "MetaboHUB"
+     },
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "targeted metabolites"
+     },
+     {
+      "termSourceRef": "CHMO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/CHMO_0002443",
+      "term": "two-dimensional 1H nuclear magnetic resonance spectroscopy"
+     }
+    ],
+    "organismParts": [
+     {
+      "termSourceRef": "BTO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/BTO_0001017",
+      "term": "pericarp"
+     }
+    ],
+    "sampleTypes": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "experimental blank"
+     }
+    ],
+    "sizeInText": "247.23MB",
+    "factorPairs": [
+     {
+      "name": "Development stage",
+      "value": "21 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "34 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "55 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "8 day"
+     },
+     {
+      "name": "Truss number",
+      "value": "5"
+     },
+     {
+      "name": "Truss number",
+      "value": "6"
+     },
+     {
+      "name": "Truss number",
+      "value": "7"
+     }
+    ],
+    "submissionDate": "2014-10-24T00:00:00",
+    "organismLineage": {
+     "phylum": [
+      "Streptophyta"
+     ],
+     "genus": [
+      "Solanum"
+     ],
+     "species": [
+      "Solanum lycopersicum"
+     ],
+     "domain": [
+      "Eukaryota"
+     ],
+     "family": [
+      "Solanaceae"
+     ],
+     "kingdom": [
+      "Viridiplantae"
+     ],
+     "class": [
+      "Magnoliopsida"
+     ],
+     "order": [
+      "Solanales"
+     ]
+    },
+    "factors": [
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0002091",
+      "term": "biological replicate"
+     },
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0000724",
+      "term": "timepoint"
+     }
+    ],
+    "organisms": [
+     {
+      "termSourceRef": "NCBITaxon",
+      "termAccessionNumber": "http://purl.bioontology.org/ontology/NCBITAXON/4081",
+      "term": "Solanum lycopersicum"
+     }
+    ],
+    "publicReleaseDate": "2015-01-28T00:00:00",
+    "studyId": "MTBLS131",
+    "rawFileCount": 0,
+    "sampleFilePath": "s_MTBLS131.txt",
+    "contacts": [
+     {
+      "lastName": "Giraudeau",
+      "firstName": "Patrick",
+      "address": "",
+      "affiliation": "Nantes Universit\u00e9",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C19924",
+        "term": "Principal Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "patrick.giraudeau@univ-nantes.fr"
+     },
+     {
+      "lastName": "Moing",
+      "firstName": "Annick",
+      "address": "",
+      "affiliation": "Centre INRAE Grand-Est - Colmar",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "moing@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Maucourt",
+      "firstName": "Mickael",
+      "address": "",
+      "affiliation": "Universit\u00e9 de Bordeaux",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "moing@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Deborde",
+      "firstName": "Catherine",
+      "address": "",
+      "affiliation": "Centre INRAE Grand-Est - Colmar",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "cdeborde@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Bordeaux",
+      "firstName": "MTH",
+      "address": "",
+      "affiliation": "MetaboHUB",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C19924",
+        "term": "Principal Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "mtbls-MTH-Bordeaux@inrae.fr"
+     }
+    ],
+    "publications": [
+     {
+      "authorList": "J\u00e9z\u00e9quel Tangi, Deborde Catherine, Maucourt Micka\u00ebl, Zhendre Vanessa, Moing Annick, Giraudeau Patrick",
+      "title": "Absolute quantification of metabolites in tomato fruit extracts by fast 2D NMR",
+      "pubMedId": "",
+      "doi": "10.1007/s11306-015-0780-0",
+      "status": {
+       "termSourceRef": "EFO",
+       "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0001796",
+       "term": "published"
+      }
+     }
+    ],
+    "status": "PUBLIC",
+    "id": "MTBLS131"
+   },
+   {
+    "modifiedTime": "2026-07-06T09:09:56.020171Z",
+    "assayCount": 1,
+    "sizeInBytes": 344530944,
+    "curatorAnnotations": [
+     "NMR"
+    ],
+    "derivedFileExtensions": [
+     "1_700_66",
+     "2_700_67",
+     "3_700_68"
+    ],
+    "annotations": [
+     "assay.measurementType::untargeted analysis,MS,http://purl.obolibrary.org/obo/MS_1003904",
+     "assay.protocol::Data transformation",
+     "assay.protocol::Extraction",
+     "assay.protocol::Metabolite identification",
+     "assay.protocol::NMR assay",
+     "assay.protocol::NMR sample",
+     "assay.protocol::NMR spectroscopy",
+     "assay.protocol::Sample Collection",
+     "assay.technique.main::NMR",
+     "assay.technique.name::NMR",
+     "assay.technique.sub::Nuclear magnetic resonance",
+     "assay.technique::NMR",
+     "assay.technologyPlatform::Nuclear Magnetic Resonance (NMR) - - - Bruker",
+     "study.characteristic.organism.class::Magnoliopsida",
+     "study.characteristic.organism.domain::Eukaryota",
+     "study.characteristic.organism.family::Solanaceae",
+     "study.characteristic.organism.genus::Solanum",
+     "study.characteristic.organism.kingdom::Viridiplantae",
+     "study.characteristic.organism.order::Solanales",
+     "study.characteristic.organism.phylum::Streptophyta",
+     "study.characteristic.organism.species::Solanum lycopersicum",
+     "study.characteristic.organism.tax_id::4081",
+     "study.factor.developmentStage::21,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::34,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::55,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.developmentStage::8,day,UO,http://purl.obolibrary.org/obo/UO_0000033",
+     "study.factor.trussNumber::5,,",
+     "study.factor.trussNumber::6,,",
+     "study.factor.trussNumber::7,,",
+     "study.factor::Development stage",
+     "study.factor::Truss number",
+     "study.type::NMR"
+    ],
+    "description": "<p>Quantitative NMR metabolomics is a powerful tool to have access to valuable information on metabolism. Unfortunately, the quantitative analysis of metabolic samples is often hampered by peak overlap. Two-dimensional (2D) spectroscopy offers a promising alternative and quantitative results can be obtained provided that a calibration approach is employed. However, the duration of 2D NMR experiments is barely compatible with the metabolomic study of a large number of samples. This drawback can be circumvented by relying on \u201cultrafast\u201d experiments capable of recording 2D spectra in a single-scan. While such experiments are not sensitive enough to match the concentrations of metabolic samples, a compromise can be reached by hybrid strategies capable of recording 2D NMR spectra of extracts in a few minutes only. The purpose of this study is to demonstrate that these multi-scan single-shot experiments can be successfully applied to the absolute quantification of major metabolites in plant extracts. Fast COSY experiments are recorded in 5 min on tomato fruit pericarp extracts at different stages of development. The concentration of eight major metabolites is determined with a trueness better than 10 % and a technical repeatability of a few percent. The experiments performed at two magnetic fields lead to similar quantitative results, in coherence with the metabolism of tomato fruit. The results show that fast 2D NMR methods form a promising tool for fast targeted metabolomics, and open promising perspective towards the automated and high-throughput quantitative analysis of large groups of plant and other samples for metabolomics and for the modelling of metabolism.</p><p><br></p><p><strong>Tomato 700 MHz samples</strong> protocols and data are reported in the current study <a href='https://www.ebi.ac.uk/metabolights/MTBLS132' rel='noopener noreferrer' target='_blank'><strong>MTBLS132</strong></a>.</p><p><strong>Tomato 500 MHz samples</strong> protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS131' rel='noopener noreferrer' target='_blank'><strong>MTBLS131</strong></a>.</p><p><strong>Calibration Standard 500 MHz samples</strong> protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS133' rel='noopener noreferrer' target='_blank'><strong>MTBLS133</strong></a>.</p><p><strong>Calibration Standard 700 MHz samples</strong> protocols and data are reported in <a href='https://www.ebi.ac.uk/metabolights/MTBLS134' rel='noopener noreferrer' target='_blank'><strong>MTBLS134</strong></a>.</p>",
+    "assays": [
+     {
+      "technologyPlatform": "Nuclear Magnetic Resonance (NMR) - - - Bruker",
+      "filePath": "a_MTBLS132_NMR_uf700_tomato_2dnmr_metabolite_profiling_NMR_spectroscopy.txt",
+      "measurementType": {
+       "termSourceRef": "MS",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MS_1003904",
+       "term": "untargeted analysis"
+      },
+      "technologyType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+       "term": "NMR spectroscopy assay"
+      },
+      "technique": {
+       "sub": "Nuclear magnetic resonance",
+       "name": "NMR",
+       "technique": "NMR",
+       "main": "NMR"
+      },
+      "assignmentFiles": [
+       "m_MTBLS132_UF700_Tomato_2DNMR_metabolite_profiling_NMR_spectroscopy.tsv"
+      ]
+     }
+    ],
+    "variants": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "Solanum lycopersicum cv. Moneymaker"
+     }
+    ],
+    "title": "Absolute quantification of metabolites in tomato fruit extracts by fast 2D NMR (Tomato 700 MHz samples)",
+    "assayTechniques": [
+     {
+      "sub": "Nuclear magnetic resonance",
+      "name": "NMR",
+      "technique": "NMR",
+      "main": "NMR"
+     }
+    ],
+    "fundings": [],
+    "submitters": [
+     {
+      "country": "France",
+      "address": "",
+      "affiliation": "INRA Bordeaux",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "",
+      "fullname": "Daniel Jacob",
+      "email": "djacob65@gmail.com"
+     },
+     {
+      "country": "France",
+      "address": "",
+      "affiliation": "INRAE/University of Bordeaux/CNRS",
+      "roles": [
+       "submitter"
+      ],
+      "orcid": "",
+      "fullname": "Bordeaux Metabolome",
+      "email": "mtbls-MTH-Bordeaux@inrae.fr"
+     }
+    ],
+    "curationRequest": "MANUAL_CURATION",
+    "sampleCount": 36,
+    "investigationFilePath": "i_Investigation.txt",
+    "rawFileExtensions": [],
+    "technologyTypes": [
+     {
+      "termSourceRef": "OBI",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0000623",
+      "term": "NMR spectroscopy assay"
+     }
+    ],
+    "protocols": [
+     {
+      "components": [],
+      "name": "Sample Collection",
+      "description": "Tomatoes (Solanum lycopersicum L. cv Moneymaker) were grown in a glass greenhouse in South-West of France in optimal commercial conditions as described previously [1]. The fruit were harvested at four different stages of development: 8, 21, 34 and 55 days post anthesis (DPA) on three different trusses (truss 5, 6, and 7). Eight DPA corresponds to the cell division stage, 21 DPA to the cell expansion stage, 34 DPA to the transition between cell expansion and ripening and 55 DPA to red-ripe fruit. Each biological replicate was made up of 4\u20135 fruits harvested on different plants. Three biological replicates, corresponding to the three different trusses, were used for each stage of the development. A quarter of the fruit pericarp from the equatorial zone was immediately frozen in liquid nitrogen. Fruit pericarp samples were ground in liquid nitrogen and stored at -80 \u00b0C until freeze-drying. An aliquot of fresh frozen powder was lyophilized and used for NMR analyses. </p> Ref:</br> [1] Biais, B., B\u00e9nard, C., Beauvoit, B., Colombi\u00e9, S., Prodhomme, D., M\u00e9nard, G., et al. (2014). Remarkable reproducibility of enzyme activity profiles in tomato fruits grown under contrasting environments provides a roadmap for studies of fruit metabolism. Plant Physiology, 164, 1204\u20131221. doi: 10.1104/pp.113.231241. PMID:24474652</br>",
+      "protocolType": {
+       "termSourceRef": "",
+       "termAccessionNumber": "",
+       "term": "Sample Collection"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Extraction",
+      "description": "Each extract was prepared from 40 mg (2 aliquots of 20 mg each) of lyophilized powder using a robotised Starlet platform (Hamilton, Villebon sur Yvette, France). The metabolic extraction was performed in four steps. After weighing 20 mg, 300 \u00b5l of EtOH/water (80/20, v/v) solution were added to each sample in a 1.1 ml Micronics tube, then the mixture was checked and put in a hot water bath at 80 \u00b0C during 10 min and finally placed in a centrifuge at 4,000 x g during 5 min. The supernatant was transferred into a 1.4 ml Micronics tube. The 1.1 ml Micronics tube containing the pellet was submitted to three other extraction steps: same solvent mixture, then EtOH/water (50/50, v/v), and pure Milli-Q water for the last step. The supernatants from the two aliquots and four steps were combined and evaporated to dryness using a vacuum evaporator (SpeedVac Savant, Asheville, USA). The dried extracts were titrated with KOD to pH 6 using a titration unit BTpH (Bruker Biospin, Rheinstetten, Germany) in 200 mM potassium phosphate buffer solution in D2O containing 2 mM EDTA. Then, trimethylsilyl [2,2,3,3-2H4] propionate sodium salt (TSP, 0.01% final concentration for chemical shift calibration) was added. Titrated extracts were frozen in liquid nitrogen and lyophilized during 12 h.",
+      "protocolType": {
+       "termSourceRef": "",
+       "termAccessionNumber": "",
+       "term": "Extraction"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Extraction Method"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR sample",
+      "description": "Just before the NMR acquisition, 600 \u00b5l of deuterium oxide (D2O; 99.90%D, Eurisotop, Saint Aubin, France) containing sodium azide (NaN3, 3.85 mM final concentration, in order to avoid bacterial contamination) were added to the dried titrated extracts, and the solubilized titrated extract was transferred into a 5 mm NMR Wilmad LabGlass tube of 7 inches (Wilmad, Vineland, USA).",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001110",
+       "term": "NMR sample"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR tube type"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Solvent"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Sample pH"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Temperature"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR spectroscopy",
+      "description": "All the NMR spectra of the tomato fruit extract samples were recorded three times at 298 K on a Bruker Avance III HD 700 spectrometer operating at a frequency of 700.13 MHz with an inverse 1H/13C/15N/2H cryogenically cooled probe.",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001111",
+       "term": "NMR spectroscopy"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": [
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Instrument"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "NMR Probe"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Number of transients"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Pulse sequence name"
+       },
+       {
+        "termSourceRef": "",
+        "termAccessionNumber": "",
+        "term": "Magnetic field strength"
+       }
+      ]
+     },
+     {
+      "components": [],
+      "name": "NMR assay",
+      "description": "For each experiment, the 90\u00b0 pulse width was carefully calibrated and the water signal at 4.7 ppm was presaturated by continuous irradiation during the recovery delay. All experiments by ultrafast NMR were performed under partial saturation conditions, with TR = 5 s. All the ultrafast COSY experiments were recorded using the pulse sequence described previously [1], including the possibility to perform interleaved acquisitions. The final spectral width was 5 ppm (F2) x 5.4 ppm (F1) at 700 MHz. The experiment duration is given by Ta = NS\u2022N1 where NS is the number of scans and N1 the number of interleaved acquisitions. For the experiments performed at 700 MHz, the following parameters were used: NS = 16 and N1 = 4. Due to high magnetic field, interleaving was required to sample the same spectral width as on a 500 MHz spectrometer. The experiment duration was kept constant by reducing the number of scans thanks to the highest sensitivity of the 700 MHz spectrometer. All the experiments were eventually performed with a ca. 5 min overall duration. For all the experiments, the spatial encoding was performed with two successive smoothed chirp pulses (60 kHz, 15 ms) applied together with 8.3 G/cm bipolar spatial encoding gradients. The mixing period included opposite coherence-selection gradients (sin shape; 58.5 G/cm, 0.8 ms). For the acquisition, 128 acquisition gradient pairs were applied, with the following amplitude and duration: 58.5 G/cm and 256 \u00b5s. The amplitude and duration of the pre-acquisition gradient were adapted to center the chemical shift range of interest in the middle of the detection window in the spatially encoded dimension. </p> Ref:</br> [1] Rouger, L., Charrier, B., Pathan, M., Akoka, S., & Giraudeau, P. (2014). Processing strategies to obtain clean interleaved ultrafast 2D NMR spectra. Journal of Magnetic Resonance, 238, 87\u201393. doi: 10.1016/j.jmr.2013.11.008. PMID:24322368</br>",
+      "protocolType": {
+       "termSourceRef": "MTBLS",
+       "termAccessionNumber": "http://www.ebi.ac.uk/metabolights/ontology/MTBLS_001112",
+       "term": "NMR assay"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Data transformation",
+      "description": "Before Fourier Transformation, 2D FIDs were weighed with apodization functions leading to the optimum sensitivity for the relevant peaks. A sinebell function was applied in the conventional dimension of all the experiments. In the ultrafast dimension, an apodization was performed in the spatial dimension with optimized gaussian apodization functions designed according to a recently described procedure [1]. The conventional spectra were zero-filled in both dimensions and the ultrafast spectra were zero-filled in the conventional dimension. </p> All the spectra were processed in the magnitude mode. Finally, a second order automatic baseline correction was applied in the two dimensions of the 2D spectra. The specific processing for the ultrafast spectra (as described in [2]) was performed using a home-written routine in TopSpin (Bruker Biospin, Rheinstetten, Germany. All the pulse sequences and processing programs described in this paper are available on request. </p> Ref:</br> [1] Giraudeau, P., S. Akoka (2011). Sensitivity and lineshape improvement in ultrafast 2D NMR by optimized apodization in the spatially encoded dimension. Magn Reson Chem 49, 307-313. doi: 10.1021/ac200007p. PMID:21417426</br> [2] Frydman, L., A. Lupulescu, T. Scherf (2003). Principles and features of single-scan two-dimensional NMR spectroscopy. J Am Chem Soc 125, 9204-9217. PMID:15369377</br>",
+      "protocolType": {
+       "termSourceRef": "OBI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/OBI_0200000",
+       "term": "data transformation"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     },
+     {
+      "components": [],
+      "name": "Metabolite identification",
+      "description": "Eight major polar compounds of tomato flesh, belonging to several metabolite families and implicated in fruit growth and quality, were selected for quantification. After annotation, the most isolated peak was selected for each compound. The peak volumes were measured using the 2D integration tool in TopSpin 3.1 (Bruker Biospin, Rheinstetten, Germany). The integration region limits were optimized for each peak of interest on the highest concentrated mixture. Integration regions were centered on the peak of interest and their size was chosen as large as possible to integrate the whole peak but small enough to avoid overlap with neighbouring peaks. Identical integration regions were used for all the samples. </p> To evaluate the repeatability of the NMR quantification procedure, each spectrum (calibration and biological extracts) was acquired three successive times, and average values were calculated for each peak volume. Calibration curves were then fitted by the linear regression equation: V = a\u2022[m] + b, where V represents the 2D peak volume (arbitrary unit, a.u.) and [m] is the concentration (in millimoles per litre) of the given metabolite in the calibration sample. </p> To determine the unknown concentration of the eight metabolites in the twelve tomato pericarp extracts, the volume of each target peak was measured with the same integration file as for the calibration samples, and the concentration was determined using the linear regression equation of the corresponding metabolite. (Calibration Standards available at MTBLS134).",
+      "protocolType": {
+       "termSourceRef": "MI",
+       "termAccessionNumber": "http://purl.obolibrary.org/obo/MI_2131",
+       "term": "metabolite identification"
+      },
+      "uri": "",
+      "version": "",
+      "parameters": []
+     }
+    ],
+    "derivedFileCount": 36,
+    "designDescriptors": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "COSY"
+     },
+     {
+      "termSourceRef": "ror",
+      "termAccessionNumber": "https://ror.org/039gscz82",
+      "term": "MetaboHUB"
+     },
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "targeted metabolites"
+     },
+     {
+      "termSourceRef": "CHMO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/CHMO_0002443",
+      "term": "two-dimensional 1H nuclear magnetic resonance spectroscopy"
+     }
+    ],
+    "organismParts": [
+     {
+      "termSourceRef": "BTO",
+      "termAccessionNumber": "http://purl.obolibrary.org/obo/BTO_0001017",
+      "term": "pericarp"
+     }
+    ],
+    "sampleTypes": [
+     {
+      "termSourceRef": "",
+      "termAccessionNumber": "",
+      "term": "experimental blank"
+     }
+    ],
+    "sizeInText": "328.57MB",
+    "factorPairs": [
+     {
+      "name": "Development stage",
+      "value": "21 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "34 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "55 day"
+     },
+     {
+      "name": "Development stage",
+      "value": "8 day"
+     },
+     {
+      "name": "Truss number",
+      "value": "5"
+     },
+     {
+      "name": "Truss number",
+      "value": "6"
+     },
+     {
+      "name": "Truss number",
+      "value": "7"
+     }
+    ],
+    "submissionDate": "2014-10-24T00:00:00",
+    "organismLineage": {
+     "phylum": [
+      "Streptophyta"
+     ],
+     "genus": [
+      "Solanum"
+     ],
+     "species": [
+      "Solanum lycopersicum"
+     ],
+     "domain": [
+      "Eukaryota"
+     ],
+     "family": [
+      "Solanaceae"
+     ],
+     "kingdom": [
+      "Viridiplantae"
+     ],
+     "class": [
+      "Magnoliopsida"
+     ],
+     "order": [
+      "Solanales"
+     ]
+    },
+    "factors": [
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0002091",
+      "term": "biological replicate"
+     },
+     {
+      "termSourceRef": "EFO",
+      "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0000724",
+      "term": "timepoint"
+     }
+    ],
+    "organisms": [
+     {
+      "termSourceRef": "NCBITaxon",
+      "termAccessionNumber": "http://purl.bioontology.org/ontology/NCBITAXON/4081",
+      "term": "Solanum lycopersicum"
+     }
+    ],
+    "publicReleaseDate": "2015-11-11T00:00:00",
+    "studyId": "MTBLS132",
+    "rawFileCount": 0,
+    "sampleFilePath": "s_MTBLS132.txt",
+    "contacts": [
+     {
+      "lastName": "Giraudeau",
+      "firstName": "Patrick",
+      "address": "",
+      "affiliation": "Universite de Nantes and Institut Universitaire de France",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C19924",
+        "term": "Principal Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "patrick.giraudeau@univ-nantes.fr"
+     },
+     {
+      "lastName": "Moing",
+      "firstName": "Annick",
+      "address": "",
+      "affiliation": "Centre INRAE Grand-Est - Colmar",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "moing@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Maucourt",
+      "firstName": "Mickael",
+      "address": "",
+      "affiliation": "Universit\u00e9 de Bordeaux",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "moing@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Deborde",
+      "firstName": "Catherine",
+      "address": "",
+      "affiliation": "Centre INRAE Grand-Est - Colmar",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C25936",
+        "term": "Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "cdeborde@bordeaux.inra.fr"
+     },
+     {
+      "lastName": "Bordeaux",
+      "firstName": "MTH",
+      "address": "",
+      "affiliation": "MetaboHUB",
+      "roles": [
+       {
+        "termSourceRef": "NCIT",
+        "termAccessionNumber": "http://purl.obolibrary.org/obo/NCIT_C19924",
+        "term": "Principal Investigator"
+       }
+      ],
+      "midInitials": "",
+      "orcid": "",
+      "email": "mtbls-MTH-Bordeaux@inrae.fr"
+     }
+    ],
+    "publications": [
+     {
+      "authorList": "J\u00e9z\u00e9quel Tangi, Deborde Catherine, Maucourt Micka\u00ebl, Zhendre Vanessa, Moing Annick, Giraudeau Patrick",
+      "title": "Absolute quantification of metabolites in tomato fruit extracts by fast 2D NMR",
+      "pubMedId": "",
+      "doi": "10.1007/s11306-015-0780-0",
+      "status": {
+       "termSourceRef": "EFO",
+       "termAccessionNumber": "http://www.ebi.ac.uk/efo/EFO_0001796",
+       "term": "published"
+      }
+     }
+    ],
+    "status": "PUBLIC",
+    "id": "MTBLS132"
+   }
+  ],
+  "totalResults": 2097,
+  "facets": {
+   "organisms": [
+    {
+     "type": "value",
+     "data": [
+      {
+       "value": "Homo sapiens",
+       "count": 555
+      },
+      {
+       "value": "Mus musculus",
+       "count": 518
+      },
+      {
+       "value": "blank",
+       "count": 172
+      },
+      {
+       "value": "reference compound",
+       "count": 81
+      },
+      {
+       "value": "Rattus norvegicus",
+       "count": 59
+      },
+      {
+       "value": "Bos taurus",
+       "count": 38
+      },
+      {
+       "value": "Sus scrofa",
+       "count": 30
+      },
+      {
+       "value": "Arabidopsis thaliana",
+       "count": 29
+      },
+      {
+       "value": "Gallus gallus",
+       "count": 27
+      },
+      {
+       "value": "Escherichia coli",
+       "count": 23
+      },
+      {
+       "value": "Ovis aries",
+       "count": 23
+      },
+      {
+       "value": "blank sample",
+       "count": 22
+      },
+      {
+       "value": "experimental blank",
+       "count": 20
+      },
+      {
+       "value": "Solanum lycopersicum",
+       "count": 19
+      },
+      {
+       "value": "Saccharomyces cerevisiae",
+       "count": 17
+      },
+      {
+       "value": "solvent blank",
+       "count": 17
+      },
+      {
+       "value": "Quality Control",
+       "count": 16
+      },
+      {
+       "value": "Reference compound",
+       "count": 14
+      },
+      {
+       "value": "Triticum aestivum",
+       "count": 13
+      },
+      {
+       "value": "Nicotiana tabacum",
+       "count": 12
+      },
+      {
+       "value": "Capra hircus",
+       "count": 11
+      },
+      {
+       "value": "Glycine max",
+       "count": 11
+      },
+      {
+       "value": "Staphylococcus aureus",
+       "count": 11
+      },
+      {
+       "value": "not applicable",
+       "count": 11
+      },
+      {
+       "value": "Vitis vinifera",
+       "count": 10
+      }
+     ]
+    }
+   ],
+   "sizeInBytes": [
+    {
+     "type": "range",
+     "data": [
+      {
+       "value": "0 - 1GiB",
+       "count": 612
+      },
+      {
+       "value": "100GiB - 500GiB",
+       "count": 72
+      },
+      {
+       "value": "10GiB - 100GiB",
+       "count": 476
+      },
+      {
+       "value": "1GiB - 10GiB",
+       "count": 922
+      },
+      {
+       "value": "1TiB+",
+       "count": 3
+      },
+      {
+       "value": "500GiB - 1TiB",
+       "count": 12
+      }
+     ]
+    }
+   ]
+  },
+  "requestId": "451c46ac-7283-4e09-b7bf-f1758b517ab4",
+  "all_study_ids": null
+ }
+}
