@@ -58,8 +58,8 @@ ws.schema()                              # DDL for all of it
 
 # 4. get more: deeper per-study data for the ones you picked
 detail = ml.inspect(["MTBLS1", "MTBLS2"])   # download + parse ISA/MAF
-ml.ingest(detail, ws)                        # adds ml_sample / ml_maf_*
-ws.sql("select * from ml_maf_metabolite where study_id = 'MTBLS1' limit 20")
+ml.ingest(detail, ws)                        # adds ml_sample / ml_metabolite
+ws.sql("select * from ml_metabolite where study_id = 'MTBLS1' limit 20")
 
 # 5. or search again and add more
 ml.ingest(ml.search("human serum NMR", min_samples=20, limit=50), ws)
@@ -209,10 +209,10 @@ Per source, no shared tables. One workspace file may hold both.
 
 | Ingested object | Tables |
 |---|---|
-| `metabolights.StudyHit` | `ml_study`, `ml_study_term`, `ml_study_factor_pair`, `ml_study_lineage`, `ml_assay`, `ml_assay_technique`, `ml_publication`, `ml_protocol`, `ml_contact`, `ml_submitter` |
-| `metabolights.StudyDetail` | `ml_sample`, `ml_sample_factor`, `ml_sample_file`, `ml_maf_metabolite`, `ml_maf_abundance`, `ml_file` |
+| `metabolights.StudyHit` | `ml_study`, `ml_study_term`, `ml_study_lineage`, `ml_study_factor_pair`, `ml_study_annotation`, `ml_assay`, `ml_assay_file`, `ml_assay_technique`, `ml_publication`, `ml_protocol`, `ml_protocol_component`, `ml_protocol_parameter`, `ml_contact`, `ml_contact_role`, `ml_submitter`, `ml_submitter_role`, `ml_funding` |
+| `metabolights.StudyDetail` | `ml_sample`, `ml_sample_characteristic`, `ml_sample_factor`, `ml_sample_file`, `ml_metabolite`, `ml_metabolite_abundance`, `ml_file` |
 | `metabolights.StudyFile` | `ml_file` |
-| `workbench.StudySummary` | `wb_study`, `wb_disease`, `wb_source`, `wb_species` |
+| `workbench.StudySummary` | `wb_study` |
 | `workbench.StudyDetail` | `wb_sample`, `wb_sample_factor`, `wb_analysis`, `wb_metabolite` |
 
 ## 8. `Workspace` and return types

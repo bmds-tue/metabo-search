@@ -130,13 +130,13 @@ ml_study         study_id PK, title, description, status, curation_request,
                  sample_count, assay_count, raw_file_count, derived_file_count,
                  size_in_bytes, investigation_file_path, sample_file_path
 ml_study_term    study_id, facet, term, source_ref, accession
-ml_study_factor_pair / ml_study_lineage
-ml_assay / ml_assay_technique / ml_publication / ml_protocol
-ml_contact / ml_submitter
-ml_file          study_id, path, base_name, parent_directory, extension,
-                 size_bytes, is_dir, is_link, modified_at, created_at, tags
-ml_sample / ml_sample_factor / ml_sample_file
-ml_maf_metabolite / ml_maf_abundance
+ml_study_factor_pair / ml_study_lineage / ml_study_annotation
+ml_assay / ml_assay_file / ml_assay_technique / ml_publication / ml_protocol
+ml_protocol_component / ml_protocol_parameter
+ml_contact / ml_contact_role / ml_submitter / ml_submitter_role / ml_funding
+ml_file          study_id, path, name, directory, extension, size_bytes, category
+ml_sample / ml_sample_characteristic / ml_sample_factor / ml_sample_file
+ml_metabolite / ml_metabolite_abundance
 ml_ingest_run
 ```
 
@@ -147,7 +147,6 @@ wb_study         study_id PK, study_title, species, institute, analysis_type,
                  number_of_samples, submission_date, release_date, version,
                  revision_no, revision_datetime, revision_comment, license,
                  license_url, study_url
-wb_disease / wb_source / wb_species
 wb_sample / wb_sample_factor
 wb_analysis
 wb_metabolite
