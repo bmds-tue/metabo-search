@@ -188,3 +188,14 @@ def test_inspect_raises_when_asked() -> None:
 
     with pytest.raises(MetaboSearchError):
         _client(handler).inspect(["MTBLS1"], on_error="raise")
+
+
+def test_inspect_flags_missing_isa_metadata() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if str(request.url).endswith("/MTBLS14005/"):
+            return httpx.Response(200, text='<a href="FILES/">FILES/</a>')
+        return httpx.Response(404)
+
+    details = _client(handler).inspect(["MTBLS14005"])
+    assert details[0].samples == []
+    assert "ISA" in details[0].error

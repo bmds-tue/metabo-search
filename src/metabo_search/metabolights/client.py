@@ -266,6 +266,14 @@ class MetaboLights:
 
     def _inspect_one(self, study_id: str, include_files: bool) -> StudyDetail:
         isa = isa_files(self._http, study_id)
+        if not isa:
+            # Some studies (e.g. MTBLS14005, MTBLS8113) publish only FILES/ on
+            # the mirror — no ISA files anywhere, not even under
+            # METADATA_REVISIONS. Flag it rather than return a silent 0 samples.
+            return StudyDetail(
+                study_id=study_id,
+                error="no ISA metadata files found on the mirror",
+            )
         files: list[StudyFile] = list(self.files(study_id)) if include_files else []
         return parse_study_detail(study_id, isa, files=files)
 
