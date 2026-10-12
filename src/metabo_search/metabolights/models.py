@@ -260,6 +260,7 @@ class Metabolite(MetaboLightsModel):
 class StudyFile(MetaboLightsModel):
     """A file in a study's ``FILES/`` directory."""
 
+    study_id: Str = ""
     path: Str = ""
     name: Str = ""
     directory: Str = ""

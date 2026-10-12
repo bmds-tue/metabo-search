@@ -145,7 +145,7 @@ def list_files(
     """
     assert study_id, "study_id must be non-empty"
     files: Results[StudyFile] = Results()
-    _walk(http, f"{MIRROR_BASE}/{study_id}/FILES/", "FILES", files, 0, recursive)
+    _walk(http, f"{MIRROR_BASE}/{study_id}/FILES/", "FILES", files, 0, recursive, study_id)
     return files
 
 
@@ -156,6 +156,7 @@ def _walk(
     files: Results[StudyFile],
     depth: int,
     recursive: bool,
+    study_id: str,
 ) -> None:
     """Recursively walk an HTTP directory listing, appending to ``files``."""
     if depth > MAX_DEPTH:
@@ -172,12 +173,13 @@ def _walk(
         if link.endswith("/"):
             if recursive:
                 sub = f"{prefix}/{link.rstrip('/')}"
-                _walk(http, url + link, sub, files, depth + 1, recursive)
+                _walk(http, url + link, sub, files, depth + 1, recursive, study_id)
             continue
         extension = detect_extension(link)
         path = f"{prefix}/{link}"
         files.append(
             StudyFile(
+                study_id=study_id,
                 path=path,
                 name=link,
                 directory=prefix,
