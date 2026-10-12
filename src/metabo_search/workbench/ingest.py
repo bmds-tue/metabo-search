@@ -253,7 +253,9 @@ def _map(item: object, tables: dict[str, list[dict[str, object]]]) -> None:
     if isinstance(item, StudySummary):
         _study_summary(item, tables)
     elif isinstance(item, StudyDetail):
-        _study_detail(item, tables)
+        # Best-effort inspect: an errored detail has no data to write.
+        if not item.error:
+            _study_detail(item, tables)
     else:
         raise TypeError(f"cannot ingest {type(item).__name__} into Workbench tables")
 

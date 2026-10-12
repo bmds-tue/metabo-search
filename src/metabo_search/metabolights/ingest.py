@@ -503,7 +503,9 @@ def _map(item: object, tables: dict[str, list[dict[str, object]]]) -> None:
     if isinstance(item, StudyHit):
         _study_hit(item, tables)
     elif isinstance(item, StudyDetail):
-        _study_detail(item, tables)
+        # Best-effort inspect: an errored detail has no data to write.
+        if not item.error:
+            _study_detail(item, tables)
     elif isinstance(item, StudyFile):
         _study_file(item.study_id, item, tables)
     else:
