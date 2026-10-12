@@ -1,8 +1,9 @@
 # Rebuild plan — independent source clients + per-source DuckDB stores
 
-Status: proposal. Supersedes the `mtbls-wb` branch's "two repositories behind
-one pipeline" design. The finished public API is in `docs/api-design.md`.
-Nothing here is implemented yet.
+Status: **branch 1 (`refactor/clients`) complete** — both clients, their typed
+models, parsers, and tests are implemented. Branch 2 (DuckDB ingestion) is not
+started. Supersedes the `mtbls-wb` branch's "two repositories behind one
+pipeline" design. The target public API is in `docs/api-design.md`.
 
 ## 1. Why the current approach failed
 

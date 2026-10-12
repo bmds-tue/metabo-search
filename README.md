@@ -1,28 +1,26 @@
 # metabo-search
 
-Search metabolomics datasets from Python, ingest the results you care about into
-a local [DuckDB](https://duckdb.org), and analyse them with SQL.
+Search metabolomics datasets from Python, then analyse them.
 
 It talks to two repositories — [MetaboLights](https://www.ebi.ac.uk/metabolights)
 and [Metabolomics Workbench](https://www.metabolomicsworkbench.org) — through
 two **independent, strictly typed clients**. They are not unified: the two
 repositories have different APIs, vocabularies, and data models.
 
-> **Status: rebuild in progress.** This branch is replacing an earlier attempt
-> that forced both repositories behind one shared model and pipeline. The API
-> shown below is the target; see [`docs/rebuild-plan.md`](docs/rebuild-plan.md)
-> and [`docs/api-design.md`](docs/api-design.md).
+> **Status: rebuild in progress.** This branch (`refactor/clients`) delivers the
+> two clients. The next branch adds a local DuckDB working set: search the web
+> APIs, ingest only the results you care about, analyse, and fetch more on
+> demand. See [`docs/api-design.md`](docs/api-design.md) and
+> [`docs/rebuild-plan.md`](docs/rebuild-plan.md).
 
 ## Why the rebuild
 
-MetaboLights and Metabolomics Workbench disagree on almost everything: how you
-search them, what organism and tissue names they use, how they expose
-metabolites, and whether raw files are downloadable over HTTPS. Putting them
-behind one object model produced silent wrong answers and endless special-casing.
-
-The new approach keeps them separate and puts the join in the database: search
-each web API, ingest only the results you are interested in, analyse, and fetch
-more on demand. **The repositories are never mirrored.**
+An earlier version forced both repositories behind one shared model and
+pipeline. Their APIs disagree on almost everything — search, organism and
+tissue vocabularies, metabolite handling, raw-file access — so the shared layer
+produced silent wrong answers and endless special-casing. The new approach
+keeps the clients separate; a database is the place to join them, not a Python
+object model.
 
 ## Install
 
@@ -30,66 +28,62 @@ more on demand. **The repositories are never mirrored.**
 uv pip install -e .        # or: ./scripts/install.sh
 ```
 
-## Examples
-
-### Search MetaboLights and ingest the hits
+## MetaboLights
 
 ```python
-from metabo_search import MetaboLights, Workspace
+from metabo_search import MetaboLights
 
-ws = Workspace("project.duckdb")          # default: ./metabo.duckdb
 ml = MetaboLights()
 
+# search the public study index (facet filters server-side)
 hits = ml.search(
     "human blood plasma lipidomics",
     organisms=["Homo sapiens"],
     sample_types=["blood plasma"],
+    techniques=["LC-MS"],
     min_samples=50,
-    limit=100,
+    limit=25,
 )
-ml.ingest(hits, ws)                        # only these studies land in DuckDB
+print(hits.ids())
 
-ws.sql("select term, count(*) n from ml_study_term "
-       "where facet = 'organism' group by 1 order by n desc")
+# point lookups
+study = ml.study("MTBLS1")
+many = ml.studies(["MTBLS2", "MTBLS1"])       # input order preserved
+
+# deep data: download and parse ISA samples + MAF metabolites
+detail = ml.inspect(["MTBLS1"])[0]
+print(len(detail.samples), "samples", len(detail.metabolites), "metabolites")
+print(detail.samples[0].organism, detail.samples[0].organism_part)
+
+# list and download data files
+files = ml.files("MTBLS1")
+report = ml.download("MTBLS1", "derived", dest="data/", max_files=10)
 ```
 
-### Go deeper on the studies you picked
+## Metabolomics Workbench
 
 ```python
-detail = ml.inspect(["MTBLS1", "MTBLS2"])  # download + parse ISA and MAF
-ml.ingest(detail, ws)                      # adds ml_sample / ml_maf_*
+from metabo_search import Workbench
 
-ws.sql("select metabolite_name, formula from ml_maf_metabolite "
-       "where study_id = 'MTBLS1' limit 20")
-```
-
-### Workbench, same loop
-
-```python
-from metabo_search import Workbench, Workspace
-
-ws = Workspace("project.duckdb")
 wb = Workbench()
 
-wb.ingest(wb.search("diabetes", min_samples=10, limit=50), ws)
-wb.ingest(wb.inspect(["ST000001"]), ws)
+# the Workbench has no server-side free-text search: the whole-index corpus
+# is fetched once per client and filtered locally (~90 s the first time)
+results = wb.search("diabetes urine", limit=25)
+print(results.ids())
 
-ws.sql("select metabolite_name from wb_metabolite limit 20")
-```
+study = wb.study("ST000001")
+samples = wb.samples("ST000001")           # parsed factor rows
+analyses = wb.analyses("ST000001")
+metabolites = wb.metabolites("ST000001")   # empty means "not listed"
 
-### Inspect what is in the workspace
-
-```python
-ws.tables()        # table names
-ws.schema()        # the full DDL
-ws.export("select * from ml_study", "studies.parquet")
+detail = wb.inspect(["ST000001"])[0]       # bundles all of the above
 ```
 
 ## Documentation
 
-- [`docs/api-design.md`](docs/api-design.md) — the public API (target).
-- [`docs/rebuild-plan.md`](docs/rebuild-plan.md) — architecture, phases, and the
-  step-by-step execution plan.
+- [`docs/api-design.md`](docs/api-design.md) — the target public API.
+- [`docs/rebuild-plan.md`](docs/rebuild-plan.md) — architecture and plan.
 
 ## Disclaimer
 
