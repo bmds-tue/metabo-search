@@ -225,6 +225,58 @@ class StudyHit(MetaboLightsModel):
     fundings: list[Funding] = Field(default=[])
 
 
+class Sample(MetaboLightsModel):
+    """A parsed ISA sample (one row of a sample sheet)."""
+
+    sample_name: Str = ""
+    source_name: Str = ""
+    organism: Str = ""
+    organism_part: Str = ""
+    sample_type: Str = ""
+    characteristics: dict[str, str] = {}
+    factor_values: dict[str, str] = {}
+    raw_files: Strings = []
+    derived_files: Strings = []
+
+
+class Metabolite(MetaboLightsModel):
+    """A parsed MAF metabolite row.
+
+    ``abundances`` maps a per-sample column name to its numeric value; the
+    per-sample columns are the MAF's non-metadata columns.
+    """
+
+    study_id: Str = ""
+    file: Str = ""
+    row: int = 0
+    database_identifier: Str = ""
+    metabolite_identification: Str = ""
+    chemical_formula: Str = ""
+    mass_to_charge: float | None = None
+    retention_time: float | None = None
+    abundances: dict[str, float] = {}
+
+
+class StudyFile(MetaboLightsModel):
+    """A file in a study's ``FILES/`` directory."""
+
+    path: Str = ""
+    name: Str = ""
+    directory: Str = ""
+    extension: Str = ""
+    size_bytes: int = 0
+    category: Str = ""  # "raw" | "derived" | "other"
+
+
+class StudyDetail(MetaboLightsModel):
+    """Deep, parsed study data: ISA samples plus MAF metabolites and files."""
+
+    study_id: Str = ""
+    samples: list[Sample] = []
+    metabolites: list[Metabolite] = []
+    files: list[StudyFile] = []
+
+
 class FacetBucket(MetaboLightsModel):
     """One value in a facet response."""
 
