@@ -1,7 +1,7 @@
 # DuckDB ingestion plan — search → ingest → analyse
 
-Status: ready to implement. Branch `feature/duckdb-ingestion`, based on
-`refactor/clients` (rebase onto `main` after that branch merges).
+Status: ready to implement. Branch `feature/duckdb-ingestion`, rebased onto
+`main` (the `refactor/clients` branch is merged).
 
 This document is self-contained: a fresh session should be able to implement it
 without re-deriving the clients. Read it fully, then follow §8.
@@ -13,8 +13,8 @@ without re-deriving the clients. Read it fully, then follow §8.
 `metabo-search` searches two metabolomics repositories from Python:
 **MetaboLights** and **Metabolomics Workbench**. They have different APIs,
 vocabularies, and data models and are **never unified** — not in clients, not in
-models, not in the database. The `refactor/clients` branch delivers both
-clients; this branch adds a local DuckDB **working set**.
+models, not in the database. The two clients are merged into `main`; this
+branch adds a local DuckDB **working set**.
 
 **The loop** (this is the whole product):
 
@@ -51,11 +51,19 @@ src/metabo_search/
 
 Public surface today: `from metabo_search import MetaboLights, Workbench`.
 
+Client behaviour worth knowing for ingestion:
+- `inspect()` is **best-effort**: a study that fails (network, or no ISA
+  metadata on the mirror, or a malformed file → `ParseError`) comes back as a
+  `StudyDetail` with a non-empty `.error` and empty data. Ingest must **skip**
+  errored details. `on_error="raise"` opts into abort-on-first-failure.
+- `search()` pages deterministically (default sort `studyId asc`).
+- `errors.py` has `ParseError(MetaboSearchError)` for malformed data files.
+
 ### Environment
 
 - Package manager: **uv**. Venv: `.venv-local`.
   Reinstall: `uv pip install --python .venv-local/bin/python -e ".[dev]"`.
-- Tests: `.venv-local/bin/python -m pytest tests/ -q` (currently 68, all offline).
+- Tests: `.venv-local/bin/python -m pytest tests/ -q` (currently 75, all offline).
 - Types: `.venv-local/bin/pyright` (strict; config already points at `.venv-local`).
   **No mypy.** Lint: `.venv-local/bin/ruff check src tests`.
 - Docs are deliberately lean. Use Google-style docstrings + inline comments for
@@ -345,7 +353,9 @@ After each commit: `pyright` (0 errors), `ruff` clean, `pytest` green.
 - **`INSERT OR REPLACE` needs a PK** in the DDL. Composite natural keys are fine.
 - **`Metabolite.abundances` / `Sample.characteristics` / `SampleRow.factor_values`
   are dicts** → child tables (long format), not JSON columns.
-- **`StudyDetail.error`**: skip errored studies during ingest.
+- **`StudyDetail.error`**: skip errored studies during ingest. It is set for
+  network failures, for studies with no ISA metadata on the mirror, and for
+  `ParseError` (malformed data files) — all collected per study, never raised.
 - **`ml.ingest`/`wb.ingest` are conveniences**; the canonical call is
   `<source>.ingest.write(ws, obj)`. Keep `batch()` pure and DB-free.
 - **`DownloadReport`** is not ingested (files are already `StudyFile` rows via
