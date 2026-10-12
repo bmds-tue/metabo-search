@@ -115,7 +115,8 @@ rows without duplicating the shallow ones. Every call returns an
 `metabolights.ingest.write` / `workbench.ingest.write`.
 
 `ws.sql()` returns DuckDB's own relation, so `.fetchall()`, `.pl()`, `.df()`
-work as usual — the dataframe backends are optional, not dependencies.
+work as usual. `pyarrow` is a dependency (it powers bulk ingestion); the polars
+and pandas backends for `.pl()`/`.df()` remain optional.
 
 ## Documentation
 

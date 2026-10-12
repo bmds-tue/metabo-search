@@ -126,7 +126,8 @@ ws.tables(); ws.schema()
 - Errored `StudyDetail`s (best-effort inspect) are skipped, not written, and
   reported in `IngestReport.skipped`.
 - `ws.sql()` returns DuckDB's own relation: `.fetchall()`, `.pl()`, `.df()`
-  work; dataframe backends are optional, not dependencies.
+  work. `pyarrow` is a dependency (bulk ingestion); the polars/pandas backends
+  for `.pl()`/`.df()` are optional.
 
 ## Notes
 

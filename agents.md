@@ -55,8 +55,15 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - **Completeness is enforced** by `tests/test_ingest_completeness.py`: every
   model field must be a column or declared in `_EXPANDED`, so a new upstream
   field fails the test instead of being silently dropped.
-- **`ws.sql()` returns DuckDB's relation unwrapped** — no `Table`/Arrow layer.
-  Dataframe backends (polars/pandas/pyarrow) are optional, not dependencies.
+- **`ws.sql()` returns DuckDB's relation unwrapped** — no `Table` wrapper.
+- **Ingestion bulk-loads via Arrow.** `Workspace.write` converts each table to
+  a `pyarrow` table (schema from `DESCRIBE`), registers it, and merges with one
+  set-based `ON CONFLICT`. Never use per-row `INSERT OR REPLACE`/`executemany`:
+  it is O(n²) and OOMs at corpus scale. `pyarrow` is a core dep;
+  `pyarrow-stubs` is dev-only for strict typing.
+- **Duplicate natural keys are deduped in Python (last wins) and reported** in
+  `IngestReport.duplicates` — DuckDB's set-based `ON CONFLICT` picks an
+  unspecified winner, so we never rely on it.
 - **Workbench corpus** (`/ST/summary`) takes ~90 s; fetched once per client
   instance and filtered locally (the API has no free-text search).
 - **Docs are deliberately lean** — prefer docstrings over new Markdown.
