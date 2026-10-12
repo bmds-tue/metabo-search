@@ -7,15 +7,70 @@ lives in the source packages, which depend on this module — never the reverse.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 
 import duckdb
+import pyarrow as pa
 
 DEFAULT_PATH = "metabo.duckdb"
 """Workspace location when none is given."""
+
+_INCOMING = "_ingest_incoming"
+"""Name of the registered Arrow view used for set-based upserts."""
+
+_CHUNK = 250_000
+"""Rows converted to Arrow and merged per round, bounding peak memory."""
+
+
+def _chunks(rows: list[dict[str, object]], size: int) -> Iterator[list[dict[str, object]]]:
+    """Yield ``rows`` in slices of at most ``size``."""
+    for start in range(0, len(rows), size):
+        yield rows[start : start + size]
+
+
+def _dedupe(table: TableRows) -> tuple[list[dict[str, object]], int]:
+    """Collapse rows sharing a natural key (last occurrence wins).
+
+    Returns the unique rows, in first-seen order, and how many were collapsed.
+    Doing this ourselves keeps the winner deterministic — DuckDB's set-based
+    ``ON CONFLICT`` does not define which of two same-key input rows survives.
+    """
+    index: dict[tuple[object, ...], int] = {}
+    unique: list[dict[str, object]] = []
+    collapsed = 0
+    for row in table.rows:
+        key = tuple(row[column] for column in table.keys)
+        if key in index:
+            unique[index[key]] = row
+            collapsed += 1
+        else:
+            index[key] = len(unique)
+            unique.append(row)
+    return unique, collapsed
+
+
+_ARROW_TYPES: dict[str, pa.DataType] = {
+    "VARCHAR": pa.string(),
+    "INTEGER": pa.int32(),
+    "BIGINT": pa.int64(),
+    "DOUBLE": pa.float64(),
+}
+"""SQL types used by the sources, mapped to Arrow types."""
+
+
+def _arrow_schema(con: duckdb.DuckDBPyConnection, table: str) -> pa.Schema:
+    """Build an Arrow schema matching a DuckDB table's columns and types."""
+    rows = con.execute(f'DESCRIBE "{table}"').fetchall()
+    fields: list[tuple[str, pa.DataType]] = []
+    for row in rows:
+        name, sql_type = str(row[0]), str(row[1]).upper()
+        arrow_type = _ARROW_TYPES.get(sql_type)
+        assert arrow_type is not None, f"no Arrow type for {sql_type!r} ({table}.{name})"
+        fields.append((name, arrow_type))
+    return pa.schema(fields)
 
 
 @dataclass(frozen=True)
@@ -58,11 +113,14 @@ class IngestReport:
         total: Total rows written.
         skipped: Identifiers skipped because their data was unavailable, e.g.
             a MetaboLights study whose best-effort inspection failed.
+        duplicates: Tables whose incoming rows collapsed on a repeated natural
+            key (table name -> number of collapsed rows).
     """
 
     tables: dict[str, int]
     total: int
     skipped: list[str]
+    duplicates: dict[str, int]
 
 
 class Workspace:
@@ -70,11 +128,31 @@ class Workspace:
 
     Args:
         path: Database file path, or ``":memory:"`` for an ephemeral database.
+        memory_limit: DuckDB memory cap, e.g. ``"4GB"``. ``None`` leaves the
+            DuckDB default.
+        threads: Worker threads. ``None`` leaves the DuckDB default.
+        preserve_insertion_order: Whether DuckDB preserves insertion order in
+            query results. ``None`` leaves the DuckDB default.
     """
 
-    def __init__(self, path: str | Path = DEFAULT_PATH) -> None:
+    def __init__(
+        self,
+        path: str | Path = DEFAULT_PATH,
+        *,
+        memory_limit: str | None = None,
+        threads: int | None = None,
+        preserve_insertion_order: bool | None = None,
+    ) -> None:
         self._path = str(path)
         self._con = duckdb.connect(self._path)
+        if memory_limit is not None:
+            self._con.execute(f"SET memory_limit = '{memory_limit}'")
+        if threads is not None:
+            assert threads >= 1, "threads must be >= 1"
+            self._con.execute(f"SET threads = {threads}")
+        if preserve_insertion_order is not None:
+            flag = "true" if preserve_insertion_order else "false"
+            self._con.execute(f"SET preserve_insertion_order = {flag}")
 
     @property
     def path(self) -> str:
@@ -86,13 +164,14 @@ class Workspace:
 
         Executes the batch DDL, then upserts each table's rows on its natural
         key, so applying the same batch twice changes nothing. Empty tables are
-        skipped: DuckDB rejects an empty ``executemany``.
+        skipped.
 
         Args:
             batch: The DDL and rows to write.
 
         Returns:
-            Per-table row counts (non-empty tables) and the total.
+            Per-table row counts (non-empty tables), the total, and any tables
+            whose incoming rows collapsed on a repeated natural key.
 
         Raises:
             AssertionError: The batch is malformed — no DDL, a table with no
@@ -113,28 +192,57 @@ class Workspace:
                 )
 
         counts: dict[str, int] = {}
+        duplicates: dict[str, int] = {}
         self._con.begin()
         try:
             self._con.execute(batch.ddl)
             for table in batch.tables:
                 if not table.rows:
                     continue
-                columns = ", ".join(f'"{column}"' for column in table.columns)
-                placeholders = ", ".join("?" for _ in table.columns)
-                self._con.executemany(
-                    f'INSERT OR REPLACE INTO "{table.name}" ({columns}) '
-                    f"VALUES ({placeholders})",
-                    [
-                        tuple(row[column] for column in table.columns)
-                        for row in table.rows
-                    ],
-                )
-                counts[table.name] = len(table.rows)
+                rows, collapsed = _dedupe(table)
+                if collapsed:
+                    duplicates[table.name] = collapsed
+                self._merge(table, rows)
+                counts[table.name] = len(rows)
             self._con.commit()
         except Exception:
             self._con.rollback()
             raise
-        return IngestReport(tables=counts, total=sum(counts.values()), skipped=[])
+        return IngestReport(
+            tables=counts,
+            total=sum(counts.values()),
+            skipped=[],
+            duplicates={name: n for name, n in duplicates.items() if n},
+        )
+
+    def _merge(self, table: TableRows, rows: list[dict[str, object]]) -> None:
+        """Upsert one table's rows through Arrow, chunked.
+
+        Rows are converted to Arrow using the target table's own schema and
+        registered as a view, so DuckDB bulk-loads and merges them set-based.
+        This avoids both the per-row conflict resolution (and memory blow-up)
+        of ``INSERT OR REPLACE`` and the slow row-by-row ``executemany`` path.
+        """
+        schema = _arrow_schema(self._con, table.name)
+        keys = ", ".join(f'"{key}"' for key in table.keys)
+        non_keys = [column for column in table.columns if column not in table.keys]
+        if non_keys:
+            updates = ", ".join(
+                f'"{column}" = excluded."{column}"' for column in non_keys
+            )
+            conflict = f"DO UPDATE SET {updates}"
+        else:
+            conflict = "DO NOTHING"
+        for chunk in _chunks(rows, _CHUNK):
+            incoming = pa.Table.from_pylist(chunk, schema=schema)
+            self._con.register(_INCOMING, incoming)
+            try:
+                self._con.execute(
+                    f'INSERT INTO "{table.name}" SELECT * FROM "{_INCOMING}" '
+                    f"ON CONFLICT ({keys}) {conflict}"
+                )
+            finally:
+                self._con.unregister(_INCOMING)
 
     def sql(
         self, query: str, params: Sequence[object] | None = None
@@ -153,8 +261,8 @@ class Workspace:
     def tables(self) -> list[str]:
         """Return the workspace's table names, sorted."""
         rows = self._con.execute(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main' ORDER BY table_name"
+            "SELECT table_name FROM duckdb_tables() WHERE schema_name = 'main' "
+            "ORDER BY table_name"
         ).fetchall()
         return [str(row[0]) for row in rows]
 

@@ -84,6 +84,46 @@ def test_tables_and_schema() -> None:
         assert ws.schema() == ddl
 
 
+def test_write_handles_many_rows_with_a_composite_key() -> None:
+    # Regression guard: per-row INSERT OR REPLACE blew the memory limit here.
+    n = 100_000
+    rows = [
+        {"id": f"g{i // 100:05d}", "name": f"n{i % 100}", "value": i}
+        for i in range(n)
+    ]
+    ddl = (
+        "CREATE TABLE IF NOT EXISTS t (id VARCHAR, name VARCHAR, value INTEGER, "
+        "PRIMARY KEY (id, name))"
+    )
+    batch = IngestBatch(
+        ddl=ddl,
+        tables=[TableRows("t", ("id", "name", "value"), rows, ("id", "name"))],
+    )
+    with Workspace(":memory:", memory_limit="128MB") as ws:
+        assert ws.write(batch).total == n
+        assert ws.sql("SELECT count(*) FROM t").fetchone() == (n,)
+        batch.tables[0].rows[0]["value"] = -1
+        ws.write(batch)
+        assert ws.sql(
+            "SELECT value FROM t WHERE id = 'g00000' AND name = 'n0'"
+        ).fetchone() == (-1,)
+
+
+def test_write_reports_duplicate_natural_keys() -> None:
+    rows = [{"id": "a", "value": 1}, {"id": "a", "value": 2}, {"id": "b", "value": 3}]
+    with Workspace(":memory:") as ws:
+        report = ws.write(_batch(rows))
+        assert report.duplicates == {"t": 1}
+        assert ws.sql("SELECT value FROM t WHERE id = 'a'").fetchone() == (2,)
+
+
+def test_tables_excludes_temp_views() -> None:
+    with Workspace(":memory:") as ws:
+        ws.write(_batch([]))
+        ws.sql("CREATE OR REPLACE TEMP VIEW v AS SELECT * FROM t")
+        assert ws.tables() == ["t"]
+
+
 def test_sql_accepts_params() -> None:
     with Workspace(":memory:") as ws:
         ws.write(_batch([{"id": "a", "value": 1}]))
