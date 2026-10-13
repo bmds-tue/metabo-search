@@ -1,117 +1,271 @@
-# Ingestion hardening — plan
+# Fetch & ingestion hardening — plan (resume here)
 
-Status: proposed. Fixes the scale failures found on a real 16 GiB machine. The
-mapping layer (`batch()`) is sound; the problems are concentrated in
-`Workspace.write`, `MetaboLights.inspect`, and two small `Workspace` helpers.
-This is a focused rework of `Workspace.write`, not of the ingestion model.
+Status: ready to implement. Single source of truth for the next session.
+Read this top to bottom; then `AGENTS.md`, `docs/duckdb-ingestion-plan.md`,
+and the code. Every item has a symptom, evidence, fix, and acceptance criteria.
 
-## 0. Validation (done)
+## 0. How to resume
 
-Measured on duckdb 1.5.6, 512 MiB memory cap, composite primary key:
+- **Current branch**: `feature/duckdb-ingestion`, **15 commits ahead of `main`,
+  unpushed**. `main` already contains the two clients (merge `68cc304`); the
+  feature branch adds the DuckDB workspace + per-source ingestion.
+- **Already landed** (do not redo): DuckDB workspace (`workspace.py`), per-source
+  `ingest.py` mappings, `ml.ingest`/`wb.ingest`, completeness test, isolation
+  test, Arrow bulk load, `inspect(include_metabolites=False)`, docs.
+- **Verify before/after every change**:
+  ```bash
+  .venv-local/bin/pyright            # strict, 0 errors
+  .venv-local/bin/ruff check src tests
+  .venv-local/bin/python -m pytest tests/ -q
+  ```
+- **Every commit must be green.** After a branch is written, verify each commit
+  by checking it out and running pytest (as done previously).
 
-| Load path | 200k rows | 500k rows |
-|---|---|---|
-| `executemany("INSERT OR REPLACE …")` | > 180 s (timeout) | OOM |
-| staging + `executemany` + `ON CONFLICT` | ~47 s | — |
-| **Arrow + `ON CONFLICT`** | **0.2 s** | **0.8 s** |
+## 1. Context
 
-Findings: the culprit is per-row conflict resolution, **not**
-`preserve_insertion_order` (47 s vs 50 s). Arrow is 300x faster than staging
-and removes `executemany` from the hot path. `ON CONFLICT … DO UPDATE` works
-with composite keys; all-key tables need `DO NOTHING`. DuckDB's set-based
-`ON CONFLICT` does not define which of two same-key *input* rows survives, so
-we dedupe in Python (last wins) — see §3.
+`metabo-search` searches MetaboLights and Metabolomics Workbench, ingests the
+hits you care about into a local DuckDB file, and analyses with SQL. Sources
+never unify. Ingestion flow:
 
-Conclusion: the fix is **Arrow-based bulk load**, not staging.
-
-## 1. `Workspace.write`: Arrow bulk load (P0, critical) — done
-
-**Problem.** `executemany("INSERT OR REPLACE …")` row-by-row with composite
-PKs blows the default 12.7 GiB limit on a ~121k-row shallow ingest. No tuning
-hook.
-
-**Fix (fundamental, one method).** Convert each table's rows to an Arrow table
-using the target's own schema (from `DESCRIBE`), register it as a view, and do
-one set-based `INSERT INTO <target> SELECT * FROM <incoming> ON CONFLICT
-(<keys>) DO UPDATE SET …` (or `DO NOTHING` when the table is all keys). Chunked
-at 250k rows. No staging table, no `executemany`.
-
-Adds **`pyarrow` as a core dependency** (it is also what DuckDB's `.pl()`
-needs) and `pyarrow-stubs` for strict typing. Also:
-- `Workspace(path, *, memory_limit=None, threads=None, preserve_insertion_order=None)`
-  — a real tuning hook; no reaching into `ws._con`.
-- Whole batch stays in one transaction.
-
-## 2. `MetaboLights.inspect`: samples-only mode (P0, critical)
-
-**Problem.** `inspect()` always lists, downloads, and parses `m_*.tsv`. Five
-human studies produced 1.2M abundance rows; the whole corpus is a memory bomb.
-No way to ask for samples only.
-
-**Fix (surgical).**
-- `isa_files(http, study_id, *, include_metabolites=True)` — skip `m_` files
-  before download when false.
-- `MetaboLights.inspect(..., include_metabolites=True)` — default preserves
-  today's behaviour; `include_metabolites=False` never fetches or parses MAFs,
-  so `StudyDetail.metabolites` is empty and ingest writes no abundance rows.
-  This is the supported "samples only" path (no `model_copy` hacks).
-
-Streaming `inspect` (iterator instead of a materialised list) is **out of
-scope**; chunking the call remains the user's lever.
-
-## 3. Duplicate natural keys must be visible (P1)
-
-**Problem.** `INSERT OR REPLACE` silently collapses repeated keys
-(`ml_sample (study_id, sample_name)`, `wb_sample (study_id, local_sample_id,
-mb_sample_id)`), undercounting with no warning.
-
-**Fix (surgical).** `Workspace.write` already has `TableRows.keys`. Compute,
-per table, `len(rows) - len(distinct keys)` for the incoming batch and return it
-as `IngestReport.duplicates: dict[str, int]`. Default is report-only (some
-tables legitimately dedupe); add an optional strict flag later if needed.
-Cross-batch re-ingest stays idempotent and is not counted.
-
-## 4. `tables()` should list base tables only (P1, trivial)
-
-**Problem.** `CREATE OR REPLACE TEMP VIEW ml_human …` makes `ws.tables()`
-list `ml_human`. `tables()` is not "tables".
-
-**Fix.** Query `duckdb_tables() WHERE schema_name = 'main'` (same catalog
-`schema()` already uses). Excludes temp views/tables.
-
-## 5. API changes at a glance
-
-```python
-Workspace(path, *, memory_limit=None, threads=None, preserve_insertion_order=False)
-Workspace.write(batch) -> IngestReport          # set-based, chunked, one txn
-IngestReport(tables, total, skipped, duplicates)  # + duplicates
-
-MetaboLights.inspect(..., include_metabolites=True)
-isa_files(http, study_id, *, include_metabolites=True)
+```
+search()/inspect() → typed models → ml.ingest(obj, ws) → source ingest.write(ws, obj)
+                                          └─ batch(obj)  [PURE] → Workspace.write
 ```
 
-## 6. Tests
+`Workspace.write` bulk-loads each table via Arrow (schema from `DESCRIBE`),
+dedupes natural keys, merges with one set-based `ON CONFLICT`, in one
+transaction. Reports are `IngestReport(tables, total, skipped, duplicates)`.
 
-- **Memory/scale**: load a composite-PK table at a low `memory_limit` via
-  `Workspace.write`; assert it completes and upserts correctly. This is the
-  regression guard for #1.
-- **Upsert semantics**: existing idempotency tests must still pass; add a
-  duplicate-keys case asserting `IngestReport.duplicates`.
-- **Samples-only inspect**: mock transport asserts no `m_*.tsv` request is
-  made and `StudyDetail.metabolites == []`.
-- **`tables()`**: create a temp view, assert it is not listed.
+## 2. Locked decisions (do not re-litigate)
 
-## 7. Non-goals
+| Decision | Choice |
+|---|---|
+| Natural-key collisions | keep as is; report + drop duplicates (never throw) |
+| Prune on re-ingest | no; upsert-only, documented as working-set semantics |
+| Import cost (`duckdb`+`pyarrow` at import) | accept |
+| Duplicates | report in `IngestReport.duplicates`, last-wins, drop the rest |
+| Shared ingest mechanics | extract into a neutral, source-agnostic module |
+| WB corpus cache location | `~/.cache/metabo-search` default; `cache_dir=` argument |
+| WB corpus TTL | 7 days; expose opt-out and refresh |
+| WB cache scope | corpus-specific (not a generic HTTP cache) |
+| Stale-on-error | serve stale cache if the refresh fetch fails |
+| Report shape | keep one `IngestReport`; `Workspace.write` returns `skipped=[]` |
 
-- No streaming/iterator `inspect` (chunk at the call site for now).
-- No deletion/pruning of children removed upstream (upsert-only stays).
-- No change to the pure `batch()` mapping or the per-source schema.
-- No dataframe/Arrow layer.
+## 3. Open micro-decisions (defaults chosen; change if desired)
 
-## 8. Order
+1. **Inspect API shape**: default **booleans** (`include_samples=…`, matching
+   `MetaboLights.inspect(include_metabolites=…)`). Alternative: a
+   `parts: frozenset[str]` set.
+2. **Partial details**: default **document** that partial `StudyDetail`s are for
+   selective ingestion, not an authoritative record. Alternative: add
+   `StudyDetail.included: frozenset[str]`.
 
-1. Validation gate (§0).
-2. #1 `Workspace.write` rework + tuning + scale test (unblocks the corpus).
-3. #2 `inspect` samples-only.
-4. #4 `tables()` (trivial, do with #1).
-5. #3 duplicate reporting (needs #1's shape).
+---
+
+## 4. Issues and fixes
+
+### A. Workbench whole-index corpus is not cached — P0
+
+**Symptom.** `Workbench.all_studies()` fetches `/ST/summary` (~90 s) once per
+client *instance*, in memory only. Not persisted, not shared across instances
+or processes. Every new `Workbench()` re-pays it. `transport.py` has **no HTTP
+cache** (no `cache`/`ttl`/`etag`). `docs/api-design.md` §11 claims an HTTP cache
+— that is stale.
+
+**Evidence.** `workbench/client.py`: `self._summaries` + `all_studies()`.
+
+**Fix.** Corpus-specific disk cache.
+- New `src/metabo_search/workbench/corpus.py` with a small cache helper.
+- `Workbench(cache_dir: str | Path | None = Path.home()/".cache"/"metabo-search",
+  corpus_ttl: timedelta = timedelta(days=7))`.
+- `cache_dir=None` → no disk cache (today's behaviour).
+- `wb.refresh_corpus() -> dict[str, StudySummary]` → force fetch, rewrite cache,
+  update `_summaries`.
+- `all_studies()` read order: memory → fresh cache → fetch (save). On fetch
+  failure with a stale cache present → use stale + emit a visible notice.
+- File: `<cache_dir>/wb-corpus-<sha1(base_url)[:12]>.json` containing
+  `{"fetched_at": ISO8601, "base_url": ..., "payload": <raw /ST/summary>}`.
+  Atomic write (temp file + `os.replace`).
+- JSON (raw response), not parquet: no coupling to `StudySummary`.
+
+**Acceptance criteria.**
+- Second `Workbench()` with the same `cache_dir` does **not** hit `/ST/summary`.
+- `cache_dir=None` always fetches.
+- Expired cache triggers a fetch; if the fetch fails, the stale cache is used.
+- `refresh_corpus()` always fetches and rewrites.
+- Tests use `tmp_path` + `httpx.MockTransport`.
+
+### B. `Workbench.inspect()` makes 4 calls/study, re-fetches summaries — P1
+
+**Symptom.** `inspect()` reduces `str | StudySummary` inputs to `study_id` and
+unconditionally calls `/summary`, `/factors`, `/analysis`, `/metabolites`. A
+passed `StudySummary` is discarded and re-downloaded. No `include_*` option.
+
+**Evidence.** Request log for one study: 4 requests, including `/summary`.
+For 1,870 human studies: ~7,480 calls where 1,870 suffice (~20 min → ~5–6 min).
+
+**Fix.**
+- Reuse a passed `StudySummary`; only call `self.study(id)` for `str` inputs
+  (and only when `include_summary`).
+- Add `include_summary=True, include_samples=True, include_analyses=True,
+  include_metabolites=True` (defaults preserve current behaviour).
+- `StudyDetail.summary` is already `StudySummary | None`.
+
+**Acceptance criteria.**
+- `wb.inspect(summaries, include_analyses=False, include_metabolites=False)`
+  issues exactly **1** request/study.
+- Passing a `StudySummary` never issues a `/summary` request.
+- `wb.inspect(ids)` with defaults still returns the full `StudyDetail`
+  (existing tests unchanged).
+- `wb.inspect(ids, include_summary=False, include_analyses=False,
+  include_metabolites=False)` issues exactly 1 request/study.
+
+### C. MetaboLights downloads the unparsed `i_Investigation.txt` — P1
+
+**Symptom.** `isa_files` matches `[isam]_` and downloads `i_Investigation.txt`
+for every study, but `parse_study_detail` only consumes `s_`, `a_`, `m_`. The
+parse module's docstring explicitly says the investigation file is deliberately
+not parsed. ~1,025 wasted downloads on the human corpus.
+
+**Evidence.** `metabolights/files.py` `_ISA_NAME = r"^[isam]_…"` vs
+`metabolights/parse.py` `parse_study_detail` (`s_`/`a_`/`m_` only).
+
+**Fix.** Drop `i` from `_ISA_NAME` (keep `[sam]_`). Aligns code with the
+documented intent. (Parsing it is the alternative, but explicitly out of scope.)
+
+**Acceptance criteria.** An `inspect` never requests `i_Investigation.txt`;
+existing sample/assay/MAF parsing unchanged.
+
+### D. Whole-table dedupe is a scale hazard — P0
+
+**Symptom.** `_dedupe` builds a dict keyed by full natural-key tuples for the
+**entire** table before chunking, even with zero duplicates.
+
+**Evidence.** Measured: **1,000,000 rows → 162 MB peak**, no duplicates.
+`ml_metabolite_abundance` already reaches millions of rows.
+
+**Fix.** Dedupe **per chunk** inside `_merge`. Global last-wins is preserved:
+chunks are merged in order and `ON CONFLICT DO UPDATE` overwrites, so a later
+chunk's row wins. Accumulate the collapsed count across chunks.
+
+**Acceptance criteria.** Existing duplicate/upsert tests pass; peak dedupe
+memory is bounded by `_CHUNK`, not table size; add a test that a duplicate split
+across chunk boundaries still resolves last-wins.
+
+### E. Audit is written in a second transaction — P0
+
+**Symptom.** `ingest.write` = `ws.write(data)` then `_record_run` =
+`ws.write(audit)`. Two transactions, two full DDL executions; data can commit
+while the audit fails (no trail).
+
+**Evidence.** `metabolights/ingest.py` and `workbench/ingest.py` `write()`.
+
+**Fix.** Build the audit rows from the batch **before** writing (counts are
+known from `batch.tables`), append them to the same `IngestBatch`, and let
+`Workspace.write` commit once. Exclude the audit table from
+`IngestReport.tables`/`total`.
+
+**Acceptance criteria.** One transaction per ingest; an ingest writes data rows
+and `*_ingest_run` rows atomically; `IngestReport` excludes the audit table.
+
+### F. Duplicated ingest mechanics — P2
+
+**Symptom.** `_build_ddl`, `_record_run`, `_to_table_rows`, `_add`, `_skipped`,
+and the `batch`/`write` scaffolding are duplicated verbatim across the two
+`ingest.py` files (~90 lines).
+
+**Fix.** Move source-agnostic mechanics into a neutral module (in or beside
+`workspace.py`; it must import no source). Proposed helpers:
+`render_ddl(tables)`, `to_table_rows(tables, rows_by_name)`,
+`record_run(ws, source, audit_table, tables_spec, report)`,
+`skipped_ids(obj, detail_type)`. Each source keeps only its `_TABLES` spec and
+mapping functions.
+
+**Acceptance criteria.** Both `ingest.py` files shrink to spec + mapping; all
+existing tests pass; isolation test still holds (`workspace.py` imports no
+source).
+
+### G. Completeness test is coarse; two paths untested — P2
+
+**Symptom.** `tests/test_ingest_completeness.py` checks `model_fields ⊆
+union(all columns) ∪ _EXPANDED`. The union includes the audit table, so a new
+field sharing a name (`source`, `rows`) passes silently. `ml_funding` and
+`ml_protocol_component` are never exercised (fixtures have empty lists).
+
+**Fix.**
+- Replace with a **sentinel test**: construct one instance per model with every
+  field set to a unique marker, run `batch()`, assert every marker appears in
+  the produced rows. Exclude intentionally-dropped fields (`StudyDetail.error`).
+- Add explicit coverage for `ml_funding` and `ml_protocol_component`.
+
+**Acceptance criteria.** Deleting any mapping line makes a sentinel test fail;
+funding/component rows are asserted.
+
+### H. Docs drift — P3
+
+**Symptom.** `docs/api-design.md` still documents `Table`, `export()`, `.df()`,
+and "HTTP cache on" — all removed or never built.
+
+**Fix.** Refresh §8/§11; document corpus caching, partial-detail semantics, and
+upsert-only behaviour.
+
+---
+
+## 5. Branch & commit plan
+
+Bases: client-only work branches off `main` (which already has the clients);
+ingestion work branches off `feature/duckdb-ingestion`.
+
+### Branch 1 — `perf/workbench-corpus-cache` (base `main`)
+Purpose: skip the ~90 s WB index fetch on warm runs.
+1. `feat(workbench): disk cache for the whole-index corpus`
+2. `test(workbench): corpus cache hit / miss / ttl / refresh / stale`
+3. `docs: corpus caching (README + SKILL)`
+
+### Branch 2 — `perf/inspect-fetch` (base `main`)
+Purpose: stop fetching what inspection doesn't use.
+1. `feat(workbench): inspect only requested parts; reuse passed summaries`
+2. `fix(metabolights): don't download the unparsed investigation file`
+3. `test: inspection request counts`
+4. `docs: partial-detail semantics`
+
+### Branch 3 — `refactor/ingest-write-path` (base `feature/duckdb-ingestion`)
+Purpose: memory-bounded, atomic write path; no duplication.
+1. `perf(workspace): dedupe per chunk, not per table` (+ test)
+2. `fix(ingest): record the audit in the same transaction` (+ test)
+3. `refactor(ingest): extract shared mechanics` (+ tests)
+4. `docs: upsert-only semantics + refresh api-design.md`
+
+### Branch 4 — `test/ingest-completeness` (base `refactor/ingest-write-path`)
+Purpose: prove no silent field loss (needs Branch 3's final structure).
+1. `test(ingest): sentinel-based total-mapping test`
+2. `test(metabolights): funding + protocol-component coverage`
+
+### Merge order
+`1 → main`, `2 → main`; rebase `feature/duckdb-ingestion` on the updated
+`main`; `3 → feature`; `4 → feature`; then `feature/duckdb-ingestion → main`.
+
+### Future (separate branch, not now)
+- `feat/deep-result-cache` — per-study deep results keyed by
+  `(study_id, revision)` (the role the removed `core/cache` played). Makes warm
+  deep runs seconds instead of minutes. Needs a decision on the MetaboLights
+  revision key.
+
+## 6. Non-goals
+
+- No pruning of children removed upstream (upsert-only stays).
+- No natural-key discriminators (accepted collisions, reported).
+- No generic HTTP cache.
+- No streaming `inspect` iterator.
+- No dataframe/`Table` wrapper; `ws.sql()` stays the raw DuckDB relation.
+
+## 7. Definition of done
+
+- Branch 1: warm `Workbench()` never re-fetches the corpus; TTL/refresh/opt-out
+  work; tests offline.
+- Branch 2: 1 request/study for samples-only; no `i_` download; defaults
+  unchanged.
+- Branch 3: dedupe memory bounded; one transaction per ingest; shared mechanics
+  extracted; both `ingest.py` slim.
+- Branch 4: sentinel completeness passes; funding/component covered.
+- All branches: pyright strict 0, ruff clean, pytest green, every commit green.

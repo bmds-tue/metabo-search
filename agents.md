@@ -75,3 +75,5 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - `docs/api-design.md` — target public API.
 - `docs/rebuild-plan.md` — architecture and the client branch plan.
 - `docs/duckdb-ingestion-plan.md` — the ingestion branch schema and steps.
+- `docs/ingestion-hardening-plan.md` — **resume here**: fetch/ingest hardening
+  plan (corpus cache, inspect parts, write-path fixes, branch/commit layout).
