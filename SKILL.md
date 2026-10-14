@@ -134,7 +134,8 @@ ws.tables(); ws.schema()
 ## Notes
 
 - **Keep `inspect(workers=4)`** for corpus-scale runs; more workers trip
-  server throttling (8 was ~60% slower than 4).
+  server throttling (8 was ~60% slower than 4). `inspect` warns on 429s and
+  `client.stats` reports throttled responses and backoff time.
 - **Offline by default in tests**: pass an `httpx` transport to either client.
 - **Strictly typed**: pydantic models; `pyright` strict; `py.typed` shipped.
 - Ingestion schema and steps: `docs/duckdb-ingestion-plan.md`.

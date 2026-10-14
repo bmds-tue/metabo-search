@@ -93,6 +93,10 @@ server rate limits, and the client then spends its wall-clock in
 `Retry-After`/exponential backoff — on a whole-corpus scan, 8 workers was ~60%
 slower than 4. Raise `workers` only for small batches.
 
+Throttling is not silent. `inspect` emits a `UserWarning` when it sees 429s or
+failed studies, and `client.stats` reports cumulative attempts, throttled
+responses, and time spent in backoff (`client.reset_stats()` zeroes it).
+
 ## Working set (DuckDB)
 
 A `Workspace` is a local DuckDB file. Ingest the results you care about, then
