@@ -211,6 +211,9 @@ class Workbench:
     def study(self, study_id: str) -> StudySummary:
         """Fetch one study summary.
 
+        A single-accession convenience over :meth:`studies_by` (``study_id``
+        input, ``summary`` output).
+
         Args:
             study_id: Workbench accession, e.g. ``"ST000001"``.
 
@@ -221,10 +224,10 @@ class Workbench:
             NotFound: No study with that accession exists.
         """
         assert study_id, "study_id must be non-empty"
-        rows = normalize_rows(self._get(f"study/study_id/{study_id}/summary"), "study_id")
-        if not rows:
+        summaries = self.studies_by("study_id", study_id)
+        if not summaries:
             raise NotFound(f"study {study_id!r} not found")
-        return StudySummary.model_validate(rows[0])
+        return summaries[0]
 
     def studies_by(self, input_item: StudyInputItem, value: str) -> Results[StudySummary]:
         """Find studies through the native Workbench study index.
