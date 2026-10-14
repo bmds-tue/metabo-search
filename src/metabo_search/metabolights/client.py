@@ -31,7 +31,14 @@ from metabo_search.metabolights.models import (
 )
 from metabo_search.metabolights.parse import parse_study_detail
 from metabo_search.results import Results
-from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
+from metabo_search.transport import (
+    HttpClient,
+    HttpRecord,
+    HttpStats,
+    RateLimit,
+    RetryPolicy,
+    warn_if_throttled,
+)
 from metabo_search.workspace import IngestReport, Workspace
 
 BASE_URL = "https://www.ebi.ac.uk/metabolights/ws3"
@@ -241,7 +248,9 @@ class MetaboLights:
         Best-effort by default: a study that fails after retries is returned as
         a :class:`StudyDetail` with an ``error`` message and empty data, so a
         long batch always yields one result per input. Pass
-        ``on_error="raise"`` to abort on the first failure instead.
+        ``on_error="raise"`` to abort on the first failure instead. A batch
+        the server throttled (or that lost studies) emits a ``UserWarning``;
+        :attr:`stats` has the counters.
 
         Args:
             study_ids: Accessions, or study documents to read accessions from.
@@ -271,8 +280,15 @@ class MetaboLights:
                     raise
                 return StudyDetail(study_id=study_id, error=str(exc))
 
+        before = self._http.stats
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
             details = list(pool.map(_run, ids))
+        warn_if_throttled(
+            self._http.stats - before,
+            errors=sum(1 for detail in details if detail.error),
+            workers=workers,
+            action="MetaboLights.inspect",
+        )
         return Results(details)
 
     def _inspect_one(
@@ -304,6 +320,15 @@ class MetaboLights:
             items that were skipped.
         """
         return _ingest.write(ws, obj)
+
+    @property
+    def stats(self) -> HttpStats:
+        """Cumulative HTTP attempt statistics: attempts, throttling, backoff."""
+        return self._http.stats
+
+    def reset_stats(self) -> None:
+        """Reset :attr:`stats` to zero."""
+        self._http.reset_stats()
 
     def close(self) -> None:
         """Close the underlying connection pool."""

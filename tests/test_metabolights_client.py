@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 
@@ -228,6 +229,70 @@ def test_inspect_flags_missing_isa_metadata() -> None:
     details = _client(handler).inspect(["MTBLS14005"])
     assert details[0].samples == []
     assert "ISA" in details[0].error
+
+
+def test_inspect_warns_when_throttled() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "0.001"})
+        url = str(request.url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(
+                200, text='<a href="s_MTBLS1.txt">s</a><a href="a_MTBLS1.txt">a</a>'
+            )
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        if url.endswith("a_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_ASSAY)
+        return httpx.Response(404)
+
+    client = MetaboLights(
+        transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(max_attempts=3, base_delay=0.0, jitter=0.0),
+    )
+    with pytest.warns(UserWarning, match="throttled"):
+        details = client.inspect(["MTBLS1"])
+    assert details[0].error == ""
+    assert client.stats.throttled == 1
+    assert client.stats.backoff_seconds >= 0.001
+
+
+def test_inspect_does_not_warn_when_clean() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(
+                200, text='<a href="s_MTBLS1.txt">s</a><a href="a_MTBLS1.txt">a</a>'
+            )
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        if url.endswith("a_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_ASSAY)
+        return httpx.Response(404)
+
+    client = _client(handler)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        client.inspect(["MTBLS1"])
+    assert not [w for w in caught if issubclass(w.category, UserWarning)]
+
+
+def test_stats_track_inspect_requests() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/MTBLS1/"):
+            return httpx.Response(200, text='<a href="s_MTBLS1.txt">s</a>')
+        if url.endswith("s_MTBLS1.txt"):
+            return httpx.Response(200, text=ISA_SAMPLES)
+        return httpx.Response(404)
+
+    client = _client(handler)
+    client.inspect(["MTBLS1"])
+    assert client.stats.requests >= 2
+    assert client.stats.ok == client.stats.attempts
 
 
 def test_search_defaults_to_stable_sort() -> None:
