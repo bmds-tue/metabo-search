@@ -84,6 +84,21 @@ def test_parse_sample_file_organism_is_not_tissue() -> None:
     assert first.source_name == "Human1"
 
 
+def test_parse_sample_file_records_row_index() -> None:
+    samples = parse_sample_file(SAMPLE_SHEET)
+    assert [s.sample_row for s in samples] == [0, 1]
+
+
+def test_parse_sample_file_keeps_duplicate_names_distinct() -> None:
+    # A Sample Name is a reusable label in real submissions (e.g. MTBLS66),
+    # so the row index, not the name, identifies a sample.
+    sheet = "Sample Name\tSource Name\nControl 1\tBatchA\nControl 1\tBatchB\n"
+    samples = parse_sample_file(sheet)
+    assert [s.sample_name for s in samples] == ["Control 1", "Control 1"]
+    assert [s.sample_row for s in samples] == [0, 1]
+    assert [s.source_name for s in samples] == ["BatchA", "BatchB"]
+
+
 def test_parse_sample_file_characteristics_and_factors() -> None:
     first = parse_sample_file(SAMPLE_SHEET)[0]
     assert first.characteristics["Organism part"] == "urine"

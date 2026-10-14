@@ -238,6 +238,36 @@ def test_write_records_the_audit_in_the_same_transaction(
         assert ws.tables() == []
 
 
+def test_batch_keeps_samples_that_share_a_name() -> None:
+    # Regression: (study_id, sample_name) collapsed distinct samples; the row
+    # index disambiguates them (MTBLS66 repeats "Control 1" 206 times).
+    detail = StudyDetail(
+        study_id="MTBLS66",
+        samples=[
+            Sample(sample_name="Control 1", sample_row=0, factor_values={"Replicate": "1"}),
+            Sample(sample_name="Control 1", sample_row=1, factor_values={"Replicate": "2"}),
+        ],
+    )
+    batch = ingest.batch(detail)
+    assert [row["sample_row"] for row in _rows(batch, "ml_sample")] == [0, 1]
+    factors = _rows(batch, "ml_sample_factor")
+    assert {(row["sample_row"], row["value"]) for row in factors} == {(0, "1"), (1, "2")}
+
+
+def test_write_does_not_collapse_samples_that_share_a_name() -> None:
+    detail = StudyDetail(
+        study_id="MTBLS66",
+        samples=[
+            Sample(sample_name="Control 1", sample_row=0),
+            Sample(sample_name="Control 1", sample_row=1),
+        ],
+    )
+    with Workspace(":memory:") as ws:
+        report = ingest.write(ws, detail)
+        assert report.duplicates == {}
+        assert ws.sql("SELECT count(*) FROM ml_sample").fetchone() == (2,)
+
+
 def test_write_records_an_audit_run() -> None:
     with Workspace(":memory:") as ws:
         ingest.write(ws, _detail())
