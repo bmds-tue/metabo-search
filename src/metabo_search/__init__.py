@@ -11,6 +11,7 @@ The two clients have no heavy dependencies. :class:`Workspace` (and
 
 from __future__ import annotations
 
+from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING
 
 from metabo_search.metabolights import MetaboLights
@@ -20,6 +21,11 @@ if TYPE_CHECKING:
     from metabo_search.workspace import Workspace
 
 __all__ = ["MetaboLights", "Workbench", "Workspace"]
+
+try:
+    __version__ = version("metabo-search")
+except PackageNotFoundError:  # pragma: no cover - uninstalled source tree
+    __version__ = "0.0.0"
 
 
 def __getattr__(name: str) -> object:

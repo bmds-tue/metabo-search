@@ -18,6 +18,12 @@ def test_package_imports() -> None:
     assert isinstance(metabo_search.__all__, list)
 
 
+def test_version_is_exposed() -> None:
+    """The installed distribution version is exposed as ``__version__``."""
+    assert isinstance(metabo_search.__version__, str)
+    assert metabo_search.__version__
+
+
 def test_clients_do_not_import_the_ingest_stack() -> None:
     """Importing the package and clients must not pull in duckdb/pyarrow."""
     result = _python(
