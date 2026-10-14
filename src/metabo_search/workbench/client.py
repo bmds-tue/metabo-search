@@ -206,36 +206,61 @@ class Workbench:
         study_ids: Sequence[str | StudySummary],
         *,
         workers: int = 8,
+        include_summary: bool = True,
+        include_samples: bool = True,
+        include_analyses: bool = True,
+        include_metabolites: bool = True,
         on_error: Literal["collect", "raise"] = "collect",
     ) -> Results[StudyDetail]:
-        """Fetch deep per-study data (factors, analyses, metabolites).
+        """Fetch deep per-study data, selecting which parts to include.
 
         Best-effort by default: a study that fails after retries is returned as
         a :class:`StudyDetail` with an ``error`` message and empty data, so a
         long batch always yields one result per input. Pass
         ``on_error="raise"`` to abort on the first failure instead.
 
+        A passed :class:`StudySummary` is reused as the detail's summary and is
+        never refetched; a plain accession is fetched only when
+        ``include_summary`` is set. Narrowing the ``include_*`` flags skips the
+        endpoints you do not need — e.g. samples-only inspection makes one
+        request per study instead of four.
+
         Args:
-            study_ids: Accessions, or summaries to read accessions from.
+            study_ids: Accessions, or summaries to reuse.
             workers: Parallel study fetches.
+            include_summary: Include each study's summary. For a passed
+                summary this only controls whether it is kept, not whether it
+                is fetched.
+            include_samples: Fetch the ``factors`` endpoint.
+            include_analyses: Fetch the ``analysis`` endpoint.
+            include_metabolites: Fetch the ``metabolites`` endpoint.
             on_error: ``"collect"`` (default) records per-study errors;
                 ``"raise"`` propagates the first failure.
 
         Returns:
             One :class:`StudyDetail` per input, in input order.
         """
-        ids = [item if isinstance(item, str) else item.study_id for item in study_ids]
-        if not ids:
+        targets: list[tuple[str, StudySummary | None]] = [
+            (item.study_id, item) if isinstance(item, StudySummary) else (item, None)
+            for item in study_ids
+        ]
+        if not targets:
             return Results()
 
-        def _run(study_id: str) -> StudyDetail:
+        def _run(target: tuple[str, StudySummary | None]) -> StudyDetail:
+            study_id, passed = target
             try:
+                summary = None
+                if include_summary:
+                    summary = passed if passed is not None else self.study(study_id)
                 return StudyDetail(
                     study_id=study_id,
-                    summary=self.study(study_id),
-                    samples=list(self.samples(study_id)),
-                    analyses=list(self.analyses(study_id)),
-                    metabolites=list(self.metabolites(study_id)),
+                    summary=summary,
+                    samples=list(self.samples(study_id)) if include_samples else [],
+                    analyses=list(self.analyses(study_id)) if include_analyses else [],
+                    metabolites=(
+                        list(self.metabolites(study_id)) if include_metabolites else []
+                    ),
                 )
             except MetaboSearchError as exc:
                 if on_error == "raise":
@@ -243,7 +268,7 @@ class Workbench:
                 return StudyDetail(study_id=study_id, error=str(exc))
 
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-            return Results(pool.map(_run, ids))
+            return Results(pool.map(_run, targets))
 
     def close(self) -> None:
         """Close the underlying connection pool."""
