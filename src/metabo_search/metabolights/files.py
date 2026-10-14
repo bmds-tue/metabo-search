@@ -46,7 +46,10 @@ _SIZE_AFTER = re.compile(
 )
 _SIZE_UNITS = {"K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4, "P": 1024**5, "E": 1024**6}
 
-_ISA_NAME = re.compile(r"^[isam]_[^/]+\.(txt|tsv)$", re.IGNORECASE)
+# The investigation file (i_Investigation.txt) is deliberately not fetched:
+# its study-level content is already in the search index and the parsers do
+# not consume it (see metabolights/parse.py).
+_ISA_NAME = re.compile(r"^[sam]_[^/]+\.(txt|tsv)$", re.IGNORECASE)
 
 
 def parse_size(text: str) -> int:
@@ -109,8 +112,9 @@ def categorize(extension: str, relative_path: str = "") -> str:
 def isa_files(http: HttpClient, study_id: str) -> dict[str, str]:
     """Download a study's ISA-Tab files as ``{file_name: text}``.
 
-    Lists the study root (not ``FILES/``) and fetches every ``i_*.txt``,
-    ``s_*.txt``, ``a_*.txt``, and ``m_*.tsv``.
+    Lists the study root (not ``FILES/``) and fetches every ``s_*.txt``,
+    ``a_*.txt``, and ``m_*.tsv``. The investigation file is not fetched: its
+    study-level content is already in the search index.
 
     Args:
         http: The transport to use.
