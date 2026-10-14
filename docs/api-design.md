@@ -45,7 +45,7 @@ hits = ml.search("human blood plasma lipidomics",
                  organisms=["Homo sapiens"],
                  sample_types=["blood plasma"],
                  min_samples=50, limit=100)
-print(hits.fmt())                        # hits is a list subclass; hits.df() too
+print(hits.fmt())                        # hits is a list subclass; hits.records() too
 
 # 2. ingest exactly those hits
 ml.ingest(hits, ws)
@@ -115,6 +115,7 @@ def write(ws: Workspace, obj) -> IngestReport:
 @dataclass(frozen=True)
 class TableRows:
     name: str
+    columns: tuple[str, ...]       # column names, in DDL order
     rows: list[dict]
     keys: tuple[str, ...]          # natural key for upsert
 
@@ -125,10 +126,9 @@ class IngestBatch:
 
 class Workspace:
     def write(self, batch: IngestBatch) -> IngestReport: ...
-    def sql(self, query: str, params=None) -> Table: ...
+    def sql(self, query, params=None) -> duckdb.DuckDBPyRelation: ...
     def tables(self) -> list[str]: ...
     def schema(self, table: str | None = None) -> str: ...
-    def export(self, query: str, dest, *, format="parquet") -> Path: ...
 ```
 
 `ml.ingest(hits, ws)` is the ergonomic entry point; it delegates to
@@ -141,7 +141,10 @@ ingest.write(ws, hits)
 
 `Workspace.write` is **idempotent** (upsert on natural keys) and
 **incremental**: re-adding the same hits changes nothing; adding `StudyDetail`
-enriches rows already ingested from `StudyHit`.
+enriches rows already ingested from `StudyHit`. It is **upsert-only** — rows
+removed upstream are never pruned, so the workspace is a working set, not a
+mirror. Natural-key collisions are deduped last-wins and reported in
+`IngestReport.duplicates`.
 
 **Why not `ws.add(obj)`:** it forces `Workspace` to map types → tables, i.e. to
 know every source; adding a source would edit `Workspace`. A registry avoids the
@@ -188,7 +191,9 @@ wb.study(study_id) -> StudySummary
 wb.samples(study_id) -> Results[SampleRow]
 wb.analyses(study_id) -> Results[AnalysisRecord]
 wb.metabolites(study_id) -> Results[MetaboliteRow] | MetaboliteList
-wb.inspect(study_ids, *, workers=8, on_error="collect") -> Results[StudyDetail]
+wb.inspect(study_ids, *, workers=8, include_summary=True, include_samples=True,
+           include_analyses=True, include_metabolites=True,
+           on_error="collect") -> Results[StudyDetail]
 ```
 
 `wb.search` uses the workbench's whole-index summary as its search index (there
@@ -202,6 +207,13 @@ transport's retries is returned as a `StudyDetail` whose `error` field holds
 the message (and whose data is empty). A long batch therefore always yields one
 result per input, and failures are visible per study rather than lost. Pass
 `on_error="raise"` to abort on the first failure instead.
+
+`wb.inspect` also takes `include_summary` / `include_samples` /
+`include_analyses` / `include_metabolites` (all default `True`). Narrowing them
+skips endpoints, so samples-only inspection makes one request per study instead
+of four. A passed `StudySummary` is reused and never refetched. The result is a
+*partial* `StudyDetail` — useful for selective ingestion, not an authoritative
+record.
 
 ## 7. Tables written by ingest
 
@@ -223,8 +235,10 @@ Workspace(path: str | Path = "metabo.duckdb")   # cwd by default; a path may be 
 
 - `Workspace` knows only tables/rows/SQL. It imports no source package.
 - `Results[T]` is a **`list` subclass**: it behaves exactly like a list
-  (`hits[0]`, `len`, slicing, iteration) and adds `.df()`, `.fmt()`, `.ids()`.
-- `Table` is an Arrow-backed SQL result: `.records()`, `.df()`, `.arrow()`, `.fmt()`.
+  (`hits[0]`, `len`, slicing, iteration) and adds `.records()`, `.fmt()`,
+  `.ids()`.
+- `ws.sql()` returns DuckDB's own relation, unwrapped: `.fetchall()`, `.pl()`,
+  `.df()`, … work as usual.
 - Reports are typed: `IngestReport`, `DownloadReport`.
 
 ## 8.1 Model & code conventions
@@ -259,7 +273,9 @@ core (`search` / `inspect` / `ingest` / `sql`).
 
 - `transport.HttpClient` — pooling, retries, `Retry-After`, rate limits,
   timeouts, raw sink, error mapping.
-- `Results[T]`, `Table`.
+- `Results[T]`.
+- `metabo_search.ingest` — source-agnostic DDL rendering, row wrapping, the
+  audit run, and error collection.
 - One exception hierarchy (`NotFound`, `NotIngested`, `APIError`,
   `RateLimited`, `TransientError`, `ClientError`, `WarehouseError`).
 
@@ -269,7 +285,7 @@ core (`search` / `inspect` / `ingest` / `sql`).
 |---|---|---|
 | Base URL | `.../metabolights/ws3` | `.../metabolomicsworkbench.org/rest` |
 | Mirror | `ftp.ebi.ac.uk/.../studies/public` | — |
-| HTTP cache | on, per-endpoint TTL | on, per-endpoint TTL |
+| Corpus cache | — | on, 7-day TTL in `~/.cache/metabo-search` |
 | Retries / timeout | 4, backoff+jitter / 30 s | 4 / 30 s (180 s for the corpus) |
 | Rate limit | 5 req/s | 5 req/s (1 req/s corpus) |
 | `limit` | 25 | 25 |

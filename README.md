@@ -107,9 +107,10 @@ ws.tables()
 ws.schema()
 ```
 
-Ingestion is **idempotent** (upsert on natural keys): re-ingesting the same
-object changes nothing, and a `StudyDetail` after a `StudyHit` adds the deeper
-rows without duplicating the shallow ones. Every call returns an
+Ingestion is **idempotent** (upsert on natural keys) and **upsert-only**:
+re-ingesting the same object changes nothing, a `StudyDetail` after a
+`StudyHit` adds the deeper rows without duplicating the shallow ones, and rows
+removed upstream are never pruned. Every call returns an
 `IngestReport` (table → row count) and appends an `ml_ingest_run` /
 `wb_ingest_run` audit row. `ml.ingest` / `wb.ingest` delegate to
 `metabolights.ingest.write` / `workbench.ingest.write`.

@@ -118,8 +118,9 @@ ws.sql("select facet, count(*) n from ml_study_term group by 1 order by n desc")
 ws.tables(); ws.schema()
 ```
 
-- Ingestion is **idempotent** (upsert on natural keys): re-ingesting changes
-  nothing; a `StudyDetail` after a `StudyHit` adds deeper rows, no duplicates.
+- Ingestion is **idempotent** (upsert on natural keys) and **upsert-only**:
+  re-ingesting changes nothing, a `StudyDetail` after a `StudyHit` adds deeper
+  rows without duplicates, and rows removed upstream are never pruned.
 - Every call returns an `IngestReport` (table → row count) and writes an
   `ml_ingest_run` / `wb_ingest_run` audit row. `ml.ingest` / `wb.ingest`
   delegate to `metabolights.ingest.write` / `workbench.ingest.write`.
