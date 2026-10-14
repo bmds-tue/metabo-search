@@ -6,6 +6,14 @@ import json
 from pathlib import Path
 
 import pytest
+from contract import (
+    ML_AUDIT,
+    assert_audit_trail,
+    assert_duplicates_reported,
+    assert_idempotent,
+    assert_metabolights_detail_round_trips,
+    audit_run_ids,
+)
 
 from metabo_search.metabolights import ingest
 from metabo_search.metabolights.models import (
@@ -277,3 +285,26 @@ def test_write_records_an_audit_run() -> None:
         assert rows
         assert {row[0] for row in rows} == {"metabolights"}
         assert ("ml_sample", 1) in {(row[1], row[2]) for row in rows}
+
+
+def test_contract_round_trips_offline() -> None:
+    detail = _detail()
+    with Workspace(":memory:") as ws:
+        report = ingest.write(ws, detail)
+        assert_metabolights_detail_round_trips(detail, report, ws)
+        assert_duplicates_reported(report, "ml_sample", 0)
+
+
+def test_contract_idempotent_offline() -> None:
+    detail = _detail()
+    with Workspace(":memory:") as ws:
+        ingest.write(ws, detail)
+        assert_idempotent(lambda: ingest.write(ws, detail), ws, ML_AUDIT)
+
+
+def test_contract_audit_trail_offline() -> None:
+    detail = _detail()
+    with Workspace(":memory:") as ws:
+        before = audit_run_ids(ws, ML_AUDIT)
+        report = ingest.write(ws, detail)
+        assert_audit_trail(report, ws, ML_AUDIT, "metabolights", before)

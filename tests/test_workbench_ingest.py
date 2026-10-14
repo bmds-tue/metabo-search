@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from contract import (
+    WB_AUDIT,
+    assert_idempotent,
+    assert_workbench_detail_round_trips,
+)
 
 from metabo_search.results import Results
 from metabo_search.workbench import ingest
@@ -167,3 +172,17 @@ def test_write_records_an_audit_run() -> None:
         rows = ws.sql("SELECT source, table_name, rows FROM wb_ingest_run").fetchall()
         assert rows
         assert {row[0] for row in rows} == {"metabolomics_workbench"}
+
+
+def test_contract_round_trips_offline() -> None:
+    detail = _detail()
+    with Workspace(":memory:") as ws:
+        report = ingest.write(ws, detail)
+        assert_workbench_detail_round_trips(detail, report, ws)
+
+
+def test_contract_idempotent_offline() -> None:
+    detail = _detail()
+    with Workspace(":memory:") as ws:
+        ingest.write(ws, detail)
+        assert_idempotent(lambda: ingest.write(ws, detail), ws, WB_AUDIT)

@@ -1,0 +1,61 @@
+name: Live
+
+# Conformance against the real MetaboLights and Metabolomics Workbench APIs.
+# Never runs on pull requests: upstream throttling must not block a review.
+#
+#   nightly  fast suite      (~40 s)
+#   weekly   + corpus cache  (~95 s, the /ST/summary fetch)
+#
+# The pinned sample and the promises asserted are documented in docs/ci.md.
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # nightly: fast
+    - cron: "0 5 * * 0" # Sunday: adds the slow corpus suite
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: live (fast)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event.schedule != '0 5 * * 0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Install
+        run: |
+          uv venv .venv-local
+          uv pip install --python .venv-local/bin/python -e ".[dev]"
+      - name: Live conformance (fast)
+        run: .venv-local/bin/python -m pytest tests/live -m "live and not live_slow" -q
+
+  live-slow:
+    name: "live (slow: corpus cache)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 5 * * 0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+      - name: Install
+        run: |
+          uv venv .venv-local
+          uv pip install --python .venv-local/bin/python -e ".[dev]"
+      - name: Live conformance (slow)
+        run: .venv-local/bin/python -m pytest tests/live -m live_slow -q
