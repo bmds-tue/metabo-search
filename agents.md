@@ -50,11 +50,14 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - **Ingestion schema is generated from one spec.** Each `ingest.py` declares
   `_TABLES` (column → type, natural key); `DDL` is built from it, so tables and
   primary keys cannot drift. `batch()` is pure (no DB/network); `write()` is the
-  only DB-touching part. `INSERT OR REPLACE` on the natural key makes re-ingest
-  a no-op.
-- **Completeness is enforced** by `tests/test_ingest_completeness.py`: every
-  model field must be a column or declared in `_EXPANDED`, so a new upstream
-  field fails the test instead of being silently dropped.
+  only DB-touching part.
+- **Shared mechanics live in `metabo_search/ingest.py`** (DDL rendering, row
+  wrapping, the audit run, error collection) and import no source. Each source
+  keeps only its spec and mapping.
+- **Completeness is enforced** by `tests/test_ingest_completeness.py`: a
+  sentinel builds each model with a marker per field and asserts every marker
+  lands in a row, so a new upstream field fails the test instead of being
+  silently dropped.
 - **`ws.sql()` returns DuckDB's relation unwrapped** — no `Table` wrapper.
 - **Ingestion bulk-loads via Arrow.** `Workspace.write` converts each table to
   a `pyarrow` table (schema from `DESCRIBE`), registers it, and merges with one

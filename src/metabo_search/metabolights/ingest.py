@@ -15,16 +15,10 @@ from typing import cast
 import metabo_search.ingest as _shared
 from metabo_search.metabolights.models import (
     Assay,
-    AssayTechnique,
     Contact,
-    FactorPair,
-    Funding,
     Metabolite,
     OntologyTerm,
-    OrganismLineage,
     Protocol,
-    ProtocolComponent,
-    ProtocolParameter,
     Publication,
     Sample,
     StudyDetail,
@@ -320,62 +314,6 @@ _TABLES: _shared.TablesSpec = {
 DDL = _shared.render_ddl(_TABLES)
 """DDL for every table this source writes (idempotent ``CREATE IF NOT EXISTS``)."""
 
-# Fields that do not land in a same-named column: they expand into child
-# tables, flatten into prefixed columns, or are deliberately not persisted.
-# The completeness test asserts these cover every remaining model field, so a
-# new upstream field fails the test instead of being silently dropped.
-_EXPANDED: dict[type[object], set[str]] = {
-    StudyHit: {
-        "organisms",
-        "organism_parts",
-        "sample_types",
-        "technology_types",
-        "design_descriptors",
-        "factors",
-        "variants",
-        "annotations",
-        "curator_annotations",
-        "parse_errors",
-        "organism_lineage",
-        "raw_file_extensions",
-        "derived_file_extensions",
-        "assays",
-        "assay_techniques",
-        "factor_pairs",
-        "publications",
-        "protocols",
-        "contacts",
-        "submitters",
-        "fundings",
-    },
-    OntologyTerm: set(),
-    AssayTechnique: set(),
-    Assay: {"measurement_type", "technology_type", "technique", "assignment_files"},
-    FactorPair: set(),
-    Publication: {"status"},
-    ProtocolComponent: set(),
-    ProtocolParameter: set(),
-    Protocol: {"protocol_type", "components", "parameters"},
-    Contact: {"roles"},
-    Submitter: {"roles"},
-    Funding: set(),
-    OrganismLineage: {
-        "domain",
-        "kingdom",
-        "phylum",
-        "klass",
-        "order",
-        "family",
-        "genus",
-        "species",
-    },
-    Sample: {"characteristics", "factor_values", "raw_files", "derived_files"},
-    Metabolite: {"abundances"},
-    StudyFile: set(),
-    StudyDetail: {"samples", "metabolites", "files", "error"},
-}
-"""Per-model fields not stored under a same-named column (see the note above)."""
-
 
 def batch(obj: object) -> IngestBatch:
     """Map MetaboLights models to an ingestion batch. Pure: no DB, no network.
@@ -567,13 +505,17 @@ def _study_hit(hit: StudyHit, tables: dict[str, list[dict[str, object]]]) -> Non
 def _study_detail(
     detail: StudyDetail, tables: dict[str, list[dict[str, object]]]
 ) -> None:
-    """Map deep per-study data: samples, metabolites, and listed files."""
+    """Map deep per-study data: samples, metabolites, and listed files.
+
+    Metabolites and files carry their own ``study_id`` (both are valid on their
+    own); fall back to the detail's when it is unset.
+    """
     for sample in detail.samples:
         _sample(detail.study_id, sample, tables)
     for metabolite in detail.metabolites:
-        _metabolite(detail.study_id, metabolite, tables)
+        _metabolite(metabolite.study_id or detail.study_id, metabolite, tables)
     for file in detail.files:
-        _study_file(detail.study_id, file, tables)
+        _study_file(file.study_id or detail.study_id, file, tables)
 
 
 def _study_file(

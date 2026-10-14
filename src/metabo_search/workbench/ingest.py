@@ -11,8 +11,6 @@ from typing import cast
 
 import metabo_search.ingest as _shared
 from metabo_search.workbench.models import (
-    AnalysisRecord,
-    MetaboliteRow,
     SampleRow,
     StudyDetail,
     StudySummary,
@@ -113,18 +111,6 @@ _TABLES: _shared.TablesSpec = {
 
 DDL = _shared.render_ddl(_TABLES)
 """DDL for every table this source writes (idempotent ``CREATE IF NOT EXISTS``)."""
-
-# Fields that do not land in a same-named column: they expand into child
-# tables or are deliberately not persisted. The completeness test asserts these
-# cover every remaining model field, so a new upstream field fails the test.
-_EXPANDED: dict[type[object], set[str]] = {
-    StudySummary: set(),
-    SampleRow: {"factor_values"},
-    AnalysisRecord: set(),
-    MetaboliteRow: set(),
-    StudyDetail: {"summary", "samples", "analyses", "metabolites", "error"},
-}
-"""Per-model fields not stored under a same-named column (see the note above)."""
 
 
 def batch(obj: object) -> IngestBatch:
