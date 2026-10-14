@@ -40,7 +40,7 @@ transaction. Reports are `IngestReport(tables, total, skipped, duplicates)`.
 
 | Decision | Choice |
 |---|---|
-| Natural-key collisions | keep as is; report + drop duplicates (never throw) |
+| Natural-key collisions | keep as is; report + drop duplicates (never throw), except `ml_sample` (see Issue I) |
 | Prune on re-ingest | no; upsert-only, documented as working-set semantics |
 | Import cost (`duckdb`+`pyarrow` at import) | accept |
 | Duplicates | report in `IngestReport.duplicates`, last-wins, drop the rest |
@@ -211,6 +211,32 @@ upsert-only behaviour.
 
 ---
 
+### I. `ml_sample` natural key collapses distinct samples — P0
+
+**Symptom.** `ml_sample`'s natural key is `(study_id, sample_name)`, but
+`Sample Name` is a reusable label in real submissions, not a unique id, so
+`(study_id, sample_name)` silently drops distinct samples. The Arrow dedupe now
+reports the collapse in `IngestReport.duplicates`, but the rows are still lost.
+
+**Evidence.** MTBLS66 has 8,167 rows but only 3,571 distinct `Sample Name`;
+`"Control 1"` appears 206x, distinguished by `Source Name` (batch) and
+`Factor Value[Replicate]`. The API's own `sampleCount` is 8,167. A random
+600-study scan found 9 affected studies / ~4,921 collapsed rows (MTBLS66,
+MTBLS436, MTBLS209, MTBLS372, MTBLS15555, MTBLS574, MTBLS450, ...). Well-curated
+submissions are unaffected, so human-only spot checks can miss it.
+
+**Fix.** Add `Sample.sample_row` (0-based row index within its sample sheet),
+set in `parse_sample_file`, and include it in the natural keys of `ml_sample`,
+`ml_sample_characteristic`, `ml_sample_factor`, and `ml_sample_file`. Reused
+names are disambiguated by row; variant copies of the same sheet still collapse
+to the API count (MTBLS13483: 76 rows -> 38; MTBLS744: 4 -> 2).
+
+**Acceptance criteria.** MTBLS66 ingests 8,167 `ml_sample` rows; the other
+affected studies match `sampleCount`; re-ingest stays idempotent; the
+completeness test covers `sample_row`.
+
+---
+
 ## 5. Branch & commit plan
 
 Bases: client-only work branches off `main` (which already has the clients);
@@ -241,9 +267,16 @@ Purpose: prove no silent field loss (needs Branch 3's final structure).
 1. `test(ingest): sentinel-based total-mapping test`
 2. `test(metabolights): funding + protocol-component coverage`
 
+### Branch 5 — `fix/metabolights-sample-key` (base `feature/duckdb-ingestion`)
+Purpose: stop `ml_sample` dropping distinct samples (Issue I).
+1. `fix(metabolights): key samples on (study_id, sample_name, sample_row)`
+2. `test(metabolights): duplicate sample names stay distinct`
+3. `docs: sample-row identity`
+
 ### Merge order
 `1 → main`, `2 → main`; rebase `feature/duckdb-ingestion` on the updated
-`main`; `3 → feature`; `4 → feature`; then `feature/duckdb-ingestion → main`.
+`main`; `3 → feature`; `4 → feature`; `5 → feature`; then
+`feature/duckdb-ingestion → main`.
 
 ### Future (separate branch, not now)
 - `feat/deep-result-cache` — per-study deep results keyed by
@@ -254,7 +287,8 @@ Purpose: prove no silent field loss (needs Branch 3's final structure).
 ## 6. Non-goals
 
 - No pruning of children removed upstream (upsert-only stays).
-- No natural-key discriminators (accepted collisions, reported).
+- No natural-key discriminators (accepted collisions, reported) **except
+  `ml_sample`**, which keys on `(study_id, sample_name, sample_row)` (Issue I).
 - No generic HTTP cache.
 - No streaming `inspect` iterator.
 - No dataframe/`Table` wrapper; `ws.sql()` stays the raw DuckDB relation.

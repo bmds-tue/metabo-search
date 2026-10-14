@@ -194,8 +194,10 @@ Full definitions: `src/metabo_search/metabolights/models.py`,
 - `Submitter`: fullname, email, affiliation, address, country, orcid, roles (str).
 - `Funding`: fund_ref_id, funder, grant_identifier.
 - `OrganismLineage`: domain, kingdom, phylum, klass, order, family, genus, species.
-- `Sample`: sample_name, source_name, organism, organism_part, sample_type,
-  characteristics (dict), factor_values (dict), raw_files, derived_files.
+- `Sample`: sample_name, sample_row, source_name, organism, organism_part,
+  sample_type, characteristics (dict), factor_values (dict), raw_files,
+  derived_files. `sample_row` is the 0-based row index within the sample sheet;
+  it disambiguates the reused `Sample Name` labels (see §5).
 - `Metabolite`: study_id, file, row, database_identifier,
   metabolite_identification, chemical_formula, mass_to_charge, retention_time,
   abundances (dict sample→float).
@@ -243,10 +245,10 @@ Per source, table names prefixed `ml_` / `wb_`. No shared tables.
 | `ml_submitter` | (study_id, ordinal) | |
 | `ml_submitter_role` | (study_id, submitter_ordinal, role) | |
 | `ml_funding` | (study_id, ordinal) | |
-| `ml_sample` | (study_id, sample_name) | |
-| `ml_sample_characteristic` | (study_id, sample_name, key) | from `characteristics` |
-| `ml_sample_factor` | (study_id, sample_name, name) | from `factor_values` |
-| `ml_sample_file` | (study_id, sample_name, kind, path) | kind ∈ raw/derived |
+| `ml_sample` | (study_id, sample_name, sample_row) | sample_row disambiguates reused names |
+| `ml_sample_characteristic` | (study_id, sample_name, sample_row, key) | from `characteristics` |
+| `ml_sample_factor` | (study_id, sample_name, sample_row, name) | from `factor_values` |
+| `ml_sample_file` | (study_id, sample_name, sample_row, kind, path) | kind ∈ raw/derived |
 | `ml_metabolite` | (study_id, file, row) | |
 | `ml_metabolite_abundance` | (study_id, file, row, sample) | from `abundances` |
 | `ml_file` | (study_id, path) | |
