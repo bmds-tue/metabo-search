@@ -10,11 +10,9 @@ Two pieces, deliberately separate:
 
 from __future__ import annotations
 
-from dataclasses import replace
-from datetime import UTC, datetime
 from typing import cast
-from uuid import uuid4
 
+import metabo_search.ingest as _shared
 from metabo_search.metabolights.models import (
     Assay,
     AssayTechnique,
@@ -34,7 +32,7 @@ from metabo_search.metabolights.models import (
     StudyHit,
     Submitter,
 )
-from metabo_search.workspace import IngestBatch, IngestReport, TableRows, Workspace
+from metabo_search.workspace import IngestBatch, IngestReport, Workspace
 
 SOURCE = "metabolights"
 """Value recorded in the ``source`` column of the audit table."""
@@ -43,7 +41,7 @@ _AUDIT_TABLE = "ml_ingest_run"
 
 # Table name -> (column name -> SQL type, natural key). The DDL is generated
 # from this, so the schema and the primary keys cannot drift apart.
-_TABLES: dict[str, tuple[dict[str, str], tuple[str, ...]]] = {
+_TABLES: _shared.TablesSpec = {
     "ml_study": (
         {
             "study_id": "VARCHAR",
@@ -319,22 +317,7 @@ _TABLES: dict[str, tuple[dict[str, str], tuple[str, ...]]] = {
 }
 
 
-def _build_ddl(tables: dict[str, tuple[dict[str, str], tuple[str, ...]]]) -> str:
-    """Render ``CREATE TABLE IF NOT EXISTS`` statements from the table spec."""
-    statements: list[str] = []
-    for name, (columns, keys) in tables.items():
-        column_defs = ", ".join(
-            f'"{column}" {sql_type}' for column, sql_type in columns.items()
-        )
-        key_defs = ", ".join(f'"{key}"' for key in keys)
-        statements.append(
-            f'CREATE TABLE IF NOT EXISTS "{name}" ({column_defs}, '
-            f"PRIMARY KEY ({key_defs}))"
-        )
-    return ";\n".join(statements) + ";"
-
-
-DDL = _build_ddl(_TABLES)
+DDL = _shared.render_ddl(_TABLES)
 """DDL for every table this source writes (idempotent ``CREATE IF NOT EXISTS``)."""
 
 # Fields that do not land in a same-named column: they expand into child
@@ -409,17 +392,14 @@ def batch(obj: object) -> IngestBatch:
         TypeError: An item is not an ingestible MetaboLights model.
     """
     items: list[object] = cast("list[object]", obj) if isinstance(obj, list) else [obj]
-    tables: dict[str, list[dict[str, object]]] = {name: [] for name in _TABLES}
+    rows_by_name: dict[str, list[dict[str, object]]] = {name: [] for name in _TABLES}
     for item in items:
-        _map(item, tables)
-    return IngestBatch(ddl=DDL, tables=_to_table_rows(tables))
+        _map(item, rows_by_name)
+    return IngestBatch(ddl=DDL, tables=_shared.to_table_rows(_TABLES, rows_by_name))
 
 
 def write(ws: Workspace, obj: object) -> IngestReport:
     """Write models to ``ws`` idempotently and record an audit row.
-
-    The audit rows are appended to the same batch, so the data and the trail
-    commit in one transaction.
 
     Args:
         ws: The workspace to write to.
@@ -430,70 +410,14 @@ def write(ws: Workspace, obj: object) -> IngestReport:
         of any errored ``StudyDetail`` objects that were skipped (their data
         is empty by construction).
     """
-    skipped = _skipped(obj)
-    report = ws.write(_with_audit_run(batch(obj)))
-    tables = {
-        name: count for name, count in report.tables.items() if name != _AUDIT_TABLE
-    }
-    return replace(report, tables=tables, total=sum(tables.values()), skipped=skipped)
-
-
-def _skipped(obj: object) -> list[str]:
-    """Study ids of errored ``StudyDetail`` items (best-effort inspect)."""
-    items: list[object] = cast("list[object]", obj) if isinstance(obj, list) else [obj]
-    return [
-        item.study_id
-        for item in items
-        if isinstance(item, StudyDetail) and item.error
-    ]
-
-
-def _with_audit_run(batch_obj: IngestBatch) -> IngestBatch:
-    """Return ``batch_obj`` with one audit row per non-empty table appended.
-
-    Building the audit before :meth:`Workspace.write` keeps the data and the
-    trail in one transaction. The count is the batch's row count (before
-    dedupe), known without touching the database.
-    """
-    columns, keys = _TABLES[_AUDIT_TABLE]
-    run_id = uuid4().hex
-    at = datetime.now(UTC).isoformat()
-    tables: list[TableRows] = []
-    audit_rows: list[dict[str, object]] = []
-    for table in batch_obj.tables:
-        if table.name == _AUDIT_TABLE:
-            continue
-        tables.append(table)
-        if table.rows:
-            audit_rows.append(
-                {
-                    "run_id": run_id,
-                    "table_name": table.name,
-                    "source": SOURCE,
-                    "rows": len(table.rows),
-                    "at": at,
-                }
-            )
-    if audit_rows:
-        tables.append(
-            TableRows(name=_AUDIT_TABLE, columns=tuple(columns), rows=audit_rows, keys=keys)
-        )
-    return replace(batch_obj, tables=tables)
-
-
-def _to_table_rows(
-    tables: dict[str, list[dict[str, object]]],
-) -> list[TableRows]:
-    """Wrap each table's rows with its declared columns and natural key."""
-    return [
-        TableRows(
-            name=name,
-            columns=tuple(columns),
-            rows=tables[name],
-            keys=keys,
-        )
-        for name, (columns, keys) in _TABLES.items()
-    ]
+    return _shared.write(
+        ws,
+        batch(obj),
+        source=SOURCE,
+        tables=_TABLES,
+        audit_table=_AUDIT_TABLE,
+        skipped=_shared.skipped_ids(obj, StudyDetail),
+    )
 
 
 def _add(

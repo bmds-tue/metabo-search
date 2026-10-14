@@ -37,10 +37,11 @@ def test_workbench_does_not_import_metabolights() -> None:
     assert not any(m.startswith("metabo_search.metabolights") for m in _imports("workbench"))
 
 
-def test_workspace_does_not_import_sources() -> None:
-    imports = _module_imports(SRC / "workspace.py")
-    assert not any(m.startswith("metabo_search.metabolights") for m in imports)
-    assert not any(m.startswith("metabo_search.workbench") for m in imports)
+def test_shared_modules_do_not_import_sources() -> None:
+    for name in ("workspace.py", "ingest.py"):
+        imports = _module_imports(SRC / name)
+        assert not any(m.startswith("metabo_search.metabolights") for m in imports), name
+        assert not any(m.startswith("metabo_search.workbench") for m in imports), name
 
 
 def test_public_surface_exposes_clients_and_workspace() -> None:
