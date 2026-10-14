@@ -225,43 +225,50 @@ _TABLES: _shared.TablesSpec = {
         },
         ("study_id", "ordinal"),
     ),
+    # `sample_row` is the row index within the sample sheet. Sample names are
+    # not unique in real submissions (e.g. MTBLS66 repeats "Control 1" 206x),
+    # so the natural key must include the row or distinct samples collapse.
     "ml_sample": (
         {
             "study_id": "VARCHAR",
             "sample_name": "VARCHAR",
+            "sample_row": "INTEGER",
             "source_name": "VARCHAR",
             "organism": "VARCHAR",
             "organism_part": "VARCHAR",
             "sample_type": "VARCHAR",
         },
-        ("study_id", "sample_name"),
+        ("study_id", "sample_name", "sample_row"),
     ),
     "ml_sample_characteristic": (
         {
             "study_id": "VARCHAR",
             "sample_name": "VARCHAR",
+            "sample_row": "INTEGER",
             "key": "VARCHAR",
             "value": "VARCHAR",
         },
-        ("study_id", "sample_name", "key"),
+        ("study_id", "sample_name", "sample_row", "key"),
     ),
     "ml_sample_factor": (
         {
             "study_id": "VARCHAR",
             "sample_name": "VARCHAR",
+            "sample_row": "INTEGER",
             "name": "VARCHAR",
             "value": "VARCHAR",
         },
-        ("study_id", "sample_name", "name"),
+        ("study_id", "sample_name", "sample_row", "name"),
     ),
     "ml_sample_file": (
         {
             "study_id": "VARCHAR",
             "sample_name": "VARCHAR",
+            "sample_row": "INTEGER",
             "kind": "VARCHAR",
             "path": "VARCHAR",
         },
-        ("study_id", "sample_name", "kind", "path"),
+        ("study_id", "sample_name", "sample_row", "kind", "path"),
     ),
     "ml_metabolite": (
         {
@@ -740,6 +747,7 @@ def _sample(
         {
             "study_id": study_id,
             "sample_name": sample.sample_name,
+            "sample_row": sample.sample_row,
             "source_name": sample.source_name,
             "organism": sample.organism,
             "organism_part": sample.organism_part,
@@ -750,13 +758,25 @@ def _sample(
         _add(
             tables,
             "ml_sample_characteristic",
-            {"study_id": study_id, "sample_name": sample.sample_name, "key": key, "value": value},
+            {
+                "study_id": study_id,
+                "sample_name": sample.sample_name,
+                "sample_row": sample.sample_row,
+                "key": key,
+                "value": value,
+            },
         )
     for name, value in sample.factor_values.items():
         _add(
             tables,
             "ml_sample_factor",
-            {"study_id": study_id, "sample_name": sample.sample_name, "name": name, "value": value},
+            {
+                "study_id": study_id,
+                "sample_name": sample.sample_name,
+                "sample_row": sample.sample_row,
+                "name": name,
+                "value": value,
+            },
         )
     for kind, paths in (("raw", sample.raw_files), ("derived", sample.derived_files)):
         for path in paths:
@@ -766,6 +786,7 @@ def _sample(
                 {
                     "study_id": study_id,
                     "sample_name": sample.sample_name,
+                    "sample_row": sample.sample_row,
                     "kind": kind,
                     "path": path,
                 },

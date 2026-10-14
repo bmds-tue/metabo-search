@@ -77,7 +77,9 @@ def parse_sample_file(text: str) -> list[Sample]:
         text: The sample-sheet contents.
 
     Returns:
-        One :class:`Sample` per data row, in file order.
+        One :class:`Sample` per data row, in file order. ``sample_row`` is the
+        0-based index of the row within this sheet; it disambiguates samples
+        that reuse a ``Sample Name`` (see :func:`parse_study_detail`).
     """
     table = parse_tsv(text)
     if not table.columns:
@@ -94,13 +96,14 @@ def parse_sample_file(text: str) -> list[Sample]:
     type_col = lookup.get("characteristics[sample type]")
 
     samples: list[Sample] = []
-    for row in table.rows:
+    for sample_row, row in enumerate(table.rows):
         name = row.get(name_col, "")
         if not name:
             continue
         samples.append(
             Sample(
                 sample_name=name,
+                sample_row=sample_row,
                 source_name=row.get(source_col, "") if source_col else "",
                 organism=row.get(organism_col, "") if organism_col else "",
                 organism_part=row.get(part_col, "") if part_col else "",

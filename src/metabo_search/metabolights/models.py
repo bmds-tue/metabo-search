@@ -229,6 +229,7 @@ class Sample(MetaboLightsModel):
     """A parsed ISA sample (one row of a sample sheet)."""
 
     sample_name: Str = ""
+    sample_row: int = 0
     source_name: Str = ""
     organism: Str = ""
     organism_part: Str = ""
