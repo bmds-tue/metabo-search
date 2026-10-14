@@ -418,18 +418,24 @@ def batch(obj: object) -> IngestBatch:
 def write(ws: Workspace, obj: object) -> IngestReport:
     """Write models to ``ws`` idempotently and record an audit row.
 
+    The audit rows are appended to the same batch, so the data and the trail
+    commit in one transaction.
+
     Args:
         ws: The workspace to write to.
         obj: Same as :func:`batch`.
 
     Returns:
-        The per-table row counts, plus the ids of any errored ``StudyDetail``
-        objects that were skipped (their data is empty by construction).
+        The per-table row counts (the audit table is excluded), plus the ids
+        of any errored ``StudyDetail`` objects that were skipped (their data
+        is empty by construction).
     """
     skipped = _skipped(obj)
-    report = ws.write(batch(obj))
-    _record_run(ws, report)
-    return replace(report, skipped=skipped)
+    report = ws.write(_with_audit_run(batch(obj)))
+    tables = {
+        name: count for name, count in report.tables.items() if name != _AUDIT_TABLE
+    }
+    return replace(report, tables=tables, total=sum(tables.values()), skipped=skipped)
 
 
 def _skipped(obj: object) -> list[str]:
@@ -442,36 +448,37 @@ def _skipped(obj: object) -> list[str]:
     ]
 
 
-def _record_run(ws: Workspace, report: IngestReport) -> None:
-    """Append one audit row per written table for this ingestion call."""
-    if not report.tables:
-        return
+def _with_audit_run(batch_obj: IngestBatch) -> IngestBatch:
+    """Return ``batch_obj`` with one audit row per non-empty table appended.
+
+    Building the audit before :meth:`Workspace.write` keeps the data and the
+    trail in one transaction. The count is the batch's row count (before
+    dedupe), known without touching the database.
+    """
     columns, keys = _TABLES[_AUDIT_TABLE]
     run_id = uuid4().hex
     at = datetime.now(UTC).isoformat()
-    rows: list[dict[str, object]] = [
-        {
-            "run_id": run_id,
-            "table_name": name,
-            "source": SOURCE,
-            "rows": count,
-            "at": at,
-        }
-        for name, count in report.tables.items()
-    ]
-    ws.write(
-        IngestBatch(
-            ddl=DDL,
-            tables=[
-                TableRows(
-                    name=_AUDIT_TABLE,
-                    columns=tuple(columns),
-                    rows=rows,
-                    keys=keys,
-                )
-            ],
+    tables: list[TableRows] = []
+    audit_rows: list[dict[str, object]] = []
+    for table in batch_obj.tables:
+        if table.name == _AUDIT_TABLE:
+            continue
+        tables.append(table)
+        if table.rows:
+            audit_rows.append(
+                {
+                    "run_id": run_id,
+                    "table_name": table.name,
+                    "source": SOURCE,
+                    "rows": len(table.rows),
+                    "at": at,
+                }
+            )
+    if audit_rows:
+        tables.append(
+            TableRows(name=_AUDIT_TABLE, columns=tuple(columns), rows=audit_rows, keys=keys)
         )
-    )
+    return replace(batch_obj, tables=tables)
 
 
 def _to_table_rows(

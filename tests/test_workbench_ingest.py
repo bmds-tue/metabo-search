@@ -13,7 +13,7 @@ from metabo_search.workbench.models import (
     StudyDetail,
     StudySummary,
 )
-from metabo_search.workspace import IngestBatch, Workspace
+from metabo_search.workspace import IngestBatch, TableRows, Workspace
 
 
 def _rows(batch: IngestBatch, table: str) -> list[dict[str, object]]:
@@ -140,6 +140,25 @@ def test_write_skips_errored_detail() -> None:
         report = ingest.write(ws, Results([good, bad]))
         assert report.skipped == ["ST999999"]
         assert ws.sql("SELECT count(*) FROM wb_sample").fetchone() == (1,)
+
+
+def test_write_records_the_audit_in_the_same_transaction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # If the audit merge fails, the data must roll back with it: one transaction.
+    original = Workspace._merge
+
+    def failing_merge(self: Workspace, table: TableRows) -> tuple[int, int]:
+        if table.name == "wb_ingest_run":
+            raise RuntimeError("audit failed")
+        return original(self, table)
+
+    monkeypatch.setattr(Workspace, "_merge", failing_merge)
+    with Workspace(":memory:") as ws:
+        with pytest.raises(RuntimeError):
+            ingest.write(ws, _detail())
+        # The DDL is transactional too, so nothing (data or audit) survives.
+        assert ws.tables() == []
 
 
 def test_write_records_an_audit_run() -> None:
