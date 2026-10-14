@@ -7,9 +7,9 @@ local DuckDB working set built from search results. The repositories are
 
 ## Branches
 
-- `feature/duckdb-ingestion` — DuckDB workspace + per-source ingestion. Done;
-  plan in `docs/duckdb-ingestion-plan.md`.
-- `main` — old pipeline; being replaced (merge the clients + ingestion work).
+- `main` — the current line: both clients, the DuckDB workspace, per-source
+  ingestion, and the fetch/ingest hardening work. The `feature/duckdb-ingestion`
+  and `perf/*` / `refactor/*` / `test/*` / `fix/*` branches are merged here.
 
 ## Layout
 
@@ -18,9 +18,10 @@ src/metabo_search/
 ├── transport.py    HttpClient: pooling, retries, Retry-After, rate limit
 ├── results.py      Results[T] (a list subclass) with .ids()/.records()/.fmt()
 ├── errors.py       MetaboSearchError hierarchy (incl. ParseError)
+├── ingest.py       source-agnostic ingest mechanics (DDL, audit, skipped)
 ├── workspace.py    Workspace: DuckDB handle, IngestBatch/TableRows/IngestReport
 ├── metabolights/   client.py · models.py · parse.py · files.py · ingest.py
-└── workbench/      client.py · models.py · parse.py · ingest.py
+└── workbench/      client.py · models.py · parse.py · corpus.py · ingest.py
 ```
 
 ## Commands
@@ -66,9 +67,11 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
   `pyarrow-stubs` is dev-only for strict typing.
 - **Duplicate natural keys are deduped in Python (last wins) and reported** in
   `IngestReport.duplicates` — DuckDB's set-based `ON CONFLICT` picks an
-  unspecified winner, so we never rely on it.
-- **Workbench corpus** (`/ST/summary`) takes ~90 s; fetched once per client
-  instance and filtered locally (the API has no free-text search).
+  unspecified winner, so we never rely on it. Dedupe runs per Arrow chunk, so a
+  key repeated across chunks is resolved by the upsert but not counted.
+- **Workbench corpus** (`/ST/summary`) takes ~90 s and is filtered locally (the
+  API has no free-text search). It is cached on disk (`~/.cache/metabo-search`,
+  7-day TTL); `refresh_corpus()` forces a fetch and `cache_dir=None` disables it.
 - **Docs are deliberately lean** — prefer docstrings over new Markdown.
 
 ## Docs
@@ -77,6 +80,7 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - `SKILL.md` — the agent-facing skill (pi/Claude/opencode).
 - `docs/api-design.md` — target public API.
 - `docs/rebuild-plan.md` — architecture and the client branch plan.
-- `docs/duckdb-ingestion-plan.md` — the ingestion branch schema and steps.
+- `docs/duckdb-ingestion-plan.md` — the ingestion schema and steps.
+- `docs/ingestion-hardening-plan.md` — the fetch/ingest hardening plan.
 - `docs/ingestion-hardening-plan.md` — **resume here**: fetch/ingest hardening
   plan (corpus cache, inspect parts, write-path fixes, branch/commit layout).

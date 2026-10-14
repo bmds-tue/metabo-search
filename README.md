@@ -50,6 +50,7 @@ study = ml.study("MTBLS1")
 many = ml.studies(["MTBLS2", "MTBLS1"])       # input order preserved
 
 # deep data: download and parse ISA samples + MAF metabolites
+# (include_metabolites=False does a samples-only pass, skipping MAF downloads)
 detail = ml.inspect(["MTBLS1"])[0]
 print(len(detail.samples), "samples", len(detail.metabolites), "metabolites")
 print(detail.samples[0].organism, detail.samples[0].organism_part)
@@ -125,6 +126,8 @@ and pandas backends for `.pl()`/`.df()` remain optional.
 - [`docs/rebuild-plan.md`](docs/rebuild-plan.md) — architecture and plan.
 - [`docs/duckdb-ingestion-plan.md`](docs/duckdb-ingestion-plan.md) — the
   ingestion schema and steps.
+- [`docs/ingestion-hardening-plan.md`](docs/ingestion-hardening-plan.md) — the
+  fetch/ingest hardening record.
 
 ## Disclaimer
 

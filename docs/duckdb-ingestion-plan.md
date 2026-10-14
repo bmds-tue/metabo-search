@@ -1,10 +1,11 @@
 # DuckDB ingestion plan — search → ingest → analyse
 
-Status: ready to implement. Branch `feature/duckdb-ingestion`, rebased onto
-`main` (the `refactor/clients` branch is merged).
+Status: **implemented** — the ingestion work is merged into `main`. Kept as the
+design record; the authoritative public API is `docs/api-design.md`. The `Table`
+wrapper and `export()` sketched below were never built (`ws.sql()` returns
+DuckDB's own relation).
 
-This document is self-contained: a fresh session should be able to implement it
-without re-deriving the clients. Read it fully, then follow §8.
+This document is self-contained: it captures the original schema and steps.
 
 ---
 

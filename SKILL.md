@@ -50,6 +50,7 @@ ml.study("MTBLS1")                  # one StudyHit
 ml.studies(["MTBLS2", "MTBLS1"])    # input order preserved
 
 # Deep data: download and parse ISA samples + MAF metabolites.
+# include_metabolites=False does a samples-only pass (MAFs are the bulk).
 detail = ml.inspect(["MTBLS1"])[0]
 detail.samples[0].organism          # "Homo sapiens"
 detail.samples[0].organism_part     # "urine"

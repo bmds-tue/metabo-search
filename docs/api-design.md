@@ -177,6 +177,7 @@ ml.search(query="", *, organisms=None, sample_types=None, techniques=None,
 ml.study(study_id) -> StudyHit
 ml.studies(study_ids) -> Results[StudyHit]
 ml.inspect(study_ids, *, workers=8, include_files=False,
+           include_metabolites=True,
            on_error="collect") -> Results[StudyDetail]   # ISA + MAF, parsed
 ml.files(study_id, *, recursive=True) -> Results[StudyFile]
 ml.download(study_id, selection="all", *, dest=".", max_files=None,
@@ -190,7 +191,7 @@ wb.search(query="", *, min_samples=None, limit=25) -> Results[StudySummary]
 wb.study(study_id) -> StudySummary
 wb.samples(study_id) -> Results[SampleRow]
 wb.analyses(study_id) -> Results[AnalysisRecord]
-wb.metabolites(study_id) -> Results[MetaboliteRow] | MetaboliteList
+wb.metabolites(study_id) -> Results[MetaboliteRow]
 wb.inspect(study_ids, *, workers=8, include_summary=True, include_samples=True,
            include_analyses=True, include_metabolites=True,
            on_error="collect") -> Results[StudyDetail]
@@ -276,8 +277,9 @@ core (`search` / `inspect` / `ingest` / `sql`).
 - `Results[T]`.
 - `metabo_search.ingest` — source-agnostic DDL rendering, row wrapping, the
   audit run, and error collection.
-- One exception hierarchy (`NotFound`, `NotIngested`, `APIError`,
-  `RateLimited`, `TransientError`, `ClientError`, `WarehouseError`).
+- One exception hierarchy rooted at `MetaboSearchError`: `TransportError`
+  (`TransientError` → `RateLimited`), `ClientError` (`NotFound`), `APIError`,
+  `ResponseValidationError`, `ParseError`.
 
 ## 11. Defaults
 

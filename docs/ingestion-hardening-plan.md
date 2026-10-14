@@ -1,8 +1,8 @@
-# Fetch & ingestion hardening — plan (resume here)
+# Fetch & ingestion hardening — record
 
-Status: ready to implement. Single source of truth for the next session.
-Read this top to bottom; then `AGENTS.md`, `docs/duckdb-ingestion-plan.md`,
-and the code. Every item has a symptom, evidence, fix, and acceptance criteria.
+Status: **implemented** — all five branches are merged into `main`. Kept as the
+record of the fetch/ingest hardening work. Every item has a symptom, evidence,
+fix, and acceptance criteria.
 
 ## 0. How to resume
 
