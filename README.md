@@ -69,11 +69,9 @@ from metabo_search import Workbench
 
 wb = Workbench()
 
-# wb.search() ranks a locally cached whole-index corpus by title-token overlap.
-# The REST API also supports server-side study queries (by study_title, ...),
-# which this client does not expose yet. The corpus fetch is slow (~90 s) but
-# cached on disk (7-day TTL, ~/.cache/metabo-search) so later processes skip it.
-# Pass cache_dir=None to disable, or call wb.refresh_corpus() to force a refresh.
+# wb.search() ranks a locally cached whole-index corpus by title-token overlap
+# (slow first fetch, ~90 s, then cached 7 days in ~/.cache/metabo-search).
+# For a keyed native lookup use wb.studies_by() instead — see below.
 results = wb.search("diabetes urine", limit=25)
 print(results.ids())
 
@@ -86,6 +84,36 @@ metabolites = wb.metabolites("ST000001")   # empty means "not listed"
 # Narrow the include_* flags to skip endpoints, and pass StudySummary objects
 # (e.g. search results) to reuse them instead of refetching:
 detail = wb.inspect(results[:5], include_analyses=False, include_metabolites=False)[0]
+```
+
+### Finding studies: `search` vs `studies_by`
+
+Two strategies. They return the same `Results[StudySummary]`, so both feed
+`inspect()` and `ingest()`:
+
+| | `search()` | `studies_by()` |
+|---|---|---|
+| Where | cached whole-index corpus | native REST API |
+| Cost | ~90 s first call, then cached | instant, live |
+| Criteria | title tokens + `min_samples` | exactly one input item |
+| Matching | token overlap, ranked | the API's own semantics |
+| Use when | broad discovery, several criteria | you have a key |
+
+```python
+wb.studies_by("refmet_name", "Glucose")   # by metabolite
+wb.studies_by("institute", "Harvard")     # by institute
+wb.studies_by("study_title", "Diabetes")  # API substring, not token overlap
+```
+
+`studies_by` takes one of `study_id`, `analysis_id`, `study_title`, `institute`,
+`last_name`, `metabolite_id`, `kegg_id`, `refmet_name`. The API combines
+nothing — no free-text-plus-filter, no organism or disease filter — so intersect
+locally, or filter the corpus from `all_studies()`:
+
+```python
+both = set(wb.studies_by("institute", "Harvard").ids()) & set(
+    wb.studies_by("refmet_name", "Glucose").ids()
+)
 ```
 
 ## Throttling and workers

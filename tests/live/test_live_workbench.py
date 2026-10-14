@@ -60,3 +60,17 @@ def test_empty_metabolites_means_not_listed(wb: Workbench) -> None:
 def test_missing_study_is_not_found(wb: Workbench) -> None:
     with pytest.raises(NotFound):
         wb.study(WB_MISSING)
+
+
+def test_studies_by_is_native_and_never_fetches_the_corpus(wb: Workbench) -> None:
+    before = wb.stats
+    results = wb.studies_by("study_title", "Diabetes")
+    delta = wb.stats - before
+    assert results, "no studies matched a known title"
+    assert all("diabet" in summary.study_title.lower() for summary in results)
+    assert delta.requests == 1, "a native lookup must not fetch the corpus"
+
+
+def test_studies_by_can_search_by_metabolite(wb: Workbench) -> None:
+    # The corpus summary carries no metabolite data, so this is native-only.
+    assert wb.studies_by("refmet_name", "Glucose")

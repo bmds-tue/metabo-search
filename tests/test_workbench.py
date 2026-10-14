@@ -253,3 +253,50 @@ def test_non_json_body_raises_response_validation_error() -> None:
     )
     with pytest.raises(ResponseValidationError):
         wb.study("ST000001")
+
+
+def _recording_client(seen: list[str], payload: object) -> Workbench:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, json=payload)
+
+    return Workbench(
+        transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(max_attempts=1),
+        cache_dir=None,
+    )
+
+
+def test_studies_by_queries_the_native_index_without_the_corpus() -> None:
+    seen: list[str] = []
+    wb = _recording_client(
+        seen,
+        {
+            "1": {"study_id": "ST000001", "study_title": "Fatb"},
+            "2": {"study_id": "ST000002", "study_title": "Diabetes"},
+        },
+    )
+    results = wb.studies_by("study_title", "Diabetes")
+    assert results.ids() == ["ST000001", "ST000002"]
+    assert all(isinstance(summary, StudySummary) for summary in results)
+    assert seen == [
+        "https://www.metabolomicsworkbench.org/rest/study/study_title/Diabetes/summary"
+    ]
+    assert wb.stats.requests == 1
+    assert not any("/ST/summary" in url for url in seen)
+
+
+def test_studies_by_url_encodes_the_value() -> None:
+    seen: list[str] = []
+    assert _recording_client(seen, []).studies_by("institute", "a b/c") == []
+    assert seen[0].endswith("/study/institute/a%20b%2Fc/summary")
+
+
+def test_studies_by_unknown_input_item_raises() -> None:
+    with pytest.raises(AssertionError, match="unknown study input item"):
+        _client().studies_by("species", "Homo sapiens")
+
+
+def test_studies_by_empty_value_raises() -> None:
+    with pytest.raises(AssertionError, match="value must be non-empty"):
+        _client().studies_by("institute", "")

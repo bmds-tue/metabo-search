@@ -21,6 +21,9 @@ from search results. The repositories are never unified.
 - **Metabolomics Workbench client** — whole-index corpus search (cached on
   disk, 7-day TTL), per-study factors/analysis/metabolites, and partial
   `inspect()` that only fetches the requested parts.
+- **`Workbench.studies_by`** — native keyed study lookup (by `study_title`,
+  `institute`, `refmet_name`, …), instant and corpus-free; complements the
+  local corpus `search()`.
 - **DuckDB working set** (`Workspace`) — per-source tables (`ml_*` / `wb_*`),
   idempotent upsert on natural keys, Arrow bulk loading, and an ingest audit
   trail. Shipped as the optional `ingest` extra.

@@ -65,8 +65,8 @@ The live job checks that upstream data still honours it.
 | `ml_*` / `wb_*` never unify | `assert_cross_source_isolated` |
 
 Non-contract live checks cover request counts (`wb.inspect` with a passed
-summary = 1 request samples-only, 3 full), best-effort ordering, and the corpus
-cache hit.
+summary = 1 request samples-only, 3 full), best-effort ordering, the native
+`studies_by` lookup (1 request, no corpus), and the corpus cache hit.
 
 ## Running locally
 

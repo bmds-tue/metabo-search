@@ -73,11 +73,17 @@ from metabo_search import Workbench
 
 wb = Workbench()
 
-# wb.search() ranks a locally cached whole-index corpus by title-token overlap;
-# the REST API's server-side study queries are not exposed yet. The corpus fetch
-# is slow (~90 s) but cached on disk (7-day TTL, ~/.cache/metabo-search). Use
+# wb.search() ranks a locally cached whole-index corpus by title-token overlap
+# (slow first fetch ~90 s, then cached 7 days in ~/.cache/metabo-search). Use
 # Workbench(cache_dir=None) to disable, or wb.refresh_corpus() to force.
 hits = wb.search("diabetes urine", limit=25)
+
+# Native keyed lookup: one input item, the API's own matching, no corpus fetch.
+# Returns the same Results[StudySummary], so it feeds inspect()/ingest() too.
+wb.studies_by("refmet_name", "Glucose")   # by metabolite
+wb.studies_by("institute", "Harvard")     # by institute
+# Items: study_id, analysis_id, study_title, institute, last_name,
+# metabolite_id, kegg_id, refmet_name. No combined filters; intersect locally.
 
 wb.study("ST000001")
 wb.samples("ST000001")       # parsed factor rows

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from metabo_search.workbench.models import MetaboliteRow, SampleRow
+from metabo_search.workbench.models import MetaboliteRow, SampleRow, StudySummary
 
 
 def normalize_rows(payload: object, id_key: str) -> list[dict[str, object]]:
@@ -62,6 +62,11 @@ def parse_factor_string(value: str) -> dict[str, str]:
             if separator and label and item:
                 out[label] = item
     return out
+
+
+def parse_summaries(payload: object) -> list[StudySummary]:
+    """Normalize a ``summary`` payload into study summaries."""
+    return [StudySummary.model_validate(row) for row in normalize_rows(payload, "study_id")]
 
 
 def parse_samples(payload: object) -> list[SampleRow]:

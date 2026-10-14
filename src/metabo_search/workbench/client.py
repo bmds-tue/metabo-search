@@ -1,10 +1,16 @@
 """Client for the Metabolomics Workbench REST API.
 
-:meth:`Workbench.search` ranks a locally cached whole-index summary corpus by
-title-token overlap (the fetch is slow, ~90 s). The Workbench REST API *also*
-supports server-side study queries (by ``study_title``, ``institute``, …), but
-this client does not expose them yet. Per-study methods fetch the ``factors``,
-``analysis``, and ``metabolites`` endpoints.
+Two ways to find studies:
+
+* :meth:`Workbench.search` ranks a locally cached whole-index summary corpus by
+  title-token overlap (slow first fetch, then cached).
+* :meth:`Workbench.studies_by` queries the native REST study index by one input
+  item (instant, no corpus).
+
+Both return ``Results[StudySummary]`` and feed the same :meth:`Workbench.inspect`
+and :meth:`Workbench.ingest` pipeline. The native API combines nothing — no
+free-text-plus-filter, and no organism or disease filter — so use the corpus
+for those.
 """
 
 from __future__ import annotations
@@ -16,7 +22,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from types import TracebackType
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, get_args
+from urllib.parse import quote
 
 import httpx
 
@@ -38,7 +45,12 @@ from metabo_search.workbench.models import (
     StudyDetail,
     StudySummary,
 )
-from metabo_search.workbench.parse import normalize_rows, parse_metabolites, parse_samples
+from metabo_search.workbench.parse import (
+    normalize_rows,
+    parse_metabolites,
+    parse_samples,
+    parse_summaries,
+)
 
 if TYPE_CHECKING:
     from metabo_search.workspace import IngestReport, Workspace
@@ -47,6 +59,21 @@ BASE_URL = "https://www.metabolomicsworkbench.org/rest"
 CORPUS_TIMEOUT = 180.0
 
 _TOKEN = re.compile(r"[a-z0-9']+")
+
+StudyInputItem = Literal[
+    "study_id",
+    "analysis_id",
+    "study_title",
+    "institute",
+    "last_name",
+    "metabolite_id",
+    "kegg_id",
+    "refmet_name",
+]
+"""A native Workbench study input item: the key :meth:`Workbench.studies_by` searches on."""
+
+_STUDY_INPUT_ITEMS: frozenset[str] = frozenset(get_args(StudyInputItem))
+"""Runtime mirror of :data:`StudyInputItem`, used for the precondition check."""
 
 
 class Workbench:
@@ -156,6 +183,10 @@ class Workbench:
     ) -> Results[StudySummary]:
         """Search the whole-index summaries by title term overlap.
 
+        This reads the cached corpus (one slow fetch, then cached). For a keyed
+        lookup — a metabolite, an institute, a title — use :meth:`studies_by`,
+        which is instant and never fetches the corpus.
+
         Args:
             query: Free-text query matched against study titles.
             min_samples: Keep studies with at least this many samples.
@@ -194,6 +225,33 @@ class Workbench:
         if not rows:
             raise NotFound(f"study {study_id!r} not found")
         return StudySummary.model_validate(rows[0])
+
+    def studies_by(self, input_item: StudyInputItem, value: str) -> Results[StudySummary]:
+        """Find studies through the native Workbench study index.
+
+        One input item per request; the API combines nothing. Instant, and it
+        never fetches the whole-index corpus. Returns the same type as
+        :meth:`search`, so both feed :meth:`inspect` and :meth:`ingest`.
+
+        Matching is the API's own: ``study_title`` is a case-insensitive
+        substring, not the token overlap :meth:`search` uses. Input items
+        without a match simply return no studies. There is no ``limit``; slice
+        the result if you need a cap.
+
+        Args:
+            input_item: The native search key, e.g. ``"refmet_name"``.
+            value: The key value, e.g. ``"Glucose"``; URL-encoded.
+
+        Returns:
+            The matching study summaries, in API order.
+
+        Raises:
+            AssertionError: ``input_item`` is unsupported or ``value`` is empty.
+        """
+        assert input_item in _STUDY_INPUT_ITEMS, f"unknown study input item {input_item!r}"
+        assert value, "value must be non-empty"
+        payload = self._get(f"study/{input_item}/{quote(value, safe='')}/summary")
+        return Results(parse_summaries(payload))
 
     def samples(self, study_id: str) -> Results[SampleRow]:
         """Fetch a study's per-sample factor rows."""
