@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 
@@ -214,6 +215,34 @@ def test_inspect_can_skip_every_part() -> None:
     assert detail.samples == []
     assert detail.analyses == []
     assert detail.metabolites == []
+
+
+def test_inspect_warns_when_throttled() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "0.001"})
+        return _handler(request)
+
+    wb = Workbench(
+        transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(max_attempts=3, base_delay=0.0, jitter=0.0),
+        cache_dir=None,
+    )
+    with pytest.warns(UserWarning, match="throttled"):
+        details = wb.inspect(["ST000001"])
+    assert details[0].error == ""
+    assert wb.stats.throttled == 1
+
+
+def test_inspect_does_not_warn_when_clean() -> None:
+    wb = _client()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        wb.inspect(["ST000001"])
+    assert not [w for w in caught if issubclass(w.category, UserWarning)]
 
 
 def test_non_json_body_raises_response_validation_error() -> None:

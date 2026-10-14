@@ -22,7 +22,14 @@ import httpx
 import metabo_search.workbench.ingest as _ingest
 from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.results import Results
-from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
+from metabo_search.transport import (
+    HttpClient,
+    HttpRecord,
+    HttpStats,
+    RateLimit,
+    RetryPolicy,
+    warn_if_throttled,
+)
 from metabo_search.workbench.corpus import DEFAULT_CACHE_DIR, DEFAULT_TTL, CorpusCache
 from metabo_search.workbench.models import (
     AnalysisRecord,
@@ -219,7 +226,9 @@ class Workbench:
         Best-effort by default: a study that fails after retries is returned as
         a :class:`StudyDetail` with an ``error`` message and empty data, so a
         long batch always yields one result per input. Pass
-        ``on_error="raise"`` to abort on the first failure instead.
+        ``on_error="raise"`` to abort on the first failure instead. A batch
+        the server throttled (or that lost studies) emits a ``UserWarning``;
+        :attr:`stats` has the counters.
 
         A passed :class:`StudySummary` is reused as the detail's summary and is
         never refetched; a plain accession is fetched only when
@@ -272,8 +281,16 @@ class Workbench:
                     raise
                 return StudyDetail(study_id=study_id, error=str(exc))
 
+        before = self._http.stats
         with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-            return Results(pool.map(_run, targets))
+            details = list(pool.map(_run, targets))
+        warn_if_throttled(
+            self._http.stats - before,
+            errors=sum(1 for detail in details if detail.error),
+            workers=workers,
+            action="Workbench.inspect",
+        )
+        return Results(details)
 
     def ingest(self, obj: object, ws: Workspace) -> IngestReport:
         """Write study summaries or inspected details into a workspace.
@@ -289,6 +306,15 @@ class Workbench:
             items that were skipped.
         """
         return _ingest.write(ws, obj)
+
+    @property
+    def stats(self) -> HttpStats:
+        """Cumulative HTTP attempt statistics: attempts, throttling, backoff."""
+        return self._http.stats
+
+    def reset_stats(self) -> None:
+        """Reset :attr:`stats` to zero."""
+        self._http.reset_stats()
 
     def close(self) -> None:
         """Close the underlying connection pool."""
