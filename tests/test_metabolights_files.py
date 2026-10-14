@@ -11,6 +11,7 @@ from metabo_search.metabolights.files import (
     categorize,
     detect_extension,
     download,
+    isa_files,
     list_files,
     parse_size,
 )
@@ -37,6 +38,16 @@ DERIVED_HTML = """
 <tr><td><a href="sample1.mzML">sample1.mzML</a></td><td>2020-01-01</td><td>512K</td></tr>
 </table>
 """
+
+ISA_ROOT_HTML = "".join(
+    f'<a href="{name}">{name}</a>\n'
+    for name in (
+        "i_Investigation.txt",
+        "s_MTBLS1.txt",
+        "a_MTBLS1.txt",
+        "m_MTBLS1.tsv",
+    )
+)
 
 
 def _http(handler: Handler) -> HttpClient:
@@ -85,6 +96,20 @@ def test_categorize_directory_beats_extension() -> None:
     assert categorize(".mzml", "FILES/x.mzML") == "derived"
     assert categorize(".raw", "FILES/x.raw") == "raw"
     assert categorize(".txt", "FILES/x.txt") == "other"
+
+
+def test_isa_files_skips_the_investigation_file() -> None:
+    requested: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requested.append(str(request.url))
+        if request.url.path.endswith("/MTBLS1/"):
+            return httpx.Response(200, text=ISA_ROOT_HTML)
+        return httpx.Response(200, text=f"content of {request.url.path}")
+
+    files = isa_files(_http(handler), "MTBLS1")
+    assert set(files) == {"s_MTBLS1.txt", "a_MTBLS1.txt", "m_MTBLS1.tsv"}
+    assert not any("i_Investigation" in url for url in requested)
 
 
 def test_list_files_walks_and_categorizes() -> None:

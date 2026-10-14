@@ -12,6 +12,7 @@ import pytest
 from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.transport import RetryPolicy
 from metabo_search.workbench.client import Workbench
+from metabo_search.workbench.models import StudySummary
 from metabo_search.workbench.parse import normalize_rows, parse_factor_string
 
 FIXTURES = Path(__file__).parent / "fixtures" / "workbench"
@@ -139,6 +140,80 @@ def test_inspect_collects_per_study_errors() -> None:
 def test_inspect_raises_when_asked() -> None:
     with pytest.raises(MetaboSearchError):
         _client().inspect(["ST999999"], on_error="raise")
+
+
+def _counting_client(paths: list[str]) -> Workbench:
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(str(request.url))
+        return _handler(request)
+
+    return Workbench(
+        transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(max_attempts=1),
+        cache_dir=None,
+    )
+
+
+def test_inspect_reuses_a_passed_summary_without_refetching() -> None:
+    paths: list[str] = []
+    wb = _counting_client(paths)
+    summary = StudySummary(study_id="ST000001", study_title="reused")
+    detail = wb.inspect([summary], include_analyses=False, include_metabolites=False)[0]
+    assert detail.summary is summary
+    assert detail.samples
+    assert len(paths) == 1
+    assert paths[0].endswith("/ST000001/factors")
+
+
+def test_inspect_samples_only_makes_one_request_per_study() -> None:
+    paths: list[str] = []
+    wb = _counting_client(paths)
+    details = wb.inspect(
+        [StudySummary(study_id="ST000001")],
+        include_analyses=False,
+        include_metabolites=False,
+    )
+    assert len(paths) == 1
+    assert paths[0].endswith("/ST000001/factors")
+    assert details[0].analyses == []
+    assert details[0].metabolites == []
+
+
+def test_inspect_accessions_can_skip_the_summary() -> None:
+    paths: list[str] = []
+    wb = _counting_client(paths)
+    detail = wb.inspect(
+        ["ST000001"],
+        include_summary=False,
+        include_analyses=False,
+        include_metabolites=False,
+    )[0]
+    assert detail.summary is None
+    assert detail.samples
+    assert len(paths) == 1
+    assert paths[0].endswith("/ST000001/factors")
+
+
+def test_inspect_can_skip_every_part() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise AssertionError(f"unexpected request {request.url}")
+
+    wb = Workbench(
+        transport=httpx.MockTransport(handler),
+        retry=RetryPolicy(max_attempts=1),
+        cache_dir=None,
+    )
+    detail = wb.inspect(
+        [StudySummary(study_id="ST000001")],
+        include_summary=False,
+        include_samples=False,
+        include_analyses=False,
+        include_metabolites=False,
+    )[0]
+    assert detail.summary is None
+    assert detail.samples == []
+    assert detail.analyses == []
+    assert detail.metabolites == []
 
 
 def test_non_json_body_raises_response_validation_error() -> None:
