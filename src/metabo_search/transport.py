@@ -391,12 +391,15 @@ class HttpClient:
     def download(self, path: str, dest: str | Path) -> int:
         """Stream a GET response to ``dest``, returning the bytes written.
 
-        Retries transient failures. The destination directory is created if
-        needed; a partial file is overwritten on retry.
+        Retries transient failures, honouring ``Retry-After`` on 429. The
+        destination directory is created if needed; a partial file is
+        overwritten on retry.
 
         Raises:
             NotFound: The server returned 404.
             ClientError: The server returned another non-retryable 4xx.
+            RateLimited: The server returned 429 after every attempt; the
+                exception's ``retry_after`` carries the header when present.
             TransientError: The transfer failed after every attempt.
         """
         url = self._url(path)
@@ -410,6 +413,12 @@ class HttpClient:
             try:
                 with self._client.stream("GET", url) as response:
                     status = response.status_code
+                    if (
+                        status in self._retry.retry_status
+                        and attempt < self._retry.max_attempts
+                    ):
+                        self._sleep(attempt, self._retry_after(response))
+                        continue
                     self._raise_for_status(response)
                     written = 0
                     with dest_path.open("wb") as handle:
@@ -430,6 +439,9 @@ class HttpClient:
                 self._sleep(attempt, None)
             finally:
                 self._record_attempt(status)
+        assert last_exc is not None, "no attempt was made"
+        if isinstance(last_exc, TransientError):
+            raise last_exc
         raise TransientError(f"GET {url} failed: {last_exc}") from last_exc
 
     @property

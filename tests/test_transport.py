@@ -293,6 +293,46 @@ def test_download_records_stats(tmp_path: Path) -> None:
     assert stats.ok == 1
 
 
+def test_download_retries_transient_status(tmp_path: Path) -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, content=b"hello")
+
+    written = _client(handler).download("file.bin", tmp_path / "out.bin")
+    assert written == 5
+    assert calls["n"] == 2
+    assert (tmp_path / "out.bin").read_bytes() == b"hello"
+
+
+def test_download_honours_retry_after(tmp_path: Path) -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "0.05"})
+        return httpx.Response(200, content=b"hello")
+
+    client = _client(handler, retry=RetryPolicy(max_attempts=3, base_delay=0.0, jitter=0.0))
+    client.download("file.bin", tmp_path / "out.bin")
+    # Without honouring Retry-After the backoff would be 0 s (base_delay=0).
+    assert client.stats.throttled == 1
+    assert client.stats.backoff_seconds >= 0.05
+
+
+def test_download_rate_limited_after_attempts(tmp_path: Path) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, headers={"Retry-After": "3"})
+
+    with pytest.raises(RateLimited) as info:
+        _client(handler, retry=RetryPolicy(max_attempts=1)).download("f.bin", tmp_path / "o")
+    assert info.value.retry_after == 3.0
+
+
 def test_warn_if_throttled_is_silent_when_clean() -> None:
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
