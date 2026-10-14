@@ -79,7 +79,10 @@ samples = wb.samples("ST000001")           # parsed factor rows
 analyses = wb.analyses("ST000001")
 metabolites = wb.metabolites("ST000001")   # empty means "not listed"
 
-detail = wb.inspect(["ST000001"])[0]       # bundles all of the above
+# inspect() bundles summary + samples + analyses + metabolites by default.
+# Narrow the include_* flags to skip endpoints, and pass StudySummary objects
+# (e.g. search results) to reuse them instead of refetching:
+detail = wb.inspect(results[:5], include_analyses=False, include_metabolites=False)[0]
 ```
 
 ## Documentation

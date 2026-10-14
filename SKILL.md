@@ -76,13 +76,17 @@ wb = Workbench()
 # corpus is fetched and filtered locally (~90 s), then cached on disk
 # (7-day TTL, ~/.cache/metabo-search) for later processes. Use
 # Workbench(cache_dir=None) to disable, or wb.refresh_corpus() to force.
-wb.search("diabetes urine", limit=25)
+hits = wb.search("diabetes urine", limit=25)
 
 wb.study("ST000001")
 wb.samples("ST000001")       # parsed factor rows
 wb.analyses("ST000001")      # MS/NMR analysis records
 wb.metabolites("ST000001")   # empty means "not listed", not necessarily "none"
-wb.inspect(["ST000001"])     # bundles summary + samples + analyses + metabolites
+
+# inspect() bundles summary + samples + analyses + metabolites by default.
+# Narrow the include_* flags to skip endpoints, and pass StudySummary objects
+# (e.g. search hits) to reuse them instead of a /summary round trip per study.
+wb.inspect(hits[:5], include_analyses=False, include_metabolites=False)
 ```
 
 Workbench vocabulary differs: `species` (Latin name), `source` (e.g. `Blood`),
