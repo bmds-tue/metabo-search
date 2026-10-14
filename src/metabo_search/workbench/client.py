@@ -1,9 +1,10 @@
 """Client for the Metabolomics Workbench REST API.
 
-The Workbench has no server-side free-text search: :meth:`Workbench.search`
-fetches the whole-index summary corpus (slow, ~90 s) once per client instance
-and filters it locally. Per-study methods fetch the ``factors``, ``analysis``,
-and ``metabolites`` endpoints.
+:meth:`Workbench.search` ranks a locally cached whole-index summary corpus by
+title-token overlap (the fetch is slow, ~90 s). The Workbench REST API *also*
+supports server-side study queries (by ``study_title``, ``institute``, …), but
+this client does not expose them yet. Per-study methods fetch the ``factors``,
+``analysis``, and ``metabolites`` endpoints.
 """
 
 from __future__ import annotations
@@ -15,11 +16,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from pathlib import Path
 from types import TracebackType
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import httpx
 
-import metabo_search.workbench.ingest as _ingest
 from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.results import Results
 from metabo_search.transport import (
@@ -39,7 +39,9 @@ from metabo_search.workbench.models import (
     StudySummary,
 )
 from metabo_search.workbench.parse import normalize_rows, parse_metabolites, parse_samples
-from metabo_search.workspace import IngestReport, Workspace
+
+if TYPE_CHECKING:
+    from metabo_search.workspace import IngestReport, Workspace
 
 BASE_URL = "https://www.metabolomicsworkbench.org/rest"
 CORPUS_TIMEOUT = 180.0
@@ -305,6 +307,8 @@ class Workbench:
             Per-table row counts, plus the ids of any errored ``StudyDetail``
             items that were skipped.
         """
+        import metabo_search.workbench.ingest as _ingest
+
         return _ingest.write(ws, obj)
 
     @property

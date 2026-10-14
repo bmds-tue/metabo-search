@@ -13,11 +13,10 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import TracebackType
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import httpx
 
-import metabo_search.metabolights.ingest as _ingest
 from metabo_search.errors import APIError, MetaboSearchError, NotFound
 from metabo_search.metabolights.files import download as _download
 from metabo_search.metabolights.files import isa_files, list_files
@@ -39,7 +38,9 @@ from metabo_search.transport import (
     RetryPolicy,
     warn_if_throttled,
 )
-from metabo_search.workspace import IngestReport, Workspace
+
+if TYPE_CHECKING:
+    from metabo_search.workspace import IngestReport, Workspace
 
 BASE_URL = "https://www.ebi.ac.uk/metabolights/ws3"
 SEARCH_PATH = "public/v2/public-study-index/search"
@@ -319,6 +320,8 @@ class MetaboLights:
             Per-table row counts, plus the ids of any errored ``StudyDetail``
             items that were skipped.
         """
+        import metabo_search.metabolights.ingest as _ingest
+
         return _ingest.write(ws, obj)
 
     @property

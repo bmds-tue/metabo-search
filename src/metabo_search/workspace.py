@@ -12,8 +12,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 
-import duckdb
-import pyarrow as pa
+try:
+    import duckdb
+    import pyarrow as pa
+except ModuleNotFoundError as exc:  # pragma: no cover - covered by a subprocess test
+    raise ModuleNotFoundError(
+        "The DuckDB working set needs the optional 'ingest' dependencies. "
+        "Install them with: pip install 'metabo-search[ingest]'"
+    ) from exc
 
 DEFAULT_PATH = "metabo.duckdb"
 """Workspace location when none is given."""
