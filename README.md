@@ -85,6 +85,14 @@ metabolites = wb.metabolites("ST000001")   # empty means "not listed"
 detail = wb.inspect(results[:5], include_analyses=False, include_metabolites=False)[0]
 ```
 
+## Throttling and workers
+
+Both repositories throttle aggressive clients. `inspect` defaults to
+`workers=4`, the measured sweet spot for corpus-scale runs: more workers trip
+server rate limits, and the client then spends its wall-clock in
+`Retry-After`/exponential backoff — on a whole-corpus scan, 8 workers was ~60%
+slower than 4. Raise `workers` only for small batches.
+
 ## Working set (DuckDB)
 
 A `Workspace` is a local DuckDB file. Ingest the results you care about, then

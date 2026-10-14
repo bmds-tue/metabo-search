@@ -207,7 +207,7 @@ class Workbench:
         self,
         study_ids: Sequence[str | StudySummary],
         *,
-        workers: int = 8,
+        workers: int = 4,
         include_summary: bool = True,
         include_samples: bool = True,
         include_analyses: bool = True,
@@ -229,7 +229,10 @@ class Workbench:
 
         Args:
             study_ids: Accessions, or summaries to reuse.
-            workers: Parallel study fetches.
+            workers: Parallel study fetches. The default (4) is the measured
+                sweet spot for corpus-scale runs; higher values trip server
+                throttling and are counterproductive. Raise it only for small
+                batches.
             include_summary: Include each study's summary. For a passed
                 summary this only controls whether it is kept, not whether it
                 is fetched.

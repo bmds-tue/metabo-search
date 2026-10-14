@@ -231,7 +231,7 @@ class MetaboLights:
         self,
         study_ids: Sequence[str | StudyHit],
         *,
-        workers: int = 8,
+        workers: int = 4,
         include_files: bool = False,
         include_metabolites: bool = True,
         on_error: Literal["collect", "raise"] = "collect",
@@ -245,7 +245,10 @@ class MetaboLights:
 
         Args:
             study_ids: Accessions, or study documents to read accessions from.
-            workers: Parallel study downloads.
+            workers: Parallel study downloads. The default (4) is the measured
+                sweet spot for corpus-scale runs; higher values trip server
+                throttling and are counterproductive. Raise it only for small
+                batches.
             include_files: Also list each study's ``FILES/`` tree (slower).
             include_metabolites: Fetch and parse MAF files (default). Pass
                 ``False`` for samples only — MAFs are the bulk of the data and

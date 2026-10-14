@@ -176,7 +176,7 @@ ml.search(query="", *, organisms=None, sample_types=None, techniques=None,
           limit=25) -> Results[StudyHit]
 ml.study(study_id) -> StudyHit
 ml.studies(study_ids) -> Results[StudyHit]
-ml.inspect(study_ids, *, workers=8, include_files=False,
+ml.inspect(study_ids, *, workers=4, include_files=False,
            include_metabolites=True,
            on_error="collect") -> Results[StudyDetail]   # ISA + MAF, parsed
 ml.files(study_id, *, recursive=True) -> Results[StudyFile]
@@ -192,7 +192,7 @@ wb.study(study_id) -> StudySummary
 wb.samples(study_id) -> Results[SampleRow]
 wb.analyses(study_id) -> Results[AnalysisRecord]
 wb.metabolites(study_id) -> Results[MetaboliteRow]
-wb.inspect(study_ids, *, workers=8, include_summary=True, include_samples=True,
+wb.inspect(study_ids, *, workers=4, include_summary=True, include_samples=True,
            include_analyses=True, include_metabolites=True,
            on_error="collect") -> Results[StudyDetail]
 ```
@@ -291,7 +291,7 @@ core (`search` / `inspect` / `ingest` / `sql`).
 | Retries / timeout | 4, backoff+jitter / 30 s | 4 / 30 s (180 s for the corpus) |
 | Rate limit | 5 req/s | 5 req/s (1 req/s corpus) |
 | `limit` | 25 | 25 |
-| `inspect` workers | 8 | 8 |
+| `inspect` workers | 4 | 4 |
 | Workspace path | `./metabo.duckdb` (path may be passed) | same |
 
 ## 12. Decisions (locked)
