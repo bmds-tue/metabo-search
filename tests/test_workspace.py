@@ -117,6 +117,21 @@ def test_write_reports_duplicate_natural_keys() -> None:
         assert ws.sql("SELECT value FROM t WHERE id = 'a'").fetchone() == (2,)
 
 
+def test_write_resolves_a_duplicate_split_across_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Dedupe runs per chunk to bound memory; last-wins must still hold across a
+    # chunk boundary (later chunks merge last and overwrite).
+    monkeypatch.setattr("metabo_search.workspace._CHUNK", 1)
+    rows = [{"id": "a", "value": 1}, {"id": "a", "value": 2}, {"id": "b", "value": 3}]
+    with Workspace(":memory:") as ws:
+        report = ws.write(_batch(rows))
+        assert ws.sql("SELECT value FROM t WHERE id = 'a'").fetchone() == (2,)
+        assert ws.sql("SELECT count(*) FROM t").fetchone() == (2,)
+        # Detection is per chunk, so a cross-chunk duplicate is not counted.
+        assert report.duplicates == {}
+
+
 def test_tables_excludes_temp_views() -> None:
     with Workspace(":memory:") as ws:
         ws.write(_batch([]))

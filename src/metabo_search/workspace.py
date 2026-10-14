@@ -31,7 +31,9 @@ def _chunks(rows: list[dict[str, object]], size: int) -> Iterator[list[dict[str,
         yield rows[start : start + size]
 
 
-def _dedupe(table: TableRows) -> tuple[list[dict[str, object]], int]:
+def _dedupe(
+    rows: list[dict[str, object]], keys: tuple[str, ...]
+) -> tuple[list[dict[str, object]], int]:
     """Collapse rows sharing a natural key (last occurrence wins).
 
     Returns the unique rows, in first-seen order, and how many were collapsed.
@@ -41,8 +43,8 @@ def _dedupe(table: TableRows) -> tuple[list[dict[str, object]], int]:
     index: dict[tuple[object, ...], int] = {}
     unique: list[dict[str, object]] = []
     collapsed = 0
-    for row in table.rows:
-        key = tuple(row[column] for column in table.keys)
+    for row in rows:
+        key = tuple(row[column] for column in keys)
         if key in index:
             unique[index[key]] = row
             collapsed += 1
@@ -199,11 +201,10 @@ class Workspace:
             for table in batch.tables:
                 if not table.rows:
                     continue
-                rows, collapsed = _dedupe(table)
+                written, collapsed = self._merge(table)
+                counts[table.name] = written
                 if collapsed:
                     duplicates[table.name] = collapsed
-                self._merge(table, rows)
-                counts[table.name] = len(rows)
             self._con.commit()
         except Exception:
             self._con.rollback()
@@ -215,13 +216,24 @@ class Workspace:
             duplicates={name: n for name, n in duplicates.items() if n},
         )
 
-    def _merge(self, table: TableRows, rows: list[dict[str, object]]) -> None:
+    def _merge(self, table: TableRows) -> tuple[int, int]:
         """Upsert one table's rows through Arrow, chunked.
 
-        Rows are converted to Arrow using the target table's own schema and
-        registered as a view, so DuckDB bulk-loads and merges them set-based.
-        This avoids both the per-row conflict resolution (and memory blow-up)
-        of ``INSERT OR REPLACE`` and the slow row-by-row ``executemany`` path.
+        Each chunk is deduped in Python, converted to Arrow using the target
+        table's own schema, registered as a view, and merged set-based. This
+        avoids both the per-row conflict resolution (and memory blow-up) of
+        ``INSERT OR REPLACE`` and the slow row-by-row ``executemany`` path.
+
+        Deduping per chunk (rather than the whole table) bounds peak dedupe
+        memory by ``_CHUNK`` instead of the table size. Last-wins still holds
+        across chunks because they merge in order and the conflict clause
+        overwrites — but a key repeated in two different chunks is not counted
+        as a duplicate.
+
+        Returns:
+            ``(rows_written, rows_collapsed)``. ``rows_written`` counts the
+            rows sent to DuckDB, so a key repeated across chunks is counted
+            once per chunk even though the upsert leaves a single row.
         """
         schema = _arrow_schema(self._con, table.name)
         keys = ", ".join(f'"{key}"' for key in table.keys)
@@ -233,8 +245,14 @@ class Workspace:
             conflict = f"DO UPDATE SET {updates}"
         else:
             conflict = "DO NOTHING"
-        for chunk in _chunks(rows, _CHUNK):
-            incoming = pa.Table.from_pylist(chunk, schema=schema)
+        written = 0
+        collapsed_total = 0
+        for chunk in _chunks(table.rows, _CHUNK):
+            rows, collapsed = _dedupe(chunk, table.keys)
+            collapsed_total += collapsed
+            if not rows:
+                continue
+            incoming = pa.Table.from_pylist(rows, schema=schema)
             self._con.register(_INCOMING, incoming)
             try:
                 self._con.execute(
@@ -243,6 +261,8 @@ class Workspace:
                 )
             finally:
                 self._con.unregister(_INCOMING)
+            written += len(rows)
+        return written, collapsed_total
 
     def sql(
         self, query: str, params: Sequence[object] | None = None
