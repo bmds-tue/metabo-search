@@ -9,8 +9,11 @@ and ``metabolites`` endpoints.
 from __future__ import annotations
 
 import re
+import warnings
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from pathlib import Path
 from types import TracebackType
 from typing import Literal
 
@@ -19,6 +22,7 @@ import httpx
 from metabo_search.errors import MetaboSearchError, NotFound, ResponseValidationError
 from metabo_search.results import Results
 from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
+from metabo_search.workbench.corpus import DEFAULT_CACHE_DIR, DEFAULT_TTL, CorpusCache
 from metabo_search.workbench.models import (
     AnalysisRecord,
     MetaboliteRow,
@@ -46,6 +50,9 @@ class Workbench:
         headers: Extra headers merged into every request.
         raw_sink: Optional per-attempt callback for provenance.
         transport: Optional httpx transport, used by tests.
+        cache_dir: Directory for the on-disk whole-index corpus cache, or
+            ``None`` to disable it. Defaults to ``~/.cache/metabo-search``.
+        corpus_ttl: How long a cached corpus stays fresh.
     """
 
     def __init__(
@@ -58,6 +65,8 @@ class Workbench:
         headers: Mapping[str, str] | None = None,
         raw_sink: Callable[[HttpRecord], None] | None = None,
         transport: httpx.BaseTransport | None = None,
+        cache_dir: str | Path | None = DEFAULT_CACHE_DIR,
+        corpus_ttl: timedelta = DEFAULT_TTL,
     ) -> None:
         self._http = HttpClient(
             base_url,
@@ -68,20 +77,67 @@ class Workbench:
             raw_sink=raw_sink,
             transport=transport,
         )
+        self._corpus = (
+            CorpusCache(Path(cache_dir), base_url, corpus_ttl)
+            if cache_dir is not None
+            else None
+        )
         self._summaries: dict[str, StudySummary] | None = None
 
     def all_studies(self) -> dict[str, StudySummary]:
-        """Return the whole-index study summaries, fetched once per client.
+        """Return the whole-index study summaries.
+
+        Resolution order: the in-memory copy, then a fresh on-disk cache (when
+        a ``cache_dir`` is configured), then the API. A successful fetch is
+        written back to the cache. If the fetch fails but a stale cache exists,
+        the stale payload is used and a :class:`UserWarning` is emitted.
 
         Returns:
             Study id to summary. Cached on the instance after the first call.
         """
-        if self._summaries is None:
-            rows = normalize_rows(self._get("study/study_id/ST/summary"), "study_id")
-            self._summaries = {
-                summary.study_id: summary
-                for summary in (StudySummary.model_validate(row) for row in rows)
-            }
+        if self._summaries is not None:
+            return self._summaries
+
+        cache = self._corpus
+        stale: object | None = None
+        if cache is not None:
+            cached = cache.read()
+            if cached is not None:
+                payload, fetched_at = cached
+                if cache.is_fresh(fetched_at):
+                    self._summaries = _parse_corpus(payload)
+                    return self._summaries
+                stale = payload
+
+        try:
+            payload = self._get("study/study_id/ST/summary")
+        except MetaboSearchError:
+            if cache is None or stale is None:
+                raise
+            warnings.warn(
+                f"using the stale Workbench corpus at {cache.path}; the refresh failed",
+                stacklevel=2,
+            )
+            self._summaries = _parse_corpus(stale)
+            return self._summaries
+
+        if cache is not None:
+            cache.write(payload)
+        self._summaries = _parse_corpus(payload)
+        return self._summaries
+
+    def refresh_corpus(self) -> dict[str, StudySummary]:
+        """Fetch the whole-index summaries, bypassing and rewriting the cache.
+
+        Use this to pick up studies added upstream before the TTL expires.
+
+        Returns:
+            Study id to summary. Also replaces the in-memory copy.
+        """
+        payload = self._get("study/study_id/ST/summary")
+        if self._corpus is not None:
+            self._corpus.write(payload)
+        self._summaries = _parse_corpus(payload)
         return self._summaries
 
     def search(
@@ -214,6 +270,15 @@ class Workbench:
             raise ResponseValidationError(
                 f"{response.request.url} returned non-JSON"
             ) from exc
+
+
+def _parse_corpus(payload: object) -> dict[str, StudySummary]:
+    """Parse a raw ``/ST/summary`` payload into ``{study_id: StudySummary}``."""
+    rows = normalize_rows(payload, "study_id")
+    return {
+        summary.study_id: summary
+        for summary in (StudySummary.model_validate(row) for row in rows)
+    }
 
 
 def _tokens(text: str) -> set[str]:

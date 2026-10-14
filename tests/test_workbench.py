@@ -52,7 +52,9 @@ def _handler(request: httpx.Request) -> httpx.Response:
 
 def _client() -> Workbench:
     return Workbench(
-        transport=httpx.MockTransport(_handler), retry=RetryPolicy(max_attempts=1)
+        transport=httpx.MockTransport(_handler),
+        retry=RetryPolicy(max_attempts=1),
+        cache_dir=None,
     )
 
 
@@ -143,6 +145,7 @@ def test_non_json_body_raises_response_validation_error() -> None:
     wb = Workbench(
         transport=httpx.MockTransport(lambda r: httpx.Response(200, text="<html>oops</html>")),
         retry=RetryPolicy(max_attempts=1),
+        cache_dir=None,
     )
     with pytest.raises(ResponseValidationError):
         wb.study("ST000001")
