@@ -9,7 +9,10 @@ import pytest
 
 from metabo_search.metabolights import ingest
 from metabo_search.metabolights.models import (
+    Funding,
     Metabolite,
+    Protocol,
+    ProtocolComponent,
     Sample,
     StudyDetail,
     StudyFile,
@@ -114,6 +117,53 @@ def test_batch_study_detail_maps_samples_and_metabolites() -> None:
     assert metabolite["mass_to_charge"] == 180.06
     abundances = _rows(batch, "ml_metabolite_abundance")
     assert {row["sample"]: row["value"] for row in abundances} == {"s1": 12.5, "s2": 8.0}
+
+
+def test_batch_maps_fundings_and_protocol_components() -> None:
+    hit = StudyHit(
+        study_id="MTBLS1",
+        fundings=[
+            Funding(
+                fund_ref_id="10.13039/501100000780",
+                funder="European Union",
+                grant_identifier="123",
+            )
+        ],
+        protocols=[
+            Protocol(
+                name="Extraction",
+                components=[
+                    ProtocolComponent(
+                        name="Instrument",
+                        type="MS",
+                        term_source_ref="OBI",
+                        term_accession_number="OBI:0000470",
+                    )
+                ],
+            )
+        ],
+    )
+    batch = ingest.batch(hit)
+    assert _rows(batch, "ml_funding") == [
+        {
+            "study_id": "MTBLS1",
+            "ordinal": 0,
+            "fund_ref_id": "10.13039/501100000780",
+            "funder": "European Union",
+            "grant_identifier": "123",
+        }
+    ]
+    assert _rows(batch, "ml_protocol_component") == [
+        {
+            "study_id": "MTBLS1",
+            "protocol_ordinal": 0,
+            "ordinal": 0,
+            "name": "Instrument",
+            "type": "MS",
+            "term_source_ref": "OBI",
+            "term_accession_number": "OBI:0000470",
+        }
+    ]
 
 
 def test_batch_study_file_uses_its_own_study_id() -> None:
