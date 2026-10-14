@@ -1,9 +1,10 @@
 """Disk cache for the Metabolomics Workbench whole-index corpus.
 
-The Workbench has no server-side free-text search, so the client fetches the
-whole-index ``/ST/summary`` payload (slow, ~90 s) and filters it locally. That
-payload changes rarely, so it is cached on disk per base URL and reused until
-its TTL expires.
+:meth:`~metabo_search.workbench.client.Workbench.search` filters the whole-index
+``/ST/summary`` payload locally, so the client fetches it (slow, ~90 s) and
+caches it on disk. The REST API also supports server-side study queries, which
+the client does not expose yet. The payload changes rarely, so it is cached per
+base URL and reused until its TTL expires.
 
 The *raw* JSON payload is stored, not parsed models, so the cache stays
 independent of the model layer.

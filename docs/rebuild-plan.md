@@ -275,7 +275,8 @@ the tree green (pytest, ruff, pyright). No mypy. `uv` is the package manager.
 
 ### Testing (every commit)
 
-- **Offline by default**; live smoke gated by `MTBLS_LIVE=1`.
+- **Offline by default**; live conformance is a separate marked tier
+  (`-m live`; see `docs/ci.md`).
 - **Transport:** `httpx.MockTransport` for retries, `Retry-After`, rate limit,
   4xx no-retry, error mapping.
 - **Models:** fixture validation + contract test vs the vendored OpenAPI spec

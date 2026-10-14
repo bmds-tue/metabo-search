@@ -1,6 +1,7 @@
 # Public API design — search first, ingest what you care about, analyse
 
-Status: proposal (decisions locked below).
+Status: implemented — this is the public API as built. The decisions below are
+locked; `docs/duckdb-ingestion-plan.md` records the schema history.
 
 ## 1. The loop
 
@@ -28,8 +29,8 @@ may hold both side by side in separate tables, but there is no merged view.
 ```
 metabo_search
 ├── workspace.py     # Workspace: a dumb DuckDB handle (no source knowledge)
-├── metabolights/    # client · models · ingest (schema + mapping) · queries
-└── workbench/       # client · models · ingest (schema + mapping) · queries
+├── metabolights/    # client · models · ingest (schema + mapping)
+└── workbench/       # client · models · ingest (schema + mapping)
 ```
 
 ## 3. The loop in code
@@ -197,9 +198,11 @@ wb.inspect(study_ids, *, workers=4, include_summary=True, include_samples=True,
            on_error="collect") -> Results[StudyDetail]
 ```
 
-`wb.search` uses the workbench's whole-index summary as its search index (there
-is no server-side free-text search); only matching studies are returned and
-ingested. The corpus itself is never ingested.
+`wb.search` ranks the cached workbench whole-index summary by title-token
+overlap; only matching studies are returned and ingested. The corpus itself is
+never ingested. The Workbench REST API also supports server-side study queries
+(by `study_title`, `institute`, `last_name`, …), which the client does not
+expose yet.
 
 ### Best-effort inspection
 

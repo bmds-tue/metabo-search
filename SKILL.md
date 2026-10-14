@@ -73,9 +73,9 @@ from metabo_search import Workbench
 
 wb = Workbench()
 
-# The Workbench has no server-side free-text search: the whole-index summary
-# corpus is fetched and filtered locally (~90 s), then cached on disk
-# (7-day TTL, ~/.cache/metabo-search) for later processes. Use
+# wb.search() ranks a locally cached whole-index corpus by title-token overlap;
+# the REST API's server-side study queries are not exposed yet. The corpus fetch
+# is slow (~90 s) but cached on disk (7-day TTL, ~/.cache/metabo-search). Use
 # Workbench(cache_dir=None) to disable, or wb.refresh_corpus() to force.
 hits = wb.search("diabetes urine", limit=25)
 

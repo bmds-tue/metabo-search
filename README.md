@@ -24,7 +24,9 @@ object model.
 ## Install
 
 ```bash
-uv pip install -e .        # or: ./scripts/install.sh
+uv pip install -e .              # clients only: search, inspect, download
+uv pip install -e ".[ingest]"    # + the DuckDB working set (duckdb, pyarrow)
+# or: ./scripts/install.sh       # dev environment (includes ingest)
 ```
 
 ## MetaboLights
@@ -67,10 +69,11 @@ from metabo_search import Workbench
 
 wb = Workbench()
 
-# The Workbench has no server-side free-text search: the whole-index corpus
-# is fetched and filtered locally (~90 s), then cached on disk (7-day TTL,
-# ~/.cache/metabo-search) so later processes skip the fetch. Pass
-# cache_dir=None to disable, or call wb.refresh_corpus() to force a refresh.
+# wb.search() ranks a locally cached whole-index corpus by title-token overlap.
+# The REST API also supports server-side study queries (by study_title, ...),
+# which this client does not expose yet. The corpus fetch is slow (~90 s) but
+# cached on disk (7-day TTL, ~/.cache/metabo-search) so later processes skip it.
+# Pass cache_dir=None to disable, or call wb.refresh_corpus() to force a refresh.
 results = wb.search("diabetes urine", limit=25)
 print(results.ids())
 
@@ -129,18 +132,27 @@ removed upstream are never pruned. Every call returns an
 `metabolights.ingest.write` / `workbench.ingest.write`.
 
 `ws.sql()` returns DuckDB's own relation, so `.fetchall()`, `.pl()`, `.df()`
-work as usual. `pyarrow` is a dependency (it powers bulk ingestion); the polars
-and pandas backends for `.pl()`/`.df()` remain optional.
+work as usual. `Workspace` and `client.ingest()` need the optional `ingest`
+extra (`duckdb` + `pyarrow`), which powers bulk ingestion; the polars and pandas
+backends for `.pl()`/`.df()` remain optional. Importing the clients never pulls
+in the ingest stack, and a missing extra raises a message naming it.
 
 ## Documentation
 
+- [`CHANGELOG.md`](CHANGELOG.md) — release notes.
 - [`docs/api-design.md`](docs/api-design.md) — the target public API.
 - [`docs/rebuild-plan.md`](docs/rebuild-plan.md) — architecture and plan.
 - [`docs/duckdb-ingestion-plan.md`](docs/duckdb-ingestion-plan.md) — the
   ingestion schema and steps.
 - [`docs/ingestion-hardening-plan.md`](docs/ingestion-hardening-plan.md) — the
   fetch/ingest hardening record.
+- [`docs/ci.md`](docs/ci.md) — CI tiers, the live test sample, and the promises
+  asserted.
 
 ## Disclaimer
 
 Work in progress — no stability guarantees. Please open an issue if you find one.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE).

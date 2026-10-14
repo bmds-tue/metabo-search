@@ -4,11 +4,11 @@ Status: **implemented** — all five branches are merged into `main`. Kept as th
 record of the fetch/ingest hardening work. Every item has a symptom, evidence,
 fix, and acceptance criteria.
 
-## 0. How to resume
+## 0. Status
 
-- **Current branch**: `feature/duckdb-ingestion`, **15 commits ahead of `main`,
-  unpushed**. `main` already contains the two clients (merge `68cc304`); the
-  feature branch adds the DuckDB workspace + per-source ingestion.
+All five branches are merged into `main`; nothing here is pending. This section
+is kept only as the verification recipe and context for the landed work.
+
 - **Already landed** (do not redo): DuckDB workspace (`workspace.py`), per-source
   `ingest.py` mappings, `ml.ingest`/`wb.ingest`, completeness test, isolation
   test, Arrow bulk load, `inspect(include_metabolites=False)`, docs.

@@ -29,7 +29,9 @@ src/metabo_search/
 ```bash
 ./scripts/install.sh                                        # venv + package + dev extras + skill link
 uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
-.venv-local/bin/python -m pytest tests/ -q                  # offline tests
+.venv-local/bin/python -m pytest -q                         # offline tests
+.venv-local/bin/python -m pytest tests/live -m "live and not live_slow" -q  # live (network)
+.venv-local/bin/python -m pytest tests/live -m live_slow -q # + corpus cache (~95 s)
 .venv-local/bin/pyright                                     # strict (no mypy)
 .venv-local/bin/ruff check src tests
 ```
@@ -59,11 +61,18 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
   sentinel builds each model with a marker per field and asserts every marker
   lands in a row, so a new upstream field fails the test instead of being
   silently dropped.
+- **Promises live in `tests/contract.py`.** The offline suite (fixtures /
+  `MockTransport`) and the live suite (`tests/live/`, real APIs) call the same
+  assertion functions, so each documented promise has one definition. Live
+  tests are marked `live` (and `live_slow` for the corpus) and are deselected
+  by default; see `docs/ci.md`.
 - **`ws.sql()` returns DuckDB's relation unwrapped** — no `Table` wrapper.
 - **Ingestion bulk-loads via Arrow.** `Workspace.write` converts each table to
   a `pyarrow` table (schema from `DESCRIBE`), registers it, and merges with one
   set-based `ON CONFLICT`. Never use per-row `INSERT OR REPLACE`/`executemany`:
-  it is O(n²) and OOMs at corpus scale. `pyarrow` is a core dep;
+  it is O(n²) and OOMs at corpus scale. `duckdb` and `pyarrow` are the optional
+  `ingest` extra, imported lazily: the clients and `import metabo_search` must
+  not require them (`workspace.py` raises a message naming the extra).
   `pyarrow-stubs` is dev-only for strict typing.
 - **Duplicate natural keys are deduped in Python (last wins) and reported** in
   `IngestReport.duplicates` — DuckDB's set-based `ON CONFLICT` picks an
@@ -84,3 +93,4 @@ uv pip install --python .venv-local/bin/python -e ".[dev]"  # manual
 - `docs/ingestion-hardening-plan.md` — the fetch/ingest hardening plan.
 - `docs/ingestion-hardening-plan.md` — **resume here**: fetch/ingest hardening
   plan (corpus cache, inspect parts, write-path fixes, branch/commit layout).
+- `docs/ci.md` — CI tiers, the pinned live sample, and the promise matrix.
