@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
+import warnings
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
@@ -17,7 +19,14 @@ from metabo_search.errors import (
     ResponseValidationError,
     TransientError,
 )
-from metabo_search.transport import HttpClient, HttpRecord, RateLimit, RetryPolicy
+from metabo_search.transport import (
+    HttpClient,
+    HttpRecord,
+    HttpStats,
+    RateLimit,
+    RetryPolicy,
+    warn_if_throttled,
+)
 
 Handler = Callable[[httpx.Request], httpx.Response]
 
@@ -198,3 +207,102 @@ def test_download_writes_file(tmp_path: Path) -> None:
     written = _client(handler).download("file.bin", tmp_path / "out.bin")
     assert written == 5
     assert (tmp_path / "out.bin").read_bytes() == b"hello"
+
+
+def test_stats_counts_successful_request() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"value": 1}))
+    client.get_json("x", model=_Body)
+    stats = client.stats
+    assert stats.requests == 1
+    assert stats.attempts == 1
+    assert stats.ok == 1
+    assert stats.retries == 0
+    assert stats.throttled == 0
+    assert stats.backoff_seconds == 0.0
+
+
+def test_stats_counts_retry_and_backoff() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(503)
+        return httpx.Response(200, json={"value": 1})
+
+    client = _client(handler, retry=RetryPolicy(max_attempts=3, base_delay=0.01, jitter=0.0))
+    client.get_json("x", model=_Body)
+    stats = client.stats
+    assert stats.requests == 1
+    assert stats.attempts == 2
+    assert stats.retries == 1
+    assert stats.transient == 1
+    assert stats.backoff_seconds >= 0.01
+
+
+def test_stats_counts_throttling() -> None:
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "0.01"})
+        return httpx.Response(200, json={"value": 1})
+
+    client = _client(handler, retry=RetryPolicy(max_attempts=3, base_delay=0.0, jitter=0.0))
+    client.get_json("x", model=_Body)
+    stats = client.stats
+    assert stats.throttled == 1
+    assert stats.attempts == 2
+    assert stats.backoff_seconds >= 0.01
+
+
+def test_stats_delta_and_reset() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"value": 1}))
+    client.get_json("x", model=_Body)
+    before = client.stats
+    client.get_json("x", model=_Body)
+    delta = client.stats - before
+    assert delta.requests == 1
+    assert delta.attempts == 1
+    client.reset_stats()
+    assert client.stats == HttpStats()
+
+
+def test_stats_delta_rejects_a_newer_snapshot() -> None:
+    with pytest.raises(AssertionError):
+        HttpStats() - HttpStats(requests=1)
+
+
+def test_stats_are_thread_safe() -> None:
+    client = _client(lambda request: httpx.Response(200, json={"value": 1}))
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda _: client.get_json("x", model=_Body), range(64)))
+    stats = client.stats
+    assert stats.requests == 64
+    assert stats.attempts == 64
+    assert stats.ok == 64
+
+
+def test_download_records_stats(tmp_path: Path) -> None:
+    client = _client(lambda request: httpx.Response(200, content=b"hello"))
+    client.download("file.bin", tmp_path / "out.bin")
+    stats = client.stats
+    assert stats.requests == 1
+    assert stats.attempts == 1
+    assert stats.ok == 1
+
+
+def test_warn_if_throttled_is_silent_when_clean() -> None:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        warn_if_throttled(HttpStats())
+    assert caught == []
+
+
+def test_warn_if_throttled_reports_throttling() -> None:
+    with pytest.warns(UserWarning, match="2 throttled"):
+        warn_if_throttled(
+            HttpStats(requests=2, attempts=4, throttled=2, backoff_seconds=1.5),
+            workers=8,
+        )

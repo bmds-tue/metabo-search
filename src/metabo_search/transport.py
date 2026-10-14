@@ -12,6 +12,7 @@ from __future__ import annotations
 import random
 import threading
 import time
+import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -97,6 +98,117 @@ class HttpRecord:
     attempt: int
 
 
+@dataclass(frozen=True)
+class HttpStats:
+    """Cumulative HTTP attempt statistics for one :class:`HttpClient`.
+
+    Counters accumulate over the client's lifetime. A throttled run is visible
+    here (``throttled``/``backoff_seconds``) even though the client retries
+    transparently. Subtract an earlier snapshot to measure one batch:
+    ``after - before``.
+
+    Attributes:
+        requests: Logical operations (one per request/download call).
+        attempts: HTTP attempts, including retries.
+        ok: Responses that completed successfully (2xx/3xx).
+        throttled: HTTP 429 responses.
+        transient: Retryable failures: 5xx, timeouts, transport errors.
+        backoff_seconds: Total time slept between attempts.
+    """
+
+    requests: int = 0
+    attempts: int = 0
+    ok: int = 0
+    throttled: int = 0
+    transient: int = 0
+    backoff_seconds: float = 0.0
+
+    @property
+    def retries(self) -> int:
+        """Attempts beyond the first for each logical request."""
+        return self.attempts - self.requests
+
+    def __sub__(self, other: HttpStats) -> HttpStats:
+        """Return the delta since an earlier snapshot ``other``.
+
+        Raises:
+            AssertionError: ``other`` is newer than ``self`` on some counter.
+        """
+        result = HttpStats(
+            requests=self.requests - other.requests,
+            attempts=self.attempts - other.attempts,
+            ok=self.ok - other.ok,
+            throttled=self.throttled - other.throttled,
+            transient=self.transient - other.transient,
+            backoff_seconds=self.backoff_seconds - other.backoff_seconds,
+        )
+        assert (
+            result.requests >= 0
+            and result.attempts >= 0
+            and result.ok >= 0
+            and result.throttled >= 0
+            and result.transient >= 0
+            and result.backoff_seconds >= 0.0
+        ), "HttpStats delta must not be negative"
+        return result
+
+
+@dataclass
+class _StatsAccumulator:
+    """Mutable counters behind :class:`HttpStats` (guarded by a lock)."""
+
+    requests: int = 0
+    attempts: int = 0
+    ok: int = 0
+    throttled: int = 0
+    transient: int = 0
+    backoff_seconds: float = 0.0
+
+    def snapshot(self) -> HttpStats:
+        """Return an immutable copy of the current counters."""
+        return HttpStats(
+            requests=self.requests,
+            attempts=self.attempts,
+            ok=self.ok,
+            throttled=self.throttled,
+            transient=self.transient,
+            backoff_seconds=self.backoff_seconds,
+        )
+
+
+def warn_if_throttled(
+    stats: HttpStats,
+    *,
+    errors: int = 0,
+    workers: int | None = None,
+    action: str = "inspect",
+    stacklevel: int = 3,
+) -> None:
+    """Warn when a batch was throttled or lost items; a no-op when clean.
+
+    A transient 5xx that retried and succeeded is deliberately not a warning.
+
+    Args:
+        stats: The batch's :class:`HttpStats` delta.
+        errors: Number of items that failed (e.g. errored ``StudyDetail``s).
+        workers: Worker count, included in the hint when throttled.
+        action: Prefix for the message, e.g. ``"MetaboLights.inspect"``.
+        stacklevel: ``warnings.warn`` stacklevel.
+    """
+    assert errors >= 0, "errors must be >= 0"
+    if stats.throttled == 0 and errors == 0:
+        return
+    parts: list[str] = []
+    if stats.throttled:
+        parts.append(f"{stats.throttled} throttled (429) response(s)")
+    if stats.backoff_seconds >= 0.1:
+        parts.append(f"{stats.backoff_seconds:.1f}s in retry backoff")
+    if errors:
+        parts.append(f"{errors} item(s) failed")
+    hint = f"; lower workers (currently {workers})" if stats.throttled and workers else ""
+    warnings.warn(f"{action}: {', '.join(parts)}{hint}", UserWarning, stacklevel=stacklevel)
+
+
 class _TokenBucket:
     """A thread-safe token bucket.
 
@@ -165,6 +277,8 @@ class HttpClient:
             else None
         )
         self._raw_sink = raw_sink
+        self._stats = _StatsAccumulator()
+        self._stats_lock = threading.Lock()
         self._client = httpx.Client(
             headers=headers,
             timeout=httpx.Timeout(timeout, connect=min(10.0, timeout)),
@@ -203,6 +317,7 @@ class HttpClient:
                 after every attempt.
         """
         url = self._url(path)
+        self._add_request()
         for attempt in range(1, self._retry.max_attempts + 1):
             self._acquire()
             started = time.monotonic()
@@ -287,11 +402,14 @@ class HttpClient:
         url = self._url(path)
         dest_path = Path(dest)
         dest_path.parent.mkdir(parents=True, exist_ok=True)
+        self._add_request()
         last_exc: Exception | None = None
         for attempt in range(1, self._retry.max_attempts + 1):
             self._acquire()
+            status: int | None = None
             try:
                 with self._client.stream("GET", url) as response:
+                    status = response.status_code
                     self._raise_for_status(response)
                     written = 0
                     with dest_path.open("wb") as handle:
@@ -299,12 +417,31 @@ class HttpClient:
                             handle.write(chunk)
                             written += len(chunk)
                     return written
-            except (TransientError, httpx.TimeoutException, httpx.TransportError) as exc:
+            except TransientError as exc:
                 last_exc = exc
                 if attempt >= self._retry.max_attempts:
                     break
                 self._sleep(attempt, None)
+            except (httpx.TimeoutException, httpx.TransportError) as exc:
+                status = None
+                last_exc = exc
+                if attempt >= self._retry.max_attempts:
+                    break
+                self._sleep(attempt, None)
+            finally:
+                self._record_attempt(status)
         raise TransientError(f"GET {url} failed: {last_exc}") from last_exc
+
+    @property
+    def stats(self) -> HttpStats:
+        """Cumulative attempt statistics: attempts, throttling, backoff."""
+        with self._stats_lock:
+            return self._stats.snapshot()
+
+    def reset_stats(self) -> None:
+        """Reset :attr:`stats` to zero."""
+        with self._stats_lock:
+            self._stats = _StatsAccumulator()
 
     def close(self) -> None:
         """Close the underlying connection pool."""
@@ -333,15 +470,40 @@ class HttpClient:
         if self._bucket is not None:
             self._bucket.acquire()
 
+    def _add_request(self) -> None:
+        """Count one logical operation (called once per request/download)."""
+        with self._stats_lock:
+            self._stats.requests += 1
+
+    def _add_backoff(self, seconds: float) -> None:
+        """Record time slept between attempts."""
+        assert seconds >= 0.0, "backoff must be >= 0"
+        with self._stats_lock:
+            self._stats.backoff_seconds += seconds
+
+    def _record_attempt(self, status: int | None) -> None:
+        """Count one HTTP attempt by outcome."""
+        with self._stats_lock:
+            self._stats.attempts += 1
+            if status == 429:
+                self._stats.throttled += 1
+            elif status is None or status in self._retry.retry_status or 500 <= status < 600:
+                self._stats.transient += 1
+            elif 200 <= status < 400:
+                self._stats.ok += 1
+
     def _sleep(self, attempt: int, retry_after: float | None) -> None:
+        assert attempt >= 1, "attempt is 1-based"
+        assert retry_after is None or retry_after >= 0, "retry_after must be >= 0"
         if retry_after is not None:
-            time.sleep(retry_after)
-            return
-        delay = min(self._retry.max_delay, self._retry.base_delay * (2 ** (attempt - 1)))
-        if self._retry.jitter:
-            delay += random.uniform(0.0, self._retry.jitter * delay)
+            delay = retry_after
+        else:
+            delay = min(self._retry.max_delay, self._retry.base_delay * (2 ** (attempt - 1)))
+            if self._retry.jitter:
+                delay += random.uniform(0.0, self._retry.jitter * delay)
         if delay > 0:
             time.sleep(delay)
+            self._add_backoff(delay)
 
     @staticmethod
     def _retry_after(response: httpx.Response) -> float | None:
@@ -369,6 +531,7 @@ class HttpClient:
     def _emit(
         self, method: str, url: str, status: int | None, elapsed_ms: float, attempt: int
     ) -> None:
+        self._record_attempt(status)
         if self._raw_sink is not None:
             self._raw_sink(
                 HttpRecord(
