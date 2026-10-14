@@ -73,7 +73,9 @@ from metabo_search import Workbench
 wb = Workbench()
 
 # The Workbench has no server-side free-text search: the whole-index summary
-# corpus is fetched once per client (~90 s) and filtered locally.
+# corpus is fetched and filtered locally (~90 s), then cached on disk
+# (7-day TTL, ~/.cache/metabo-search) for later processes. Use
+# Workbench(cache_dir=None) to disable, or wb.refresh_corpus() to force.
 wb.search("diabetes urine", limit=25)
 
 wb.study("ST000001")
